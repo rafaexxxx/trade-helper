@@ -80,6 +80,6 @@ src/painel.js    → ponto de entrada
 | Conferência da lista + serial | `inventory.roblox.com` (o inventário precisa estar **público**) |
 | Value, RAP, demanda, tendência, projected, hyped, rare | `api.rolimons.com` (itemdetails) |
 
-Quando o Rolimon's e o Roblox discordam sobre quais itens você tem, o painel mostra a diferença logo abaixo do resumo. Se o Rolimon's falhar, a lista vem só do Roblox.
+Quando o Rolimon's e o Roblox discordam sobre quais itens você tem, a diferença fica registrada na seção Diagnóstico (campo `divergencia`). Se o Rolimon's falhar, a lista vem só do Roblox.
 
 Os dados ficam em cache por alguns minutos para respeitar os limites de requisição das APIs.

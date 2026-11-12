@@ -92,28 +92,6 @@ function listaMudancas(mudancas, anterior, cfg) {
   );
 }
 
-function nomes(lista) {
-  const max = 5;
-  const parte = lista.slice(0, max).map(esc).join(', ');
-  return lista.length > max ? parte + ' e mais ' + (lista.length - max) : parte;
-}
-
-function plural(n, um, varios) {
-  return n + ' ' + (n === 1 ? um : varios);
-}
-
-function blocoDivergencia(d) {
-  if (!d) return '';
-  const p = [];
-  if (d.soRoblox.length) {
-    p.push('O Roblox ainda lista ' + plural(d.soRoblox.length, 'item', 'itens') + " que o Rolimon's não tem: " + nomes(d.soRoblox) + '.');
-  }
-  if (d.soRolimons.length) {
-    p.push("O Rolimon's lista " + plural(d.soRolimons.length, 'item', 'itens') + ' que o Roblox não retornou: ' + nomes(d.soRolimons) + '.');
-  }
-  return p.map((x) => '<p class="aviso">' + x + '</p>').join('');
-}
-
 function gerar(r, cfg) {
   const t = r.totais;
   const v = r.varTotais;
@@ -180,7 +158,6 @@ footer{margin-top:16px;color:var(--sub);font-size:11px}
   <div><span class="rot">RAP</span><span class="val">${a.fmtNum(t.rap)}</span>${variacao(v && v.rap)}</div>
   <div><span class="rot">Itens</span><span class="val">${t.qtd}</span></div>
 </div>
-${blocoDivergencia(r.divergencia)}
 ${avisos}
 
 <h2>Alertas<span class="n">${r.riscos.length}</span></h2>
