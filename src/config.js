@@ -19,4 +19,14 @@ module.exports = {
 
   // Tentativas em caso de erro temporário (429 / 5xx / rede).
   TENTATIVAS: 3,
+
+  // Histórico para a comparação de 24h: 1 retrato a cada X min, guardado por Y horas.
+  HISTORICO_INTERVALO_MIN: 60,
+  HISTORICO_HORAS: 48,
+
+  // Por quantas horas reaproveitar o endereço das miniaturas.
+  MINIATURAS_CACHE_HORAS: 24,
+
+  // Quantos itens o widget grande lista.
+  WIDGET_MAX_ITENS_GRANDE: 6,
 };

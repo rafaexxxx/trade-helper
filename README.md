@@ -4,9 +4,9 @@ Painel do inventário de Limiteds para iPhone, feito para rodar no app **[Script
 
 - 💰 Value total e RAP total do inventário
 - 🚨 Alertas de risco: projected, demanda baixa/terrível, tendência de queda, RAP muito diferente do value
-- 🔄 Mudanças relevantes desde a última consulta (limite configurável, padrão 5%)
-- 📋 Lista completa com busca e ordenação
-- 🧩 Widget para a tela inicial
+- 🔄 Mudanças relevantes desde a última consulta ou nas últimas 24h (limite configurável, padrão 5%)
+- 📋 Tabela com miniaturas, busca e ordenação; tocar num item abre o Rolimon's ou o Roblox
+- 🧩 Widgets grande, médio e pequeno (e da tela bloqueada)
 - 🔒 **Somente leitura**: não usa login, cookie nem envia trades. Usa só APIs públicas.
 
 ---
@@ -26,11 +26,12 @@ Pronto! Das próximas vezes é só abrir o script. Ele confere sozinho se há ve
 ### 🧩 Widget
 
 1. Na tela inicial, toque e segure num espaço vazio → **Editar** → **＋ / Adicionar widget**.
-2. Procure **Scriptable** → escolha o tamanho **pequeno** ou **médio** → **Adicionar widget**.
+2. Procure **Scriptable** → escolha o tamanho **grande** (totais + lista de itens), **médio** (totais + 3 maiores itens) ou **pequeno** → **Adicionar widget**.
 3. Toque no widget (ainda no modo edição) → em **Script**, escolha **Trade Helper**.
 
 > ℹ️ Quem decide quando o widget atualiza é o iOS (normalmente a cada 15–60 min). Ele não é tempo real.
 > Abra o painel no app pelo menos uma vez antes, para o username ficar salvo.
+> A variação do widget é sempre a de ~24h. O histórico é montado com 1 retrato por hora (painel e widget), guardado por 48h no iPhone.
 
 ---
 
