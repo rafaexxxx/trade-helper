@@ -106,6 +106,23 @@ async function buscarInventario(userId) {
   return { itens, paginas };
 }
 
+// Itens do jogador segundo o Rolimon's.
+// Formato esperado (a confirmar): { success, playerAssets: { assetId: [uaid, ...] }, holds: [...], playerPrivacyEnabled, ... }
+async function buscarJogadorRolimons(userId) {
+  const j = await requisitar('https://api.rolimons.com/players/v1/playerassets/' + userId);
+  if (!j || !j.success || !j.playerAssets) {
+    throw erroApi("Resposta inesperada do Rolimon's (jogador)", 200, JSON.stringify(j || {}).slice(0, 300), 'playerassets');
+  }
+  const resto = {};
+  for (const k of Object.keys(j)) if (k !== 'playerAssets') resto[k] = j[k];
+  return {
+    assets: j.playerAssets,
+    holds: Array.isArray(j.holds) ? j.holds : [],
+    privado: !!j.playerPrivacyEnabled,
+    amostra: JSON.stringify(resto).slice(0, 400),
+  };
+}
+
 // Formato esperado (a confirmar no 1º teste):
 // items[id] = [nome, sigla, rap, value, default_value, demanda, tendência, projected, hyped, rare]
 async function buscarItensRolimons() {
@@ -128,10 +145,32 @@ async function carregarTudo(store, ajustes) {
   }
   const usuario = { id: ajustes.userId, nome: ajustes.nomeReal || ajustes.username };
 
-  const inv = await comCache(
-    store, 'cache_inventario_' + usuario.id, cfg.CACHE_INVENTARIO_MIN,
-    () => buscarInventario(usuario.id), avisos, 'o inventário'
-  );
+  // Fonte principal dos itens: Rolimon's. Conferência: Roblox.
+  let jogador = null;
+  let roblox = null;
+  let erroJogador = null;
+  let erroRoblox = null;
+  try {
+    jogador = await comCache(
+      store, 'cache_jogador_' + usuario.id, cfg.CACHE_INVENTARIO_MIN,
+      () => buscarJogadorRolimons(usuario.id), avisos, "o inventário no Rolimon's"
+    );
+  } catch (e) {
+    erroJogador = e;
+  }
+  try {
+    roblox = await comCache(
+      store, 'cache_inventario_' + usuario.id, cfg.CACHE_INVENTARIO_MIN,
+      () => buscarInventario(usuario.id), avisos, 'o inventário no Roblox'
+    );
+  } catch (e) {
+    erroRoblox = e;
+  }
+  if (!jogador && !roblox) throw erroJogador || erroRoblox;
+  if (!jogador) avisos.push("Rolimon's indisponível (" + erroJogador.message + '). Itens vindos só do Roblox.');
+  if (!roblox) avisos.push('Não deu para conferir com o Roblox (' + erroRoblox.message + ').');
+  if (jogador && jogador.dados.privado) avisos.push("O Rolimon's marca o inventário como privado. A lista pode estar incompleta.");
+
   const rol = await comCache(
     store, 'cache_rolimons', cfg.CACHE_ROLIMONS_MIN,
     buscarItensRolimons, avisos, "os values do Rolimon's"
@@ -139,11 +178,15 @@ async function carregarTudo(store, ajustes) {
 
   return {
     usuario,
-    inventario: inv.dados.itens,
-    paginas: inv.dados.paginas,
+    jogador: jogador ? jogador.dados : null,
+    roblox: roblox ? roblox.dados : null,
     rolimons: rol.dados.items,
     rolimonsQtd: rol.dados.qtd,
-    origem: { inventario: inv.origem, rolimons: rol.origem },
+    origem: {
+      jogador: jogador ? jogador.origem : 'falhou',
+      roblox: roblox ? roblox.origem : 'falhou',
+      values: rol.origem,
+    },
     avisos,
   };
 }

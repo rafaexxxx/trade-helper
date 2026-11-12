@@ -3,11 +3,20 @@
 const DEMANDA = { '-1': 'Sem dados', 0: 'Terrível', 1: 'Baixa', 2: 'Normal', 3: 'Alta', 4: 'Incrível' };
 const TENDENCIA = { '-1': 'Sem dados', 0: 'Caindo', 1: 'Instável', 2: 'Estável', 3: 'Subindo', 4: 'Oscilando' };
 
+const DEMANDA_CURTA = { '-1': '—', 0: 'Terrível', 1: 'Baixa', 2: 'Normal', 3: 'Alta', 4: 'Incrível' };
+const TENDENCIA_CURTA = { '-1': '—', 0: 'Caindo', 1: 'Instável', 2: 'Estável', 3: 'Subindo', 4: 'Oscila' };
+
 function rotuloDemanda(d) {
   return DEMANDA[d] || 'Desconhecida (' + d + ')';
 }
 function rotuloTendencia(t) {
   return TENDENCIA[t] || 'Desconhecida (' + t + ')';
+}
+function demandaCurta(d) {
+  return DEMANDA_CURTA[d] || '?';
+}
+function tendenciaCurta(t) {
+  return TENDENCIA_CURTA[t] || '?';
 }
 
 // ---------- Formatação ----------
@@ -43,19 +52,58 @@ function pct(antes, depois) {
   return ((depois - antes) / antes) * 100;
 }
 
-function montarItens(inventario, rolimonsItens) {
-  return inventario
-    .map((inv) => {
-      const r = rolimonsItens[String(inv.assetId)] || null;
-      const rapRoblox = num(inv.recentAveragePrice, -1);
-      const rap = rapRoblox >= 0 ? rapRoblox : r ? Math.max(num(r[2], 0), 0) : 0;
+// Monta a lista de itens. Fonte principal: Rolimon's (jogador); se falhar, Roblox.
+// Quando as duas fontes existem, calcula onde elas discordam.
+function montarItens(dados) {
+  const R = dados.rolimons;
+  const roblox = dados.roblox ? dados.roblox.itens : null;
+  const porUaid = {};
+  if (roblox) for (const x of roblox) porUaid[String(x.userAssetId)] = x;
+
+  let base = [];
+  let fonte;
+  if (dados.jogador) {
+    fonte = 'rolimons';
+    const holds = new Set((dados.jogador.holds || []).map(String));
+    for (const assetId of Object.keys(dados.jogador.assets)) {
+      const uaids = dados.jogador.assets[assetId];
+      for (const u of Array.isArray(uaids) ? uaids : []) {
+        const uaid = String(u);
+        const rb = porUaid[uaid] || null;
+        base.push({
+          uaid,
+          assetId: Number(assetId),
+          serial: rb ? rb.serialNumber : null,
+          nomeRoblox: rb ? rb.name : null,
+          rapRoblox: rb ? rb.recentAveragePrice : null,
+          hold: holds.has(uaid) || (rb ? !!rb.isOnHold : false),
+        });
+      }
+    }
+  } else {
+    fonte = 'roblox';
+    base = roblox.map((rb) => ({
+      uaid: String(rb.userAssetId),
+      assetId: rb.assetId,
+      serial: rb.serialNumber,
+      nomeRoblox: rb.name,
+      rapRoblox: rb.recentAveragePrice,
+      hold: !!rb.isOnHold,
+    }));
+  }
+
+  const itens = base
+    .map((b) => {
+      const r = R[String(b.assetId)] || null;
+      const rapRol = r ? num(r[2], -1) : -1;
+      const rap = rapRol >= 0 ? rapRol : Math.max(num(b.rapRoblox, 0), 0);
       const value = r && num(r[3], -1) > 0 ? r[3] : null;
       return {
-        uaid: String(inv.userAssetId),
-        assetId: inv.assetId,
-        nome: inv.name || (r && r[0]) || 'Item ' + inv.assetId,
+        uaid: b.uaid,
+        assetId: b.assetId,
+        nome: (r && r[0]) || b.nomeRoblox || 'Item ' + b.assetId,
         sigla: (r && r[1]) || '',
-        serial: inv.serialNumber || null,
+        serial: b.serial || null,
         rap,
         value, // null = item sem value no Rolimon's
         valorEfetivo: value != null ? value : rap, // usado nos totais (padrão do Rolimon's)
@@ -65,10 +113,22 @@ function montarItens(inventario, rolimonsItens) {
         hyped: !!r && r[8] === 1,
         rare: !!r && r[9] === 1,
         semRolimons: !r,
-        emEspera: !!inv.isOnHold,
+        hold: b.hold,
       };
     })
     .sort((a, b) => b.valorEfetivo - a.valorEfetivo);
+
+  let divergencia = null;
+  if (dados.jogador && roblox) {
+    const noRolimons = new Set(base.map((b) => b.uaid));
+    const soRoblox = roblox
+      .filter((x) => !noRolimons.has(String(x.userAssetId)))
+      .map((x) => x.name || 'Item ' + x.assetId);
+    const soRolimons = itens.filter((i) => !porUaid[i.uaid]).map((i) => i.nome);
+    if (soRoblox.length || soRolimons.length) divergencia = { soRoblox, soRolimons };
+  }
+
+  return { itens, fonte, divergencia };
 }
 
 function calcularTotais(itens) {
@@ -100,20 +160,20 @@ function encontrarRiscos(itens, anterior, cfg) {
   const lista = [];
   for (const i of itens) {
     const motivos = [];
-    if (i.projected) motivos.push({ texto: 'Projected (RAP inflado)', grav: 'alta' });
-    if (i.demanda === 0) motivos.push({ texto: 'Demanda terrível', grav: 'alta' });
-    else if (i.demanda === 1) motivos.push({ texto: 'Demanda baixa', grav: 'media' });
-    if (i.tendencia === 0) motivos.push({ texto: "Tendência de queda (Rolimon's)", grav: 'media' });
+    if (i.projected) motivos.push({ texto: 'projected', grav: 'alta' });
+    if (i.demanda === 0) motivos.push({ texto: 'demanda terrível', grav: 'alta' });
+    else if (i.demanda === 1) motivos.push({ texto: 'demanda baixa', grav: 'media' });
+    if (i.tendencia === 0) motivos.push({ texto: 'tendência de queda', grav: 'media' });
 
     const p = prev[i.uaid];
     if (p) {
       const dv = pct(p.valorEfetivo, i.valorEfetivo);
       if (dv != null && dv <= -cfg.LIMITE_MUDANCA_PCT) {
-        motivos.push({ texto: 'Value caiu ' + fmtPct(-dv) + ' desde a última consulta', grav: 'media' });
+        motivos.push({ texto: 'value caiu ' + fmtPct(-dv), grav: 'media' });
       }
       const dr = pct(p.rap, i.rap);
       if (dr != null && dr <= -cfg.LIMITE_MUDANCA_PCT) {
-        motivos.push({ texto: 'RAP caiu ' + fmtPct(-dr) + ' desde a última consulta', grav: 'media' });
+        motivos.push({ texto: 'RAP caiu ' + fmtPct(-dr), grav: 'media' });
       }
     }
 
@@ -159,7 +219,7 @@ function encontrarMudancas(itens, anterior, cfg) {
   return lista;
 }
 
-function criarSnapshot(itens, totais) {
+function criarSnapshot(itens, totais, fonte) {
   const mapa = {};
   for (const i of itens) {
     mapa[i.uaid] = {
@@ -170,11 +230,11 @@ function criarSnapshot(itens, totais) {
       projected: i.projected,
     };
   }
-  return { data: Date.now(), totais, itens: mapa };
+  return { data: Date.now(), fonte, totais, itens: mapa };
 }
 
 module.exports = {
-  rotuloDemanda, rotuloTendencia,
+  rotuloDemanda, rotuloTendencia, demandaCurta, tendenciaCurta,
   fmtNum, fmtPct, fmtPctSinal, abreviar, fmtData,
   montarItens, calcularTotais, compararTotais,
   encontrarRiscos, encontrarMudancas, criarSnapshot,

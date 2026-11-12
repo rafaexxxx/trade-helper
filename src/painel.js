@@ -35,15 +35,20 @@ async function executar(ctx) {
   }
 
   const dados = await api.carregarTudo(store, ajustes);
-  const anterior = hist.lerSnapshot(store);
-  const itens = analise.montarItens(dados.inventario, dados.rolimons);
+  const { itens, fonte, divergencia } = analise.montarItens(dados);
+  // Só compara com retratos feitos a partir da mesma fonte de itens.
+  const salvo = hist.lerSnapshot(store);
+  const anterior = salvo && salvo.fonte === fonte ? salvo : null;
   const totais = analise.calcularTotais(itens);
   const avisos = (ctx.avisos || []).concat(dados.avisos);
 
-  const exemploInv = dados.inventario[0] || null;
+  const robloxItens = dados.roblox ? dados.roblox.itens : [];
+  const exemplo = itens[0] || null;
   const resultado = {
     usuario: dados.usuario,
     itens,
+    fonte,
+    divergencia,
     totais,
     riscos: analise.encontrarRiscos(itens, anterior, cfg),
     mudancas: analise.encontrarMudancas(itens, anterior, cfg),
@@ -58,13 +63,20 @@ async function executar(ctx) {
       commit: String(ctx.sha || '').slice(0, 7),
       loader: ctx.loaderVersao,
       usuario: dados.usuario,
+      fonteItens: fonte,
       origem: dados.origem,
-      paginasInventario: dados.paginas,
-      itensInventario: dados.inventario.length,
-      itensRolimons: dados.rolimonsQtd,
-      foraDoRolimons: itens.filter((i) => i.semRolimons).length,
-      exemploInventario: exemploInv,
-      exemploRolimons: exemploInv ? dados.rolimons[String(exemploInv.assetId)] || null : null,
+      itensMostrados: itens.length,
+      itensRoblox: dados.roblox ? robloxItens.length : null,
+      paginasRoblox: dados.roblox ? dados.roblox.paginas : null,
+      itensCatalogoRolimons: dados.rolimonsQtd,
+      foraDoCatalogoRolimons: itens.filter((i) => i.semRolimons).length,
+      divergencia,
+      jogadorRolimons: dados.jogador
+        ? { assets: dados.jogador.assets, holds: dados.jogador.holds, resto: dados.jogador.amostra }
+        : null,
+      robloxUaids: robloxItens.map((x) => x.userAssetId + ':' + x.assetId),
+      exemploRobloxBruto: robloxItens[0] || null,
+      exemploItemdetails: exemplo ? dados.rolimons[String(exemplo.assetId)] || null : null,
       avisos,
     },
   };
@@ -75,7 +87,7 @@ async function executar(ctx) {
   }
 
   // Só o painel grava o retrato usado na comparação da próxima consulta.
-  hist.gravarSnapshot(store, analise.criarSnapshot(itens, totais));
+  hist.gravarSnapshot(store, analise.criarSnapshot(itens, totais, fonte));
 
   const wv = new WebView();
   await wv.loadHTML(html.gerar(resultado, cfg));

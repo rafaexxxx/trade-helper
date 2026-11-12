@@ -1,4 +1,4 @@
-// Monta a página HTML do painel (tema claro/escuro automático, segue o iPhone).
+// Página do painel: estilo planilha, tema claro/escuro seguindo o iPhone.
 const a = require('analise');
 
 function esc(s) {
@@ -6,198 +6,244 @@ function esc(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => mapa[c]);
 }
 
-function classeDemanda(d) {
-  if (d === 0) return 'ruim';
-  if (d === 1) return 'alerta';
-  if (d >= 3) return 'bom';
+function corDemanda(d) {
+  if (d === 0) return 'neg';
+  if (d === 1) return 'warn';
+  if (d >= 3) return 'pos';
   return '';
 }
 
-function classeTendencia(t) {
-  if (t === 0) return 'ruim';
-  if (t === 3) return 'bom';
-  if (t === 1 || t === 4) return 'alerta';
+function corTendencia(t) {
+  if (t === 0) return 'neg';
+  if (t === 3) return 'pos';
+  if (t === 1 || t === 4) return 'warn';
   return '';
 }
+
+const COR_GRAVIDADE = { alta: 'neg', media: 'warn', baixa: 'sub' };
+const COR_DIRECAO = { sobe: 'pos', desce: 'neg', neutro: 'sub' };
 
 function variacao(v) {
   if (!v || v.pct == null) return '';
-  const cls = v.pct > 0 ? 'bom' : v.pct < 0 ? 'ruim' : '';
-  const seta = v.pct > 0 ? '▲' : v.pct < 0 ? '▼' : '•';
-  return '<span class="var ' + cls + '">' + seta + ' ' + a.fmtPctSinal(v.pct) + '</span>';
+  const cor = v.pct > 0 ? 'pos' : v.pct < 0 ? 'neg' : 'sub';
+  return '<span class="var ' + cor + '">' + a.fmtPctSinal(v.pct) + '</span>';
 }
 
-function tags(i) {
-  const b = [];
-  if (i.serial) b.push('<span class="tag">#' + esc(i.serial) + '</span>');
-  if (i.projected) b.push('<span class="tag ruim">Projected</span>');
-  if (i.hyped) b.push('<span class="tag alerta">Hyped</span>');
-  if (i.rare) b.push('<span class="tag azul">Rare</span>');
-  if (i.value == null && !i.semRolimons) b.push('<span class="tag">Sem value (usa RAP)</span>');
-  if (i.semRolimons) b.push('<span class="tag alerta">Fora do Rolimon\'s</span>');
-  if (i.emEspera) b.push('<span class="tag">Em espera</span>');
-  return b.join('');
+function detalhes(i) {
+  const d = [];
+  if (i.serial) d.push('#' + esc(i.serial));
+  if (i.projected) d.push('<span class="neg">projected</span>');
+  if (i.hyped) d.push('hyped');
+  if (i.rare) d.push('rare');
+  if (i.hold) d.push('hold');
+  if (i.value == null && !i.semRolimons) d.push('sem value');
+  if (i.semRolimons) d.push("fora do Rolimon's");
+  return d.join(' · ');
 }
 
-function cartaoItem(i) {
+function linhaItem(i) {
+  const det = detalhes(i);
   return (
-    '<div class="item" data-nome="' + esc((i.nome + ' ' + i.sigla).toLowerCase()) +
-    '" data-value="' + i.valorEfetivo + '" data-rap="' + i.rap + '" data-serial="' + (i.serial || 999999999) + '">' +
-    '<div class="item-topo"><span class="nome">' + esc(i.nome) + '</span>' +
-    (i.sigla ? '<span class="sigla">' + esc(i.sigla) + '</span>' : '') + '</div>' +
-    '<div class="tags">' + tags(i) + '</div>' +
-    '<div class="grade">' +
-    '<div><small>Value</small><b>' + (i.value != null ? a.fmtNum(i.value) : '—') + '</b></div>' +
-    '<div><small>RAP</small><b>' + a.fmtNum(i.rap) + '</b></div>' +
-    '<div><small>Demanda</small><b class="' + classeDemanda(i.demanda) + '">' + esc(a.rotuloDemanda(i.demanda)) + '</b></div>' +
-    '<div><small>Tendência</small><b class="' + classeTendencia(i.tendencia) + '">' + esc(a.rotuloTendencia(i.tendencia)) + '</b></div>' +
-    '</div></div>'
+    '<tr data-nome="' + esc((i.nome + ' ' + i.sigla).toLowerCase()) +
+    '" data-value="' + i.valorEfetivo + '" data-rap="' + i.rap +
+    '" data-dem="' + i.demanda + '" data-tend="' + i.tendencia + '">' +
+    '<td class="item"><span class="nome">' + esc(i.nome) + '</span>' +
+    (det ? '<span class="det">' + det + '</span>' : '') + '</td>' +
+    '<td class="num">' + (i.value != null ? a.fmtNum(i.value) : '<span class="sub">—</span>') + '</td>' +
+    '<td class="num">' + a.fmtNum(i.rap) + '</td>' +
+    '<td class="' + corDemanda(i.demanda) + '">' + esc(a.demandaCurta(i.demanda)) + '</td>' +
+    '<td class="' + corTendencia(i.tendencia) + '">' + esc(a.tendenciaCurta(i.tendencia)) + '</td>' +
+    '</tr>'
   );
 }
 
-function secaoRiscos(riscos) {
-  if (!riscos.length) return '<p class="vazio">Nenhum item em risco pelos critérios atuais. ✅</p>';
-  return riscos
-    .map(
-      (r) =>
-        '<div class="linha"><div class="linha-topo"><span class="nome">' + esc(r.item.nome) +
-        '</span><span class="mini">' + a.fmtNum(r.item.valorEfetivo) + '</span></div><ul>' +
-        r.motivos.map((m) => '<li class="' + m.grav + '">' + esc(m.texto) + '</li>').join('') +
-        '</ul></div>'
-    )
-    .join('');
+function listaRiscos(riscos) {
+  if (!riscos.length) return '<p class="vazio">Nenhum item em risco.</p>';
+  return (
+    '<ul class="lista">' +
+    riscos
+      .map(
+        (r) =>
+          '<li><b>' + esc(r.item.nome) + '</b>: ' +
+          r.motivos.map((m) => '<span class="' + COR_GRAVIDADE[m.grav] + '">' + esc(m.texto) + '</span>').join(', ') +
+          '</li>'
+      )
+      .join('') +
+    '</ul>'
+  );
 }
 
-function secaoMudancas(mudancas, anterior, cfg) {
-  if (mudancas == null) {
-    return '<p class="vazio">Esta é a primeira consulta. A comparação começa na próxima vez que você abrir o painel.</p>';
-  }
+function listaMudancas(mudancas, anterior, cfg) {
+  if (mudancas == null) return '<p class="vazio">Primeira consulta, sem comparação ainda.</p>';
   if (!mudancas.length) {
-    return '<p class="vazio">Nada mudou ≥ ' + cfg.LIMITE_MUDANCA_PCT + '% desde ' + a.fmtData(anterior.data) + '.</p>';
+    return '<p class="vazio">Nada acima de ' + cfg.LIMITE_MUDANCA_PCT + '% desde ' + a.fmtData(anterior.data) + '.</p>';
   }
-  return mudancas
-    .map(
-      (m) =>
-        '<div class="linha"><div class="linha-topo"><span class="nome">' + esc(m.item.nome) + '</span></div><ul>' +
-        m.mudancas.map((x) => '<li class="' + x.dir + '">' + esc(x.texto) + '</li>').join('') +
-        '</ul></div>'
-    )
-    .join('');
+  return (
+    '<ul class="lista">' +
+    mudancas
+      .map(
+        (m) =>
+          '<li><b>' + esc(m.item.nome) + '</b>: ' +
+          m.mudancas.map((x) => '<span class="' + COR_DIRECAO[x.dir] + '">' + esc(x.texto) + '</span>').join('; ') +
+          '</li>'
+      )
+      .join('') +
+    '</ul>'
+  );
+}
+
+function nomes(lista) {
+  const max = 5;
+  const parte = lista.slice(0, max).map(esc).join(', ');
+  return lista.length > max ? parte + ' e mais ' + (lista.length - max) : parte;
+}
+
+function plural(n, um, varios) {
+  return n + ' ' + (n === 1 ? um : varios);
+}
+
+function blocoDivergencia(d) {
+  if (!d) return '';
+  const p = [];
+  if (d.soRoblox.length) {
+    p.push('O Roblox ainda lista ' + plural(d.soRoblox.length, 'item', 'itens') + " que o Rolimon's não tem: " + nomes(d.soRoblox) + '.');
+  }
+  if (d.soRolimons.length) {
+    p.push("O Rolimon's lista " + plural(d.soRolimons.length, 'item', 'itens') + ' que o Roblox não retornou: ' + nomes(d.soRolimons) + '.');
+  }
+  return p.map((x) => '<p class="aviso">' + x + '</p>').join('');
 }
 
 function gerar(r, cfg) {
   const t = r.totais;
   const v = r.varTotais;
-  const sub =
-    '@' + esc(r.usuario.nome) + ' · atualizado ' + a.fmtData(r.agora) +
-    (r.anterior ? ' · comparando com ' + a.fmtData(r.anterior.data) : '');
+  const meta = [
+    'Atualizado ' + a.fmtData(r.agora),
+    r.fonte === 'rolimons' ? "itens via Rolimon's" : 'itens via Roblox',
+    r.anterior ? 'comparado com ' + a.fmtData(r.anterior.data) : '',
+  ].filter(Boolean).join(' · ');
 
-  const avisos = r.avisos.length
-    ? '<div class="avisos">' + r.avisos.map((x) => '<p>⚠️ ' + esc(x) + '</p>').join('') + '</div>'
-    : '';
+  const avisos = r.avisos.map((x) => '<p class="aviso">' + esc(x) + '</p>').join('');
 
   return `<!doctype html>
 <html lang="pt-BR"><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Trade Helper</title>
+<meta name="color-scheme" content="light dark">
+<title>Inventário</title>
 <style>
-:root{--bg:#f4f5f7;--card:#ffffff;--txt:#14171a;--sub:#5f6b76;--borda:#e3e6ea;--bom:#1a8a4a;--ruim:#c62828;--alerta:#b26a00;--azul:#1f6feb;--tag:#eef0f3}
-@media (prefers-color-scheme: dark){:root{--bg:#0e1116;--card:#171b22;--txt:#e8ecf1;--sub:#8b96a3;--borda:#262c36;--bom:#3fb96f;--ruim:#ff6b6b;--alerta:#f0b429;--azul:#58a6ff;--tag:#222833}}
+:root{--bg:#ffffff;--fg:#1c1c1e;--sub:#6e6e73;--linha:#e5e5ea;--cab:#f2f2f7;--pos:#248a3d;--neg:#d70015;--warn:#b25000}
+@media (prefers-color-scheme: dark){:root{--bg:#000000;--fg:#f2f2f7;--sub:#98989d;--linha:#2c2c2e;--cab:#1c1c1e;--pos:#30d158;--neg:#ff453a;--warn:#ff9f0a}}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--txt);font:15px/1.4 -apple-system,system-ui,sans-serif;padding:16px 14px 40px;padding-top:max(16px,env(safe-area-inset-top))}
-h1{font-size:22px;margin:0}
-h2{font-size:17px;margin:26px 0 10px}
-.sub{color:var(--sub);font-size:13px;margin-top:2px}
-.cards{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
-.card{background:var(--card);border:1px solid var(--borda);border-radius:14px;padding:12px}
-.card.largo{grid-column:1/-1}
-.card small{color:var(--sub);font-size:12px;display:block}
-.card b{font-size:22px;display:block;margin:2px 0}
-.var{font-size:13px;font-weight:600}
-.bom{color:var(--bom)}.ruim{color:var(--ruim)}.alerta{color:var(--alerta)}.azul{color:var(--azul)}
-.avisos{margin-top:12px;background:var(--card);border:1px solid var(--alerta);border-radius:12px;padding:8px 12px;font-size:13px}
-.avisos p{margin:4px 0}
-.linha,.item{background:var(--card);border:1px solid var(--borda);border-radius:12px;padding:10px 12px;margin-bottom:8px}
-.linha-topo,.item-topo{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
-.nome{font-weight:600}
-.mini,.sigla{color:var(--sub);font-size:12px;white-space:nowrap}
-ul{margin:6px 0 0;padding-left:18px}
-li{font-size:14px;margin:2px 0}
-li.alta,li.desce{color:var(--ruim)}li.media{color:var(--alerta)}li.baixa{color:var(--sub)}li.sobe{color:var(--bom)}
-.vazio{color:var(--sub);font-size:14px}
-.tags{margin:6px 0 4px;display:flex;flex-wrap:wrap;gap:4px}
-.tag{background:var(--tag);border-radius:6px;padding:1px 7px;font-size:12px}
-.grade{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:4px}
-.grade small{color:var(--sub);font-size:11px;display:block}
-.grade b{font-size:13px}
-.controles{display:flex;gap:8px;margin-bottom:10px}
-.controles input,.controles select{flex:1;font-size:15px;padding:8px 10px;border-radius:10px;border:1px solid var(--borda);background:var(--card);color:var(--txt)}
-details{margin-top:28px;color:var(--sub);font-size:13px}
-textarea{width:100%;height:220px;font:12px ui-monospace,monospace;background:var(--card);color:var(--txt);border:1px solid var(--borda);border-radius:10px;padding:8px}
-footer{margin-top:20px;color:var(--sub);font-size:12px;text-align:center}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.35 -apple-system,BlinkMacSystemFont,system-ui,sans-serif;font-variant-numeric:tabular-nums;padding:max(14px,env(safe-area-inset-top)) 16px 32px}
+.topo{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+h1{font-size:22px;font-weight:700;letter-spacing:-.01em;margin:0}
+.user{color:var(--sub)}
+.meta{color:var(--sub);font-size:12px;margin:2px 0 0}
+.resumo{display:flex;margin:16px 0 0;border-top:1px solid var(--linha);border-bottom:1px solid var(--linha)}
+.resumo>div{flex:1;padding:10px 0 10px 12px;border-left:1px solid var(--linha)}
+.resumo>div:first-child{border-left:0;padding-left:0}
+.rot{display:block;font-size:11px;color:var(--sub);text-transform:uppercase;letter-spacing:.05em}
+.val{display:block;font-size:19px;font-weight:600;margin-top:1px}
+.var{font-size:12px;font-weight:500}
+h2{font-size:12px;font-weight:600;color:var(--sub);text-transform:uppercase;letter-spacing:.06em;margin:28px 0 6px}
+h2 .n{color:var(--fg);margin-left:4px}
+.aviso{color:var(--warn);font-size:13px;margin:10px 0 0}
+.lista{list-style:none;margin:0;padding:0;border-top:1px solid var(--linha)}
+.lista li{padding:8px 0;border-bottom:1px solid var(--linha);font-size:14px}
+.lista b{font-weight:600}
+.vazio{color:var(--sub);font-size:14px;margin:4px 0}
+.pos{color:var(--pos)}.neg{color:var(--neg)}.warn{color:var(--warn)}.sub{color:var(--sub)}
+input[type=search]{width:100%;font:inherit;padding:7px 10px;margin:0 0 8px;border:1px solid var(--linha);border-radius:8px;background:var(--cab);color:var(--fg);-webkit-appearance:none}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{position:sticky;top:0;background:var(--cab);color:var(--sub);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;text-align:left;padding:7px 6px;border-bottom:1px solid var(--linha);white-space:nowrap;-webkit-user-select:none;user-select:none}
+th[data-ordem=desc]::after{content:" ↓"}
+th[data-ordem=asc]::after{content:" ↑"}
+th.num,td.num{text-align:right}
+td{padding:7px 6px;border-bottom:1px solid var(--linha);vertical-align:top;white-space:nowrap}
+td.item{white-space:normal;width:100%}
+.nome{display:block;font-weight:500}
+.det{display:block;font-size:11px;color:var(--sub);margin-top:1px}
+tfoot td{font-weight:600;border-bottom:0;border-top:1px solid var(--sub)}
+details{margin-top:32px;font-size:12px;color:var(--sub)}
+summary{cursor:pointer}
+textarea{width:100%;height:240px;margin-top:8px;font:11px/1.4 ui-monospace,Menlo,monospace;background:var(--cab);color:var(--fg);border:1px solid var(--linha);border-radius:8px;padding:8px}
+footer{margin-top:16px;color:var(--sub);font-size:11px}
 </style></head><body>
 
-<h1>📦 Trade Helper</h1>
-<div class="sub">${sub}</div>
+<div class="topo"><h1>Inventário</h1><span class="user">${esc(r.usuario.nome)}</span></div>
+<p class="meta">${meta}</p>
+
+<div class="resumo">
+  <div><span class="rot">Value</span><span class="val">${a.fmtNum(t.value)}</span>${variacao(v && v.value)}</div>
+  <div><span class="rot">RAP</span><span class="val">${a.fmtNum(t.rap)}</span>${variacao(v && v.rap)}</div>
+  <div><span class="rot">Itens</span><span class="val">${t.qtd}</span></div>
+</div>
+${blocoDivergencia(r.divergencia)}
 ${avisos}
 
-<div class="cards">
-  <div class="card"><small>Value total</small><b>${a.fmtNum(t.value)}</b>${variacao(v && v.value)}</div>
-  <div class="card"><small>RAP total</small><b>${a.fmtNum(t.rap)}</b>${variacao(v && v.rap)}</div>
-  <div class="card largo"><small>Itens</small><b>${t.qtd}</b><span class="sub">${t.comValue} com value no Rolimon's · ${t.qtd - t.comValue} usam RAP</span></div>
-</div>
+<h2>Alertas<span class="n">${r.riscos.length}</span></h2>
+${listaRiscos(r.riscos)}
 
-<h2>🚨 Alertas de risco (${r.riscos.length})</h2>
-${secaoRiscos(r.riscos)}
+<h2>Mudanças${r.mudancas ? '<span class="n">' + r.mudancas.length + '</span>' : ''}</h2>
+${listaMudancas(r.mudancas, r.anterior, cfg)}
 
-<h2>🔄 Mudanças relevantes${r.mudancas ? ' (' + r.mudancas.length + ')' : ''}</h2>
-${secaoMudancas(r.mudancas, r.anterior, cfg)}
-
-<h2>📋 Todos os itens</h2>
-<div class="controles">
-  <input id="busca" type="search" placeholder="Buscar item…" autocomplete="off">
-  <select id="ordem">
-    <option value="value">Maior value</option>
-    <option value="rap">Maior RAP</option>
-    <option value="nome">Nome (A–Z)</option>
-    <option value="serial">Menor serial</option>
-  </select>
-</div>
-<div id="lista">${r.itens.map(cartaoItem).join('')}</div>
+<h2>Itens</h2>
+<input id="busca" type="search" placeholder="Buscar" autocomplete="off">
+<table id="tabela">
+  <thead><tr>
+    <th data-campo="nome">Item</th>
+    <th data-campo="value" class="num" data-ordem="desc">Value</th>
+    <th data-campo="rap" class="num">RAP</th>
+    <th data-campo="dem">Dem.</th>
+    <th data-campo="tend">Tend.</th>
+  </tr></thead>
+  <tbody>${r.itens.map(linhaItem).join('')}</tbody>
+  <tfoot><tr><td>Total</td><td class="num">${a.fmtNum(t.value)}</td><td class="num">${a.fmtNum(t.rap)}</td><td></td><td></td></tr></tfoot>
+</table>
 
 <details>
-  <summary>🛠️ Diagnóstico (para enviar ao Claude se algo der errado)</summary>
-  <p>Toque no texto, selecione tudo e copie.</p>
+  <summary>Diagnóstico</summary>
   <textarea readonly>${esc(JSON.stringify(r.diag, null, 2))}</textarea>
 </details>
 
-<footer>Trade Helper v${esc(r.versao)} · ${esc(String(r.sha || '').slice(0, 7))} · somente leitura</footer>
+<footer>v${esc(r.versao)} · ${esc(String(r.sha || '').slice(0, 7))} · somente leitura</footer>
 
 <script>
 (function(){
+  var tbody = document.querySelector('#tabela tbody');
+  var cabecalhos = document.querySelectorAll('#tabela th');
   var busca = document.getElementById('busca');
-  var ordem = document.getElementById('ordem');
-  var lista = document.getElementById('lista');
-  function filtrar(){
-    var q = busca.value.trim().toLowerCase();
-    var itens = lista.querySelectorAll('.item');
-    for (var k = 0; k < itens.length; k++) {
-      itens[k].style.display = itens[k].getAttribute('data-nome').indexOf(q) >= 0 ? '' : 'none';
+  var estado = { campo: 'value', dir: 'desc' };
+
+  function ordenar(campo){
+    if (estado.campo === campo) estado.dir = estado.dir === 'desc' ? 'asc' : 'desc';
+    else { estado.campo = campo; estado.dir = campo === 'nome' ? 'asc' : 'desc'; }
+    var linhas = Array.prototype.slice.call(tbody.rows);
+    linhas.sort(function(x, y){
+      var p = x.getAttribute('data-' + campo), q = y.getAttribute('data-' + campo);
+      var c = campo === 'nome' ? p.localeCompare(q) : Number(p) - Number(q);
+      return estado.dir === 'asc' ? c : -c;
+    });
+    linhas.forEach(function(l){ tbody.appendChild(l); });
+    for (var k = 0; k < cabecalhos.length; k++) {
+      if (cabecalhos[k].getAttribute('data-campo') === campo) cabecalhos[k].setAttribute('data-ordem', estado.dir);
+      else cabecalhos[k].removeAttribute('data-ordem');
     }
   }
-  function ordenar(){
-    var campo = ordem.value;
-    var itens = Array.prototype.slice.call(lista.querySelectorAll('.item'));
-    itens.sort(function(x, y){
-      if (campo === 'nome') return x.getAttribute('data-nome').localeCompare(y.getAttribute('data-nome'));
-      if (campo === 'serial') return Number(x.getAttribute('data-serial')) - Number(y.getAttribute('data-serial'));
-      return Number(y.getAttribute('data-' + campo)) - Number(x.getAttribute('data-' + campo));
-    });
-    itens.forEach(function(el){ lista.appendChild(el); });
+
+  for (var k = 0; k < cabecalhos.length; k++) {
+    cabecalhos[k].addEventListener('click', function(){ ordenar(this.getAttribute('data-campo')); });
   }
-  busca.addEventListener('input', filtrar);
-  ordem.addEventListener('change', ordenar);
+
+  busca.addEventListener('input', function(){
+    var q = busca.value.trim().toLowerCase();
+    for (var k = 0; k < tbody.rows.length; k++) {
+      var l = tbody.rows[k];
+      l.style.display = l.getAttribute('data-nome').indexOf(q) >= 0 ? '' : 'none';
+    }
+  });
 })();
 </script>
 </body></html>`;
