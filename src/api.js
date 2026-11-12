@@ -123,14 +123,41 @@ async function buscarJogadorRolimons(userId) {
   };
 }
 
-// Formato esperado (a confirmar no 1º teste):
+// Catálogo de values do Rolimon's.
+// v2 inclui itens novos/UGC; v1 só tem os limiteds clássicos e fica de reserva.
+// Formato esperado nas duas:
 // items[id] = [nome, sigla, rap, value, default_value, demanda, tendência, projected, hyped, rare]
+const CATALOGOS = [
+  { versao: 'v2', url: 'https://api.rolimons.com/items/v2/itemdetails' },
+  { versao: 'v1', url: 'https://api.rolimons.com/items/v1/itemdetails' },
+];
+
+// Confere uma amostra para não mostrar dados embaralhados se o formato mudar.
+function formatoValido(items) {
+  const chaves = Object.keys(items);
+  if (!chaves.length) return false;
+  return chaves.slice(0, 25).every((k) => {
+    const r = items[k];
+    return Array.isArray(r) && r.length >= 10 && typeof r[0] === 'string' && typeof r[2] === 'number' && typeof r[3] === 'number';
+  });
+}
+
 async function buscarItensRolimons() {
-  const j = await requisitar('https://api.rolimons.com/items/v1/itemdetails');
-  if (!j || !j.success || !j.items) {
-    throw erroApi("Resposta inesperada do Rolimon's", 200, JSON.stringify(j || {}).slice(0, 300), 'itemdetails');
+  const falhas = [];
+  for (const c of CATALOGOS) {
+    try {
+      const j = await requisitar(c.url);
+      if (!j || !j.success || !j.items) throw new Error('resposta sem items');
+      if (!formatoValido(j.items)) {
+        const primeiro = j.items[Object.keys(j.items)[0]];
+        throw new Error('formato inesperado ' + JSON.stringify(primeiro).slice(0, 150));
+      }
+      return { items: j.items, qtd: j.item_count || Object.keys(j.items).length, versao: c.versao, falhas };
+    } catch (e) {
+      falhas.push(c.versao + ': ' + e.message);
+    }
   }
-  return { items: j.items, qtd: j.item_count || Object.keys(j.items).length };
+  throw new Error("Catálogo do Rolimon's indisponível (" + falhas.join(' | ') + ')');
 }
 
 async function carregarTudo(store, ajustes) {
@@ -172,9 +199,12 @@ async function carregarTudo(store, ajustes) {
   if (jogador && jogador.dados.privado) avisos.push("O Rolimon's marca o inventário como privado. A lista pode estar incompleta.");
 
   const rol = await comCache(
-    store, 'cache_rolimons', cfg.CACHE_ROLIMONS_MIN,
+    store, 'cache_catalogo', cfg.CACHE_ROLIMONS_MIN,
     buscarItensRolimons, avisos, "os values do Rolimon's"
   );
+  if (rol.dados.versao !== 'v2') {
+    avisos.push("Catálogo novo do Rolimon's indisponível, usando o antigo. Itens recentes podem ficar sem dados.");
+  }
 
   return {
     usuario,
@@ -182,6 +212,7 @@ async function carregarTudo(store, ajustes) {
     roblox: roblox ? roblox.dados : null,
     rolimons: rol.dados.items,
     rolimonsQtd: rol.dados.qtd,
+    catalogo: { versao: rol.dados.versao, falhas: rol.dados.falhas || [] },
     origem: {
       jogador: jogador ? jogador.origem : 'falhou',
       roblox: roblox ? roblox.origem : 'falhou',

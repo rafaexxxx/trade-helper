@@ -78,7 +78,7 @@ src/painel.js    → ponto de entrada
 | ID do usuário | `users.roblox.com` |
 | Lista de itens (principal) | `api.rolimons.com` (playerassets) |
 | Conferência da lista + serial | `inventory.roblox.com` (o inventário precisa estar **público**) |
-| Value, RAP, demanda, tendência, projected, hyped, rare | `api.rolimons.com` (itemdetails) |
+| Value, RAP, demanda, tendência, projected, hyped, rare | `api.rolimons.com/items/v2/itemdetails` (inclui itens novos/UGC); a v1, só com limiteds clássicos, fica de reserva |
 
 Quando o Rolimon's e o Roblox discordam sobre quais itens você tem, a diferença fica registrada na seção Diagnóstico (campo `divergencia`). Se o Rolimon's falhar, a lista vem só do Roblox.
 

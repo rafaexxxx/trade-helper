@@ -185,7 +185,7 @@ ${listaMudancas(r.mudancas, r.anterior, cfg)}
   <textarea readonly>${esc(JSON.stringify(r.diag, null, 2))}</textarea>
 </details>
 
-<footer>v${esc(r.versao)} · ${esc(String(r.sha || '').slice(0, 7))} · somente leitura</footer>
+<footer>v${esc(r.versao)} · ${esc(String(r.sha || '').slice(0, 7))} · dados: Rolimon's e Roblox · somente leitura</footer>
 
 <script>
 (function(){

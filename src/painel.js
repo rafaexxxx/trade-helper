@@ -43,7 +43,6 @@ async function executar(ctx) {
   const avisos = (ctx.avisos || []).concat(dados.avisos);
 
   const robloxItens = dados.roblox ? dados.roblox.itens : [];
-  const exemplo = itens[0] || null;
   const resultado = {
     usuario: dados.usuario,
     itens,
@@ -68,7 +67,12 @@ async function executar(ctx) {
       itensMostrados: itens.length,
       itensRoblox: dados.roblox ? robloxItens.length : null,
       paginasRoblox: dados.roblox ? dados.roblox.paginas : null,
+      catalogo: dados.catalogo,
       itensCatalogoRolimons: dados.rolimonsQtd,
+      linhasDoCatalogo: itens.slice(0, 10).map((i) => ({
+        assetId: i.assetId,
+        linha: dados.rolimons[String(i.assetId)] || null,
+      })),
       foraDoCatalogoRolimons: itens.filter((i) => i.semRolimons).length,
       divergencia,
       jogadorRolimons: dados.jogador
@@ -76,7 +80,6 @@ async function executar(ctx) {
         : null,
       robloxUaids: robloxItens.map((x) => x.userAssetId + ':' + x.assetId),
       exemploRobloxBruto: robloxItens[0] || null,
-      exemploItemdetails: exemplo ? dados.rolimons[String(exemplo.assetId)] || null : null,
       avisos,
     },
   };
