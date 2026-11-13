@@ -166,18 +166,18 @@ function parametros(cfg, meuId) {
 // ---------- HTML ----------
 function secao(cfg, erro) {
   if (erro) {
-    return '<div id="aba-anuncios" class="oculto"><p class="aviso">A aba Anúncios não pôde ser montada: ' + esc(erro) + '</p></div>';
+    return '<div id="aba-anuncios" class="aba oculto"><p class="aviso">A aba Anúncios não pôde ser montada: ' + esc(erro) + '</p></div>';
   }
   return (
-    '<div id="aba-anuncios" class="oculto">' +
+    '<div id="aba-anuncios" class="aba oculto">' +
     '<div class="an-status"><p class="meta" id="an-info">Os anúncios são buscados quando você abre esta aba.</p>' +
     '<button class="btn" id="an-atualizar">Atualizar</button></div>' +
     '<p class="aviso oculto" id="an-erro"></p>' +
-    '<details class="bloco" data-chave="an-itens" open><summary>Pedem seus itens<span class="n" id="an-n-itens"></span></summary>' +
-    '<div id="an-lista-itens"></div></details>' +
-    '<details class="bloco" data-chave="an-tags" open><summary>Upgrade, downgrade e any<span class="n" id="an-n-tags"></span></summary>' +
-    '<div id="an-lista-tags"></div></details>' +
-    '<p class="av-nota">Ficam de fora anúncios que oferecem item projected, com demanda terrível ou com o RAP subindo mais de ' +
+    '<details class="bloco" data-chave="an-itens" open><summary>Pedem seus itens<span class="cont" id="an-n-itens"></span></summary>' +
+    '<div class="dentro an-lista" id="an-lista-itens"></div></details>' +
+    '<details class="bloco" data-chave="an-tags" open><summary>Upgrade, downgrade e any<span class="cont" id="an-n-tags"></span></summary>' +
+    '<div class="dentro an-lista" id="an-lista-tags"></div></details>' +
+    '<p class="nota">Ficam de fora anúncios que oferecem item projected, com demanda terrível ou com o RAP subindo mais de ' +
     cfg.ALERTA_RAP_24H_PCT + '% em 24h. As contas usam o value (item sem value entra pelo RAP). "Pedem seus itens": só com veredito "Vale a pena" ou melhor. Upgrade: você ganha de ' +
     cfg.ANUNCIO_UPGRADE_MIN_PCT + '% a ' + cfg.ANUNCIO_UPGRADE_MAX_PCT + '%. Downgrade: você paga até ' +
     cfg.ANUNCIO_DOWNGRADE_PAGAR_MAX_PCT + '% a mais. Any: mesmo número de itens, ±' + cfg.ANUNCIO_ANY_PCT +
@@ -201,29 +201,33 @@ function folha() {
 
 function css() {
   return `
-.an-status{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:14px 0 0}
+.an-status{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .an-status .meta{margin:0}
-.an-card{margin:12px 0 0;padding:10px 12px 12px;background:var(--av-cartao,var(--cab));border:1px solid var(--linha);border-left:4px solid var(--sub);border-radius:12px;-webkit-tap-highlight-color:transparent}
-.an-card[data-cor=pos]{border-left-color:var(--pos)}
-.an-card[data-cor=warn]{border-left-color:var(--warn)}
-.an-card[data-cor=neg]{border-left-color:var(--neg)}
-.an-card:active{opacity:.8}
+details.bloco>.an-lista{gap:16px}
+.an-card{display:flex;flex-direction:column;gap:14px;padding:16px;border-radius:20px;background:var(--card);box-shadow:var(--sombra);overflow:hidden;-webkit-tap-highlight-color:transparent}
+.an-card:active{opacity:.85}
 .an-topo{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
-.an-topo b{font-weight:600;overflow-wrap:anywhere}
-.an-topo .sub{font-size:12px;white-space:nowrap}
-.an-rotulo{margin:2px 0 0;font-size:11px;font-weight:600;color:var(--rotulo);text-transform:uppercase;letter-spacing:.04em}
-.an-t{margin:12px 0 0}
-.an-t th{position:static;background:none;padding:3px 4px}
-.an-t td{padding:6px 4px}
-.an-t tfoot td{padding:8px 4px 2px}
-.an-t .thumb{width:26px;height:26px}
-.an-fonte{display:inline-block;width:34px;margin-left:5px;text-align:left;font-size:11px;font-weight:500;color:var(--sub)}
-.an-div{height:3px;margin:16px -12px 4px;background:var(--av-divisor,var(--linha))}
-.an-pct{margin:14px 0 0;padding:10px 0 0;border-top:1px solid var(--linha);text-align:center;font-size:30px;font-weight:700;letter-spacing:-.02em;color:var(--fg)}
-.an-pct[data-cor=pos]{color:var(--pos)}
-.an-pct[data-cor=warn]{color:var(--warn)}
-.an-pct[data-cor=neg]{color:var(--neg)}
-.an-mais{margin:10px 0 0;font-size:12px;color:var(--sub)}
+.an-topo b{font-size:18px;font-weight:700;overflow-wrap:anywhere}
+.an-topo span{font-size:13px;color:var(--sub);white-space:nowrap}
+.an-rotulo{margin:-8px 0 0;font-size:14px;color:var(--sub)}
+.an-lado{display:flex;flex-direction:column;gap:8px}
+.an-cab{display:flex;justify-content:space-between;font-size:15px;font-weight:700}
+.an-cab span:last-child{font-size:13px;font-weight:500;color:var(--sub)}
+.an-cab.rec{color:var(--pos)}
+.an-cab.dou{color:var(--acc-t)}
+.an-linha{display:flex;align-items:center;gap:10px}
+.an-linha .thumb{width:36px;height:36px;border-radius:10px}
+.an-linha .item-txt{gap:1px}
+.an-linha .nome{font-size:15px}
+.an-val{flex:none;text-align:right;font-size:16px;font-weight:700;line-height:1;white-space:nowrap}
+.an-val small{display:inline-block;width:42px;margin-left:6px;text-align:left;font-size:13px;font-weight:500;color:var(--sub)}
+.an-total{display:flex;justify-content:space-between;align-items:center;padding-top:10px;border-top:1px solid var(--borda);font-weight:700}
+.an-total .an-val{font-size:17px}
+.an-card .troca{margin:8px 0}
+.an-pe{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 16px;margin:0 -16px -16px;background:var(--card2)}
+.an-pe .selo{font-size:14px;padding:6px 12px}
+.an-pct{font-size:36px;font-weight:700;line-height:1;letter-spacing:-.02em;color:var(--c)}
+.an-mais{margin:0;font-size:13px;color:var(--sub)}
 #diag-anuncios{white-space:pre-wrap;overflow-wrap:anywhere}
 `;
 }
@@ -459,47 +463,49 @@ function paginaAnuncios(D, P, PA) {
   }
   // Valor com a fonte ao lado ("value" ou "RAP"); a fonte tem largura fixa
   // para os números ficarem alinhados.
-  function celValor(n, fonte) {
-    return '<td class="num">' + fmtNum(n) + '<span class="an-fonte">' + fonte + '</span></td>';
+  function valor(n, fonte) {
+    return '<span class="an-val">' + fmtNum(n) + '<small>' + fonte + '</small></span>';
   }
   function linhaItem(i) {
     return (
-      '<tr><td class="item"><div class="cel">' + miniatura(i.id) + '<div><span class="nome">' + esc(i.nome) + '</span>' +
-      '<span class="det">' + detalhes(i) + '</span></div></div></td>' +
-      celValor(valorEfetivo(i), i.value != null ? 'value' : 'RAP') + '</tr>'
+      '<div class="an-linha">' + miniatura(i.id) +
+      '<div class="item-txt"><span class="nome">' + esc(i.nome) + '</span>' +
+      '<span class="det">' + detalhes(i) + '</span></div>' +
+      valor(valorEfetivo(i), i.value != null ? 'value' : 'RAP') + '</div>'
     );
   }
   // Um lado (Recebo ou Dou) com a linha Total (value base, Robux já incluídos).
-  function tabelaLado(rotulo, itens, robux, recebe, t) {
-    var h = '<table class="an-t"><thead><tr><th>' + rotulo + '</th><th class="num">Valor</th></tr></thead><tbody>';
+  function blocoLado(classe, rotulo, itens, robux, recebe, t) {
+    var h = '<div class="an-lado"><div class="an-cab ' + classe + '"><span>' + rotulo + '</span><span>Valor</span></div>';
     h += itens.map(linhaItem).join('');
     if (robux) {
       var liquido = recebe ? Math.floor(robux * (1 - P.taxaRobux)) : robux;
-      h += '<tr><td class="item">+ ' + fmtNum(robux) + ' Robux</td>' + celValor(liquido, recebe ? 'líq.' : '') + '</tr>';
+      h += '<div class="an-linha"><div class="item-txt"><span class="nome">+ ' + fmtNum(robux) + ' Robux</span></div>' +
+        valor(liquido, recebe ? 'líq.' : '') + '</div>';
     }
-    h += '</tbody><tfoot><tr><td>Total</td>' + celValor(t.value, '') + '</tr></tfoot>';
-    return h + '</table>';
+    h += '<div class="an-total"><span>Total</span>' + valor(t.value, '') + '</div>';
+    return h + '</div>';
   }
-  // Cartão minimalista: topo, Recebo, divisória, Dou e só a % (na cor do veredito).
+  // Cartão: topo, Recebo + Total, divisor, Dou + Total e rodapé com o veredito e a %.
   function cartao(r, k) {
     var ad = r.ad;
     var rotulo = r.modo === 'itens'
       ? 'Pede seus itens' + (r.tipo ? ' · ' + r.tipo + ' para você' : '')
       : 'Pede ' + r.tag;
     return (
-      '<div class="an-card" data-k="' + k + '" data-cor="' + r.v.cor + '">' +
-      '<div class="an-topo"><b>' + esc(ad[3] || 'Jogador ' + ad[2]) + '</b><span class="sub">' + haQuanto(ad[1]) + '</span></div>' +
+      '<div class="an-card" data-k="' + k + '" data-cor="' + corVeredito(r.v) + '">' +
+      '<div class="an-topo"><b>' + esc(ad[3] || 'Jogador ' + ad[2]) + '</b><span>' + haQuanto(ad[1]) + '</span></div>' +
       '<p class="an-rotulo">' + esc(rotulo) + '</p>' +
-      tabelaLado('Recebo', r.rec, ad[5], true, r.tr) +
-      '<div class="an-div"></div>' +
-      tabelaLado(r.modo === 'tag' ? 'Dou (sugestão)' : 'Dou', r.dou, 0, false, r.td) +
-      '<div class="an-pct" data-cor="' + r.v.cor + '">' + pctTxt(r.pct) + '</div>' +
+      blocoLado('rec', 'Recebo', r.rec, ad[5], true, r.tr) +
+      '<div class="troca"><span>⇅</span></div>' +
+      blocoLado('dou', r.modo === 'tag' ? 'Dou (sugestão)' : 'Dou', r.dou, 0, false, r.td) +
+      '<div class="an-pe"><span class="selo">' + esc(r.v.titulo) + '</span><span class="an-pct">' + pctTxt(r.pct) + '</span></div>' +
       '</div>'
     );
   }
   function desenharBloco(lista, idLista, idN, vazio) {
     $(idN).textContent = estado.carregou ? lista.length : '';
-    $(idN).className = 'n' + (lista.length ? ' pos' : '');
+    $(idN).className = 'cont' + (lista.length ? ' pos' : '');
     if (!estado.carregou) {
       $(idLista).innerHTML = '<p class="vazio">' + (estado.carregando ? 'Buscando...' : '—') + '</p>';
       return [];

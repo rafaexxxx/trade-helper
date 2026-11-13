@@ -207,6 +207,12 @@ function calcularVeredito(dou, rec, td, tr, tipo, robuxRecebo, P) {
   return { titulo: NIVEIS[n].titulo, cor: NIVEIS[n].cor, nivel: n, motivos: motivos.slice(0, 4), semDemanda: !!motivoSemDem };
 }
 
+// Chave de cor/estilo do veredito (v4): pílula cheia para os extremos.
+function corVeredito(v) {
+  if (!v || v.nivel == null) return 'incompleta';
+  return ['nenhum', 'neg', 'justa', 'pos', 'muito'][v.nivel] || 'cuidado';
+}
+
 function parametros(cfg) {
   const demandaCurta = {};
   const tendenciaCurta = {};
@@ -270,51 +276,57 @@ function serializar(dados) {
 }
 
 // ---------- HTML ----------
+// Um lado da proposta: itens, botões e o Total (value base) em destaque.
 function bloco(lado, titulo) {
   return (
-    '<h2>' + titulo + '<span class="n" id="n-' + lado + '"></span></h2>' +
-    '<table id="av-' + lado + '" class="av-t">' +
-    '<thead><tr><th>Item</th><th class="num">Value</th><th class="num">RAP</th><th>Dem.</th></tr></thead>' +
-    '<tbody></tbody></table>' +
+    '<div class="av-lado av-' + lado + '">' +
+    '<div class="av-lado-topo"><h3>' + titulo + '</h3><span class="cont" id="n-' + lado + '"></span></div>' +
+    '<div class="av-itens" id="av-' + lado + '"></div>' +
     '<div class="av-acoes">' +
-    '<button class="btn" id="add-' + lado + '">+ Adicionar item</button>' +
+    '<button class="btn sec" id="add-' + lado + '">+ Adicionar item</button>' +
     '<label class="av-robux">Robux <input id="rb-' + lado + '" type="number" inputmode="numeric" min="0" step="1" placeholder="0"></label>' +
+    '</div>' +
+    '<div class="av-total"><span class="av-total-rot">Total<small id="tot-' + lado + '-sub">value base</small></span>' +
+    '<span class="av-total-v" id="tot-' + lado + '">0</span></div>' +
     '</div>'
   );
 }
 
-// Seção da aba. A data base das 24h fica só no Diagnóstico (painel minimalista).
+// Seção da aba. A data base das 24h fica só no Diagnóstico.
 function secao(cfg, baseData, erro) {
   if (erro) {
-    return '<div id="aba-avaliar" class="oculto"><p class="aviso">O avaliador não pôde ser montado: ' + esc(erro) + '</p></div>';
+    return '<div id="aba-avaliar" class="aba oculto"><p class="aviso">O avaliador não pôde ser montado: ' + esc(erro) + '</p></div>';
   }
   return (
-    '<div id="aba-avaliar" class="oculto">' +
-    // Dou e Recebo juntos num cartão só, separados por uma linha roxa escura.
+    '<div id="aba-avaliar" class="aba oculto">' +
+    // Dou e Recebo juntos num cartão só, separados pelo divisor de troca.
     '<div class="av-proposta">' +
     bloco('dou', 'Dou') +
-    '<div class="av-divisor"></div>' +
+    '<div class="troca"><span>⇅</span></div>' +
     bloco('recebo', 'Recebo') +
     '</div>' +
+    '<p class="nota">Value base: o value do Rolimon\'s; item sem value entra pelo RAP (marcado com "RAP" ao lado do número). ' +
+    'Os totais incluem Robux, e quem recebe Robux fica com ' + Math.round((1 - cfg.TAXA_ROBUX) * 100) + '%.</p>' +
     '<div id="av-veredito" class="veredito oculto">' +
-    '<b id="av-ver-titulo"></b>' +
-    '<ul id="av-ver-motivos"></ul>' +
-    '<p class="ver-nota">Segunda opinião automática pelo value (item sem value entra pelo RAP). A decisão é sua.</p>' +
+    '<span class="selo" id="av-ver-titulo"></span>' +
+    '<div class="ver-pct" id="av-ver-pct"></div>' +
+    '<div class="ver-sub" id="av-ver-sub"></div>' +
+    '<ul class="motivos" id="av-ver-motivos"></ul>' +
+    '<p class="nota">Segunda opinião automática pelo value (item sem value entra pelo RAP). A decisão é sua.</p>' +
     '</div>' +
-    '<details class="bloco" data-chave="av-resumo"><summary>Resumo</summary>' +
+    '<details class="bloco" data-chave="av-resumo"><summary>Resumo</summary><div class="dentro">' +
     '<p class="vazio" id="av-vazio">Monte a proposta acima para ver a comparação.</p>' +
     '<div id="av-resumo-bloco" class="oculto">' +
-    '<table id="av-resumo" class="av-t">' +
-    '<thead><tr><th></th><th class="num">Dou</th><th class="num">Recebo</th><th class="num">Diferença</th></tr></thead>' +
+    '<table id="av-resumo" class="av-resumo">' +
+    '<thead><tr><th></th><th>Dou</th><th>Recebo</th><th>Diferença</th></tr></thead>' +
     '<tbody></tbody></table>' +
-    '<p class="av-nota">Os totais incluem Robux, e quem recebe Robux fica com ' + Math.round((1 - cfg.TAXA_ROBUX) * 100) +
-    '%. Value: o value do Rolimon\'s; item sem value entra pelo RAP. O RAP é só informativo. Faixa justa: ±' + cfg.FAIXA_JUSTA_PCT + '%.</p>' +
+    '<p class="nota av-nota">O RAP é só informativo. Faixa justa: ±' + cfg.FAIXA_JUSTA_PCT + '%.</p>' +
     '</div>' +
-    '</details>' +
-    '<details class="bloco" data-chave="av-alertas"><summary>Alertas<span class="n" id="n-alertas"></span></summary>' +
-    '<ul class="lista" id="av-alertas"></ul>' +
-    '</details>' +
-    '<button class="btn sec" id="av-limpar">Limpar proposta</button>' +
+    '</div></details>' +
+    '<details class="bloco" data-chave="av-alertas"><summary>Alertas<span class="cont" id="n-alertas"></span></summary><div class="dentro">' +
+    '<ul class="grupo" id="av-alertas"></ul>' +
+    '</div></details>' +
+    '<button class="btn sec av-limpar" id="av-limpar">Limpar proposta</button>' +
     '</div>'
   );
 }
@@ -343,51 +355,68 @@ function folhas() {
 
 function css() {
   return `
-:root{--av-cartao:rgba(236,228,248,.7);--av-divisor:#9d84cf}
-@media (prefers-color-scheme: dark){:root{--av-cartao:rgba(51,37,74,.55);--av-divisor:#130d1c}}
-.av-proposta{margin:16px 0 0;padding:2px 12px 14px;background:var(--av-cartao);border:1px solid var(--linha);border-radius:12px}
-.av-proposta h2{margin:12px 0 6px}
-.av-divisor{height:3px;margin:16px -12px 0;background:var(--av-divisor)}
-.av-acoes{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:8px 0 0}
-.btn{font:inherit;font-size:14px;font-weight:500;padding:8px 12px;border:1px solid var(--linha);border-radius:8px;background:var(--cab);color:var(--link)}
-.btn:disabled{opacity:.45}
-.btn.sec{display:block;width:100%;margin-top:24px;color:var(--neg)}
-.av-robux{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--rotulo);text-transform:uppercase;letter-spacing:.04em}
-.av-robux input{width:100px;font:inherit;font-size:15px;font-weight:400;text-transform:none;letter-spacing:0;text-align:right;padding:6px 8px;border:1px solid var(--linha);border-radius:8px;background:var(--cab);color:var(--fg);-webkit-appearance:none}
-.av-t tr.vazia td{color:var(--sub);white-space:normal;font-size:13px}
-#av-resumo td:first-child{white-space:normal}
-#av-resumo td .det{color:inherit;opacity:.85}
-#av-resumo tr.forte td{font-weight:600}
-.av-nota{color:var(--sub);font-size:11px;margin:6px 0 0}
-.folha-busca{position:fixed;left:0;right:0;bottom:0;top:max(44px,calc(env(safe-area-inset-top) + 28px));background:var(--bg);border-radius:14px 14px 0 0;display:flex;flex-direction:column;padding:12px 16px 0;box-shadow:0 -4px 20px rgba(0,0,0,.25)}
+.av-proposta{display:flex;flex-direction:column;border-radius:20px;background:var(--card);box-shadow:var(--sombra);overflow:hidden}
+.av-lado{display:flex;flex-direction:column;gap:12px;padding:16px}
+.av-dou{background:var(--dou-bg)}
+.av-recebo{background:var(--rec-bg)}
+.av-lado-topo{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.av-lado-topo h3{margin:0;font-size:19px;font-weight:700;line-height:1}
+.av-dou h3{color:var(--acc-t)}
+.av-recebo h3{color:var(--pos)}
+.av-itens{border-radius:14px;background:var(--card);overflow:hidden}
+.av-itens>.item+.item{border-top:1px solid var(--borda)}
+.av-itens .item{padding:11px 14px}
+.av-vazia{margin:0;padding:14px;color:var(--sub);font-size:14px}
+.av-acoes{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.av-robux{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;color:var(--sub)}
+.av-robux input{width:108px;font:inherit;font-size:16px;font-weight:600;text-align:right;padding:10px 12px;border:1px solid var(--borda);border-radius:10px;background:var(--card);color:var(--fg);-webkit-appearance:none}
+.av-total{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;padding-top:4px}
+.av-total-rot{font-size:14px;font-weight:600;color:var(--sub)}
+.av-total-rot small{display:block;font-size:13px;font-weight:400}
+.av-total-v{font-size:30px;font-weight:700;line-height:1;letter-spacing:-.01em}
+.av-dou .av-total-v{color:var(--acc-t)}
+.av-recebo .av-total-v{color:var(--pos)}
+.troca{position:relative;height:1px;background:var(--borda)}
+.troca span{position:absolute;left:50%;top:50%;width:34px;height:34px;margin:-17px 0 0 -17px;border-radius:50%;display:grid;place-items:center;background:var(--card);border:1px solid var(--borda);color:var(--sub);font-size:17px}
+.av-limpar{width:100%;color:var(--neg)}
+
+[data-cor]{--c:var(--sub);--sf:var(--card2);--cf:var(--fg)}
+[data-cor=muito]{--c:var(--pos);--sf:var(--pos);--cf:var(--on-status)}
+[data-cor=pos]{--c:var(--pos);--sf:var(--pos-bg);--cf:var(--pos)}
+[data-cor=justa]{--c:var(--acc-t);--sf:var(--card2);--cf:var(--acc-t)}
+[data-cor=cuidado]{--c:var(--warn);--sf:var(--warn-bg);--cf:var(--warn)}
+[data-cor=neg]{--c:var(--neg);--sf:var(--neg-bg);--cf:var(--neg)}
+[data-cor=nenhum]{--c:var(--neg);--sf:var(--neg);--cf:var(--on-status)}
+.selo{display:inline-block;padding:7px 14px;border-radius:999px;background:var(--sf);color:var(--cf);font-size:15px;font-weight:700}
+.veredito{padding:22px 18px 18px;border-radius:20px;background:var(--card);box-shadow:var(--sombra);text-align:center}
+.ver-pct{margin:14px 0 4px;font-size:52px;font-weight:700;line-height:1;letter-spacing:-.02em;color:var(--c)}
+.ver-sub{font-size:15px;color:var(--sub)}
+.ver-pct:empty,.ver-sub:empty{display:none}
+.motivos{margin:18px 0 12px;padding:0;list-style:none;text-align:left;border-top:1px solid var(--borda)}
+.motivos li{padding:11px 0;border-bottom:1px solid var(--borda);font-size:15px}
+
+.av-resumo{width:100%;border-collapse:separate;border-spacing:0;font-size:15px;background:var(--card);border-radius:16px;overflow:hidden;box-shadow:var(--sombra)}
+.av-resumo th{padding:12px 12px 6px;text-align:right;font-size:13px;font-weight:600;color:var(--sub)}
+.av-resumo th:first-child,.av-resumo td:first-child{text-align:left}
+.av-resumo td{padding:10px 12px;text-align:right;border-top:1px solid var(--borda);white-space:nowrap}
+.av-resumo td .det{display:block;color:inherit;opacity:.85}
+.av-resumo tr.forte td{font-weight:700}
+.av-nota{margin-top:8px}
+
+.folha-busca{position:fixed;left:0;right:0;bottom:0;top:max(44px,calc(env(safe-area-inset-top) + 28px));background:var(--bg);border-radius:18px 18px 0 0;display:flex;flex-direction:column;gap:10px;padding:14px 16px 0;box-shadow:0 -6px 24px rgba(0,0,0,.25)}
 .fb-topo{display:flex;justify-content:space-between;align-items:center}
-.fb-topo b{font-size:17px;font-weight:600}
-.fb-topo button{font:inherit;font-size:15px;color:var(--link);background:none;border:0;padding:4px 0}
-.folha-busca .seg{margin:10px 0 0}
-.folha-busca input[type=search]{margin:10px 0 0}
-.fb-info{color:var(--sub);font-size:13px;margin:8px 0 4px}
+.fb-topo b{font-size:19px;font-weight:700}
+.fb-topo button{font:inherit;font-size:16px;font-weight:600;color:var(--acc-t);background:none;border:0;padding:4px 0}
+.fb-info{color:var(--sub);font-size:14px;margin:0}
 .fb-info:empty{display:none}
-.fb-lista{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;margin-top:6px;border-top:1px solid var(--linha);padding-bottom:max(16px,env(safe-area-inset-bottom))}
-.fb-item{display:flex;align-items:center;gap:10px;width:100%;padding:8px 0;border:0;border-bottom:1px solid var(--linha);background:none;color:var(--fg);font:inherit;font-size:14px;text-align:left;-webkit-tap-highlight-color:transparent}
-.fb-item:active{background:var(--cab)}
-.fb-txt{flex:1;min-width:0}
-.fb-num{display:flex;flex-direction:column;align-items:flex-end;min-width:56px;font-weight:600;white-space:nowrap}
-.fb-rot{font-size:10px;font-weight:600;color:var(--rotulo);text-transform:uppercase;letter-spacing:.04em}
-.seg.mini{margin:8px 0 0}
-.seg.mini button{font-size:12px;padding:4px 0}
+.fb-lista{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;border-radius:16px 16px 0 0;background:var(--card);padding-bottom:max(16px,env(safe-area-inset-bottom))}
+.fb-item{display:flex;align-items:center;gap:12px;width:100%;padding:11px 14px;border:0;border-bottom:1px solid var(--borda);background:none;color:var(--fg);font:inherit;font-size:15px;text-align:left;-webkit-tap-highlight-color:transparent}
+.fb-item:active{background:var(--card2)}
+.fb-item .thumb{width:40px;height:40px;border-radius:10px}
+.fb-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.fb-num{display:flex;flex-direction:column;align-items:flex-end;gap:3px;min-width:58px;font-weight:700;white-space:nowrap}
+.fb-rot{font-size:12px;font-weight:500;color:var(--sub)}
 .folha .remover{color:var(--neg)}
-.diag-ponte{margin:8px 0 0}
-.veredito{margin:24px 0 0;padding:12px 14px;background:var(--cab);border-radius:10px;border-left:4px solid var(--sub)}
-.veredito[data-cor=pos]{border-left-color:var(--pos)}
-.veredito[data-cor=warn]{border-left-color:var(--warn)}
-.veredito[data-cor=neg]{border-left-color:var(--neg)}
-.veredito b{display:block;font-size:17px;font-weight:700;letter-spacing:-.01em;color:var(--fg)}
-.veredito[data-cor=pos] b{color:var(--pos)}
-.veredito[data-cor=warn] b{color:var(--warn)}
-.veredito[data-cor=neg] b{color:var(--neg)}
-.veredito ul{margin:6px 0 0;padding:0 0 0 18px;font-size:14px;color:var(--fg)}
-.veredito li{margin:4px 0}
-.ver-nota{margin:8px 0 0;font-size:11px;color:var(--sub)}
 `;
 }
 
@@ -495,6 +524,7 @@ function paginaAvaliador(D, P) {
   }
   function detalhes(i, lado) {
     var d = [];
+    if (i.dem >= 0) d.push('<span class="' + corDem(i.dem) + '">' + esc(P.demandaCurta[i.dem]) + '</span>');
     if (i.serial) d.push('#' + esc(i.serial));
     if (i.tend >= 0) d.push('<span class="' + corTend(i.tend) + '">' + esc(P.tendenciaCurta[i.tend]) + '</span>');
     if (i.rap24 != null) d.push(variacao24(i.rap24));
@@ -507,24 +537,30 @@ function paginaAvaliador(D, P) {
     if (lado === 'dou' && !i.doInventario) d.push('<span class="warn">simulação</span>');
     return d.join(' · ');
   }
+  // Linha do item: o número grande é o value base ("RAP" ao lado quando o item
+  // não tem value); embaixo, o RAP como informação.
   function linha(i, lado, k) {
     var det = detalhes(i, lado);
     return (
-      '<tr data-lado="' + lado + '" data-k="' + k + '">' +
-      '<td class="item"><div class="cel">' + miniatura(i.id) + '<div><span class="nome">' + esc(i.nome) + '</span>' +
-      (det ? '<span class="det">' + det + '</span>' : '') + '</div></div></td>' +
-      '<td class="num">' + (i.value != null ? fmtNum(i.value) : '<span class="sub">—</span>') + '</td>' +
-      '<td class="num">' + fmtNum(i.rap) + '</td>' +
-      '<td class="' + corDem(i.dem) + '">' + esc(P.demandaCurta[i.dem] || '?') + '</td></tr>'
+      '<div class="item" data-lado="' + lado + '" data-k="' + k + '">' + miniatura(i.id) +
+      '<div class="item-txt"><span class="nome">' + esc(i.nome) + '</span>' +
+      (det ? '<span class="det">' + det + '</span>' : '') + '</div>' +
+      '<div class="item-num"><span class="v">' + fmtNum(valorEfetivo(i)) +
+      (i.value == null ? '<small class="tag">RAP</small>' : '') + '</span>' +
+      '<span class="r"><small>RAP</small>' + fmtNum(i.rap) + '</span></div></div>'
     );
   }
   function desenharLado(lado, itens) {
-    var tb = $('av-' + lado).tBodies[0];
-    tb.innerHTML = itens.length
+    $('av-' + lado).innerHTML = itens.length
       ? itens.map(function (i, k) { return linha(i, lado, k); }).join('')
-      : '<tr class="vazia"><td colspan="4">Nenhum item. Toque em "Adicionar item".</td></tr>';
+      : '<p class="av-vazia">Nenhum item. Toque em "Adicionar item".</p>';
     $('n-' + lado).textContent = itens.length + '/' + P.maxItens;
     $('add-' + lado).disabled = itens.length >= P.maxItens;
+  }
+  // Total do lado em value base (Robux incluídos; quem recebe já está com a taxa).
+  function desenharTotal(lado, t) {
+    $('tot-' + lado).textContent = fmtNum(t.value);
+    $('tot-' + lado + '-sub').textContent = t.robux ? 'value base · inclui ' + fmtNum(t.robux) + ' Robux' : 'value base';
   }
 
   function somar(itens, robuxBruto, recebe) {
@@ -608,12 +644,13 @@ function paginaAvaliador(D, P) {
       if (x.cor === 'neg') pior = 'neg';
       else if (x.cor === 'warn' && pior !== 'neg') pior = 'warn';
     });
-    $('n-alertas').className = 'n ' + pior;
+    $('n-alertas').className = 'cont ' + pior;
     $('n-alertas').textContent = L.length;
     $('av-alertas').innerHTML = L.length
       ? L.map(function (x) {
-          return '<li>' + (x.nome ? '<b>' + esc(x.nome) + '</b>' + (x.n > 1 ? ' (' + x.n + ' cópias)' : '') + ': ' : '') +
-            '<span class="' + x.cor + '">' + esc(x.txt) + '</span></li>';
+          return '<li><span class="marca ' + x.cor + '">!</span><span class="txt">' +
+            (x.nome ? '<b>' + esc(x.nome) + '</b>' + (x.n > 1 ? ' (' + x.n + ' cópias)' : '') + ': ' : '') +
+            '<span class="' + x.cor + '">' + esc(x.txt) + '</span></span></li>';
         }).join('')
       : '<li class="sub">Nenhum alerta.</li>';
   }
@@ -623,12 +660,23 @@ function paginaAvaliador(D, P) {
   function veredito(dou, rec, td, tr, tipo) {
     return calcularVeredito(dou, rec, td, tr, tipo, proposta.robuxRecebo, P);
   }
-  function desenharVeredito(v) {
+  // Cartão do veredito: pílula com o nome, a % grande (value base) e os motivos.
+  function desenharVeredito(v, td, tr) {
     var el = $('av-veredito');
     el.classList.toggle('oculto', !v);
     if (!v) return;
-    el.setAttribute('data-cor', v.cor);
+    el.setAttribute('data-cor', corVeredito(v));
     $('av-ver-titulo').textContent = v.titulo;
+    var pct = '';
+    var sub = '';
+    if (v.nivel != null) {
+      var dif = tr.value - td.value;
+      var difTxt = (dif > 0 ? '+' : '') + fmtNum(dif);
+      pct = td.value > 0 ? fmtPctSinal((dif / td.value) * 100) : difTxt;
+      sub = 'em value · ' + difTxt;
+    }
+    $('av-ver-pct').textContent = pct;
+    $('av-ver-sub').textContent = sub;
     $('av-ver-motivos').innerHTML = v.motivos.map(function (m) { return '<li>' + esc(m) + '</li>'; }).join('');
   }
 
@@ -640,7 +688,9 @@ function paginaAvaliador(D, P) {
     var td = somar(dou, proposta.robuxDou, false);
     var tr = somar(rec, proposta.robuxRecebo, true);
     var tipo = tipoTroca(td, tr);
-    desenharVeredito(veredito(dou, rec, td, tr, tipo));
+    desenharTotal('dou', td);
+    desenharTotal('recebo', tr);
+    desenharVeredito(veredito(dou, rec, td, tr, tipo), td, tr);
     desenharResumo(td, tr, tipo);
     desenharAlertas(montarAlertas(dou, rec, tipo));
     salvar();
@@ -814,9 +864,9 @@ function paginaAvaliador(D, P) {
     var chave = lado === 'dou' ? 'robuxDou' : 'robuxRecebo';
     var inp = $('rb-' + lado);
     $('add-' + lado).addEventListener('click', function () { abrirBusca(lado); });
-    $('av-' + lado).tBodies[0].addEventListener('click', function (ev) {
-      var tr = ev.target.closest('tr[data-k]');
-      if (tr) abrirMenu(lado, Number(tr.getAttribute('data-k')));
+    $('av-' + lado).addEventListener('click', function (ev) {
+      var it = ev.target.closest('[data-k]');
+      if (it) abrirMenu(lado, Number(it.getAttribute('data-k')));
     });
     inp.addEventListener('input', function () {
       proposta[chave] = inteiro(inp.value);
@@ -911,6 +961,7 @@ function script(json, cfg) {
     tipoTrocaLados.toString() + '\n' +
     demandaMediaLado.toString() + '\n' +
     calcularVeredito.toString() + '\n' +
+    corVeredito.toString() + '\n' +
     'var TH_D = ' + json + ';\n' +
     'var TH_P = ' + serializar(parametros(cfg)) + ';\n' +
     '(' + paginaAvaliador.toString() + ')(TH_D, TH_P);\n' +
