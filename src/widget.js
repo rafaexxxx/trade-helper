@@ -116,6 +116,18 @@ function detalhe(i) {
   return { t: a.demandaCurta(i.demanda) + ' · ' + a.tendenciaCurta(i.tendencia), cor };
 }
 
+// Variação do RAP deste item em relação ao retrato base (~24h). null se não houver.
+function varRap(i, base) {
+  const p = base && base.itens ? base.itens[i.uaid] : null;
+  if (!p || !p.rap) return null;
+  return ((i.rap - p.rap) / p.rap) * 100;
+}
+
+// Nome longo vira a sigla do Rolimon's (quando existir).
+function nomeCurto(i, limite) {
+  return i.nome.length > limite && i.sigla ? i.sigla : i.nome;
+}
+
 function linhaItem(pilha, i, img, op) {
   const s = pilha.addStack();
   s.layoutHorizontally();
@@ -127,23 +139,35 @@ function linhaItem(pilha, i, img, op) {
     if (t) wi.imageSize = t;
     wi.cornerRadius = 6;
   }
+  const vr = varRap(i, op.base);
   const meio = s.addStack();
   meio.layoutVertically();
-  texto(meio, i.nome, Font.mediumSystemFont(op.fonte), CORES.texto, 0.75);
+  const nome = op.limiteNome ? nomeCurto(i, op.limiteNome) : i.nome;
+  texto(meio, nome, Font.mediumSystemFont(op.fonte), CORES.texto, 0.75);
   if (op.detalhe) {
+    // Detalhes + variação do RAP em 24h, colorida.
     const d = detalhe(i);
-    texto(meio, d.t, Font.systemFont(10), d.cor, 0.8);
+    const linhaDet = meio.addStack();
+    linhaDet.layoutHorizontally();
+    linhaDet.spacing = 4;
+    texto(linhaDet, d.t, Font.systemFont(10), d.cor, 0.8);
+    if (vr != null) texto(linhaDet, 'RAP ' + a.fmtPctSinal(vr), Font.mediumSystemFont(10), corVar(vr), 0.8);
   }
   s.addSpacer();
   const valor = i.value != null ? a.fmtNum(i.value) : '—';
   if (op.empilhado) {
-    // Value em cima (destaque) e "RAP x" embaixo, alinhados à direita.
+    // Value em cima (destaque) e "RAP x  +y%" embaixo, alinhados à direita.
     const col = s.addStack();
     col.layoutVertically();
     const t = tam(op.largura, 0);
     if (t) col.size = t;
     celula(col, valor, op.largura, Font.semiboldSystemFont(op.fonte), CORES.texto);
-    celula(col, 'RAP ' + a.fmtNum(i.rap), op.largura, Font.systemFont(9), CORES.secundario);
+    const l2 = col.addStack();
+    l2.layoutHorizontally();
+    l2.spacing = 4;
+    l2.addSpacer();
+    texto(l2, 'RAP ' + a.fmtNum(i.rap), Font.systemFont(9), CORES.secundario, 0.8);
+    if (vr != null) texto(l2, a.fmtPctSinal(vr), Font.mediumSystemFont(9), corVar(vr), 0.8);
     return;
   }
   celula(s, valor, op.largura, Font.semiboldSystemFont(op.fonte), CORES.texto);
@@ -193,7 +217,7 @@ function grande(w, r, cfg) {
   const lista = r.itens.slice(0, cfg.WIDGET_MAX_ITENS_GRANDE);
   lista.forEach((i, k) => {
     if (k) w.addSpacer(6);
-    linhaItem(w, i, r.imagens[String(i.assetId)], { img: 26, fonte: 12, detalhe: true, rap: true, largura: 52 });
+    linhaItem(w, i, r.imagens[String(i.assetId)], { img: 26, fonte: 12, detalhe: true, rap: true, largura: 52, base: c.base });
   });
   if (r.itens.length > lista.length) {
     w.addSpacer(4);
@@ -260,7 +284,7 @@ function medio(w, r) {
 
   const dir = linha.addStack();
   dir.layoutVertically();
-  rotulo(dir, 'Maiores itens');
+  rotulo(dir, 'Maiores itens · RAP ' + rotuloPeriodo(c, r.agora));
   dir.addSpacer(6);
   r.itens.slice(0, 3).forEach((i, k) => {
     if (k) {
@@ -268,7 +292,9 @@ function medio(w, r) {
       divisoria(dir);
       dir.addSpacer(5);
     }
-    linhaItem(dir, i, r.imagens[String(i.assetId)], { img: 24, fonte: 11, detalhe: false, empilhado: true, largura: 58 });
+    linhaItem(dir, i, r.imagens[String(i.assetId)], {
+      img: 24, fonte: 11, detalhe: false, empilhado: true, largura: 92, base: c.base, limiteNome: 12,
+    });
   });
   dir.addSpacer();
 }
