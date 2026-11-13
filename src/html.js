@@ -1,7 +1,8 @@
 // Página do painel: estilo planilha, tema claro/escuro seguindo o iPhone.
-// Duas abas: Inventário e Avaliar trade (esta vem do módulo avaliador).
+// Três abas: Inventário, Avaliar trade (módulo avaliador) e Anúncios (módulo anuncios).
 const a = require('analise');
 const avaliador = require('avaliador');
+const anuncios = require('anuncios');
 
 function esc(s) {
   const mapa = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
@@ -213,6 +214,7 @@ details.bloco>summary .n.sub{color:var(--sub)}
 details.bloco .lista{border-top:0}
 details.bloco .vazio{margin:8px 0}
 ${avaliador.css()}
+${anuncios.css()}
 </style></head><body>
 
 <div class="topo"><h1 id="titulo">Inventário</h1><span class="user">${esc(r.usuario.nome)}</span></div>
@@ -221,6 +223,7 @@ ${avaliador.css()}
 <div class="seg" id="abas">
   <button data-aba="inv" class="on">Inventário</button>
   <button data-aba="avaliar">Avaliar trade</button>
+  <button data-aba="anuncios">Anúncios</button>
 </div>
 
 <div id="aba-inv">
@@ -263,10 +266,12 @@ ${avisos}
 </div>
 
 ${avaliador.secao(cfg, av.base, av.erro)}
+${anuncios.secao(cfg, av.erro ? 'os dados do avaliador não foram preparados (' + av.erro + ')' : null)}
 
 <details>
   <summary>Diagnóstico</summary>
   <p class="diag-ponte" id="diag-ponte"></p>
+  <p class="diag-ponte" id="diag-anuncios"></p>
   <textarea readonly>${esc(JSON.stringify(r.diag, null, 2))}</textarea>
 </details>
 
@@ -279,7 +284,7 @@ ${avaliador.secao(cfg, av.base, av.erro)}
   <a id="link-rbx" href="#">Ver no Roblox</a>
   <button id="cancelar" class="cancelar">Cancelar</button>
 </div>
-${av.erro ? '' : avaliador.folhas()}
+${av.erro ? '' : avaliador.folhas() + anuncios.folha()}
 
 <script>
 (function(){
@@ -288,28 +293,38 @@ ${av.erro ? '' : avaliador.folhas()}
   var busca = document.getElementById('busca');
   var estado = { campo: 'value', dir: 'desc' };
 
-  // Abas (Inventário / Avaliar trade)
-  var TITULOS = { inv: 'Inventário', avaliar: 'Avaliar trade' };
+  // Abas (Inventário / Avaliar trade / Anúncios)
+  var TITULOS = { inv: 'Inventário', avaliar: 'Avaliar trade', anuncios: 'Anúncios' };
   function aba(x){
-    document.getElementById('aba-inv').classList.toggle('oculto', x !== 'inv');
-    document.getElementById('aba-avaliar').classList.toggle('oculto', x !== 'avaliar');
+    if (!TITULOS[x]) x = 'inv';
+    for (var nome in TITULOS) {
+      var el = document.getElementById('aba-' + nome);
+      if (el) el.classList.toggle('oculto', nome !== x);
+    }
     document.getElementById('titulo').textContent = TITULOS[x];
     var bs = document.querySelectorAll('#abas button');
     for (var k = 0; k < bs.length; k++) bs[k].classList.toggle('on', bs[k].getAttribute('data-aba') === x);
     try { localStorage.setItem('aba', x); } catch (e) {}
+    // A aba Anúncios só busca os anúncios quando é aberta.
+    if (x === 'anuncios' && window.thAbrirAnuncios) window.thAbrirAnuncios();
   }
   var botoesAba = document.querySelectorAll('#abas button');
   for (var k = 0; k < botoesAba.length; k++) {
     botoesAba[k].addEventListener('click', function(){ aba(this.getAttribute('data-aba')); window.scrollTo(0, 0); });
   }
-  try { if (localStorage.getItem('aba') === 'avaliar') aba('avaliar'); } catch (e) {}
+  try { var abaSalva = localStorage.getItem('aba'); if (abaSalva && abaSalva !== 'inv' && TITULOS[abaSalva]) aba(abaSalva); } catch (e) {}
 
-  // Blocos recolhíveis: começam fechados e lembram se você os deixou abertos.
+  // Blocos recolhíveis: começam como no HTML (fechados, salvo os da aba Anúncios)
+  // e lembram se você os abriu ou fechou.
   var recolhiveis = document.querySelectorAll('details.bloco[data-chave]');
   for (var k = 0; k < recolhiveis.length; k++) {
     (function(b){
       var chave = 'aberto:' + b.getAttribute('data-chave');
-      try { if (localStorage.getItem(chave) === '1') b.open = true; } catch (e) {}
+      try {
+        var s = localStorage.getItem(chave);
+        if (s === '1') b.open = true;
+        else if (s === '0') b.open = false;
+      } catch (e) {}
       b.addEventListener('toggle', function(){
         try { localStorage.setItem(chave, b.open ? '1' : '0'); } catch (e) {}
       });
@@ -383,7 +398,7 @@ ${av.erro ? '' : avaliador.folhas()}
   document.getElementById('link-rbx').addEventListener('click', function(){ setTimeout(fechar, 300); });
 })();
 </script>
-${av.erro ? '' : avaliador.script(av.json, cfg)}
+${av.erro ? '' : avaliador.script(av.json, cfg) + anuncios.script(cfg, r.usuario.id)}
 </body></html>`;
 }
 

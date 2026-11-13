@@ -7,6 +7,7 @@ Painel do inventário de Limiteds para iPhone, feito para rodar no app **[Script
 - 🔄 Mudanças relevantes desde a última consulta ou nas últimas 24h (limite configurável, padrão 5%; bloco recolhível)
 - 📋 Tabela com miniaturas, busca e ordenação; tocar num item abre o Rolimon's ou o Roblox
 - ⚖️ **Avaliar trade** (aba no topo): monte "dou X, recebo Y" (com Robux) e veja value, value ajustado, RAP e alertas
+- 📣 **Anúncios** (aba no topo): cruza os Trade Ads recentes do Rolimon's com o seu inventário e mostra os que valem a pena para você
 - 🧩 Widgets grande, médio e pequeno (e da tela bloqueada)
 - 🔒 **Somente leitura**: não usa login, cookie nem envia trades. Usa só APIs públicas.
 
@@ -71,6 +72,28 @@ Como a conta é feita:
 
 ---
 
+## 📣 Anúncios (Trade Ads)
+
+1. No painel, toque em **Anúncios** no topo. Os anúncios recentes do Rolimon's são buscados nessa hora (no máximo 1 busca a cada 3 min; o botão **Atualizar** respeita esse intervalo).
+2. Os anúncios já vistos ficam guardados no iPhone por **2h**, então a lista cresce a cada consulta. Cada cartão mostra "há X min": um anúncio antigo pode já ter sido fechado.
+3. Tocar num cartão abre **Ver jogador no Rolimon's** ou **Abrir trade no Roblox** (você é quem monta e envia a trade; o app continua só leitura).
+
+O que entra na lista:
+
+| Bloco | Quando o anúncio aparece | O que você daria |
+|---|---|---|
+| **Pedem seus itens** | Pede itens que você tem (todos, em cópias sem hold) e o veredito é **"Vale a pena"** ou melhor | Os itens pedidos |
+| **Upgrade** (tag) | Ele dá 2 ou mais itens e quer upgrade | Uma combinação sua com **menos itens**, com ganho de **3% a 15%** (prefere perto de 9%) |
+| **Downgrade** (tag) | Ele quer downgrade | Uma combinação sua com **mais itens** (até 4), pagando **até 5%** a mais |
+| **Any** (tag) | Ele aceita qualquer item | Uma combinação com o **mesmo número de itens**, diferença de **±3%** |
+
+- Sempre ficam de fora anúncios que oferecem item **projected**, com **demanda terrível** ou com o **RAP subindo mais de 15% em 24h**, além de itens fora do catálogo do Rolimon's.
+- As contas usam o **value ajustado** (a mesma regra do avaliador), e os Robux oferecidos entram com a taxa de 30%. O cartão mostra o veredito do avaliador e a diferença em value ajustado e em RAP.
+- As outras tags (demand, rap, adds...) não geram sugestões. A contagem de tags vistas fica no **Diagnóstico**.
+- Os anúncios só são buscados com o painel aberto: o widget não muda.
+
+---
+
 ## ⚙️ Configurações
 
 Ficam em [`src/config.js`](src/config.js):
@@ -95,6 +118,13 @@ Ficam em [`src/config.js`](src/config.js):
 | `TAXA_ROBUX` | 0,3 | Taxa do Roblox sobre Robux recebidos |
 | `MAX_ITENS_POR_LADO` | 4 | Itens por lado na proposta |
 | `RETRATO_CATALOGO_HORAS` | 30 | Por quantas horas guardar os retratos do catálogo |
+| `ANUNCIOS_CACHE_MIN` | 3 | Intervalo mínimo (min) entre buscas de anúncios |
+| `ANUNCIOS_GUARDAR_HORAS` | 2 | Por quantas horas guardar os anúncios já vistos |
+| `ANUNCIO_UPGRADE_MIN_PCT` / `MAX` / `ALVO` | 3 / 15 / 9 | Faixa de ganho para a tag upgrade e o ponto preferido |
+| `ANUNCIO_DOWNGRADE_PAGAR_MAX_PCT` | 5 | Quanto (%) você aceita pagar a mais na tag downgrade |
+| `ANUNCIO_ANY_PCT` | 3 | Diferença máxima (±%) na tag any |
+| `ANUNCIO_COMBINACAO_MAX_ITENS` | 25 | Quantos dos seus itens entram na busca de combinações |
+| `ANUNCIOS_MAX_NA_LISTA` | 40 | Cartões por bloco |
 
 **Trocar o username:** no script do Scriptable, mude `TROCAR_USERNAME` para `true`, rode uma vez e volte para `false`.
 
@@ -115,9 +145,10 @@ versao.json      → versão + lista de arquivos que o loader baixa
 src/config.js    → configurações
 src/api.js       → APIs do Roblox e do Rolimon's, cache e novas tentativas
 src/analise.js   → totais, riscos, mudanças e formatação
-src/avaliador.js → aba "Avaliar trade" (catálogo enxuto, value ajustado, busca)
+src/avaliador.js → aba "Avaliar trade" (catálogo enxuto, value ajustado, veredito, busca)
+src/anuncios.js  → aba "Anúncios" (Trade Ads: leitura, matches e combinações)
 src/historico.js → armazenamento local no iPhone (cache, ajustes, retratos)
-src/html.js      → página do painel (abas Inventário e Avaliar trade)
+src/html.js      → página do painel (abas Inventário, Avaliar trade e Anúncios)
 src/widget.js    → widget da tela inicial
 src/painel.js    → ponto de entrada
 ```
@@ -130,6 +161,7 @@ src/painel.js    → ponto de entrada
 | Lista de itens (principal) | `api.rolimons.com` (playerassets) |
 | Conferência da lista + serial | `inventory.roblox.com` (o inventário precisa estar **público**) |
 | Value, RAP, demanda, tendência, projected, hyped, rare | `api.rolimons.com/items/v2/itemdetails` (inclui itens novos/UGC); a v1, só com limiteds clássicos, fica de reserva |
+| Anúncios de trade recentes | `api.rolimons.com/tradeads/v1/getrecentads` |
 
 Quando o Rolimon's e o Roblox discordam sobre quais itens você tem, a diferença fica registrada na seção Diagnóstico (campo `divergencia`). Se o Rolimon's falhar, a lista vem só do Roblox.
 

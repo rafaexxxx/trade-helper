@@ -6,6 +6,7 @@ const analise = require('analise');
 const html = require('html');
 const widget = require('widget');
 const avaliador = require('avaliador');
+const anuncios = require('anuncios');
 
 async function pedirUsername(atual) {
   const al = new Alert();
@@ -205,9 +206,31 @@ async function executar(ctx) {
     });
   }
 
+  // Aba Anúncios: a página pede pela ponte (em PONTE + 'anuncios'); aqui os
+  // anúncios são buscados (com cache), juntados aos guardados e devolvidos.
+  function atenderAnuncios() {
+    filaPonte = filaPonte.then(async () => {
+      let res;
+      try {
+        res = await anuncios.carregar(store, cfg);
+      } catch (e) {
+        res = { lista: [], origem: 'falhou', erro: e.message || String(e) };
+      }
+      try {
+        await wv.evaluateJavaScript('window.receberAnuncios && window.receberAnuncios(' + avaliador.serializar(res) + ')', false);
+      } catch (e) {
+        // página fechada ou sem a função: ignora
+      }
+    });
+  }
+
   // Links do menu de toque abrem fora do painel (Safari ou app do Roblox).
   wv.shouldAllowRequest = (req) => {
     const url = (req && req.url) || '';
+    if (url.indexOf(avaliador.PONTE + 'anuncios') === 0) {
+      atenderAnuncios();
+      return false;
+    }
     if (url.indexOf(avaliador.PONTE) === 0) {
       atenderPonte(url);
       return false;

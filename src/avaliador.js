@@ -37,6 +37,185 @@ function valorAjustado(i, P) {
   return base * d * t * (i.hyped ? P.hyped : 1);
 }
 
+// ---------- Funções compartilhadas pelas abas (também injetadas na página) ----------
+// Como valorAjustado, não podem usar nada de fora delas, exceto as outras
+// funções injetadas (fmtNum, fmtPct, fmtPctSinal, valorAjustado e estas).
+
+// Valor sem ajuste: value, ou RAP se não houver value.
+function valorEfetivo(i) {
+  return i.value != null ? i.value : i.rap;
+}
+
+// Item a partir do catálogo enxuto (formato de prepararDados).
+function itemDoCatalogo(C, id) {
+  var c = C[id];
+  if (!c) return null;
+  return {
+    id: String(id), nome: c[0], sigla: c[1], rap: c[2] >= 0 ? c[2] : 0, value: c[3] > 0 ? c[3] : null,
+    dem: c[4], tend: c[5], projected: !!(c[6] & 1), hyped: !!(c[6] & 2), rare: !!(c[6] & 4),
+    rap24: c[7], val24: c[8], doInventario: false, hold: false, serial: null, foraRolimons: false,
+  };
+}
+
+// Totais de um lado da troca. Quem RECEBE Robux fica só com a parte sem a taxa.
+function somarLado(itens, robuxBruto, recebe, P) {
+  var robux = recebe ? Math.floor(robuxBruto * (1 - P.taxaRobux)) : robuxBruto;
+  var t = { value: robux, ajustado: robux, rap: robux, robux: robux, qtd: itens.length };
+  itens.forEach(function (i) {
+    t.value += valorEfetivo(i);
+    t.ajustado += valorAjustado(i, P);
+    t.rap += i.rap;
+  });
+  return t;
+}
+
+// Do ponto de vista de quem dá "td" e recebe "tr".
+function tipoTrocaLados(td, tr) {
+  if (!td.qtd || !tr.qtd || td.qtd === tr.qtd) return null;
+  return tr.qtd < td.qtd ? 'upgrade' : 'downgrade';
+}
+
+// Demanda média de um lado, ponderada pelo valor de cada item (ignora itens sem dado).
+function demandaMediaLado(itens) {
+  var soma = 0;
+  var peso = 0;
+  itens.forEach(function (i) {
+    if (i.dem >= 0) {
+      var w = Math.max(valorEfetivo(i), 1);
+      soma += i.dem * w;
+      peso += w;
+    }
+  });
+  return peso ? soma / peso : null;
+}
+
+// Veredito ("vale ou não a pena"): 5 níveis + "Cuidado".
+// nivel: 0..4 (índice de NIVEIS), -1 = Cuidado, null = proposta incompleta.
+function calcularVeredito(dou, rec, td, tr, tipo, robuxRecebo, P) {
+  var NIVEIS = [
+    { titulo: 'Não vale de jeito nenhum', cor: 'neg' },
+    { titulo: 'Não vale a pena', cor: 'neg' },
+    { titulo: 'Troca justa', cor: 'warn' },
+    { titulo: 'Vale a pena', cor: 'pos' },
+    { titulo: 'Vale muito a pena', cor: 'pos' },
+  ];
+  function nomeDemanda(m) {
+    return String(P.demandaCurta[Math.round(m)] || '?').toLowerCase();
+  }
+  var temDou = td.qtd || td.robux;
+  var temRec = tr.qtd || tr.robux;
+  if (!temDou && !temRec) return null;
+  if (!temDou || !temRec) {
+    return { titulo: 'Proposta incompleta', cor: 'sub', nivel: null, motivos: ['Adicione itens (ou Robux) nos dois lados para avaliar.'] };
+  }
+
+  // 1. Nível pela diferença do value ajustado (Robux já com a taxa).
+  var dif = tr.ajustado - td.ajustado;
+  var temBase = td.ajustado > 0;
+  var pct = temBase ? (dif / td.ajustado) * 100 : dif > 0 ? 100 : 0;
+  var n = pct >= P.forte ? 4 : pct >= P.faixa ? 3 : pct > -P.faixa ? 2 : pct > -P.forte ? 1 : 0;
+  var difTxt = (dif > 0 ? '+' : '') + fmtNum(dif);
+  var valorTxt;
+  if (n >= 3) valorTxt = 'Você ganha cerca de ' + (temBase ? fmtPctSinal(pct) + ' ' : '') + 'em value ajustado (' + difTxt + ').';
+  else if (n === 2) valorTxt = 'Os dois lados valem quase o mesmo em value ajustado (' + difTxt + (temBase ? ', ' + fmtPctSinal(pct) : '') + ').';
+  else valorTxt = 'Você perde cerca de ' + (temBase ? fmtPct(-pct) + ' ' : '') + 'em value ajustado (' + difTxt + ').';
+
+  // 1b. RAP como segunda opinião. Se value e RAP discordam (um passa da faixa
+  // justa para o ganho e o outro para a perda), o veredito vai um nível para o meio.
+  var difRap = tr.rap - td.rap;
+  var temBaseRap = td.rap > 0;
+  var pctRap = temBaseRap ? (difRap / td.rap) * 100 : difRap > 0 ? 100 : 0;
+  var difRapTxt = (difRap > 0 ? '+' : '') + fmtNum(difRap);
+  var ladoValor = n >= 3 ? 1 : n <= 1 ? -1 : 0;
+  var ladoRap = pctRap >= P.faixa ? 1 : pctRap <= -P.faixa ? -1 : 0;
+  var rapTxt;
+  if (ladoRap > 0) rapTxt = 'Em RAP você ganha cerca de ' + (temBaseRap ? fmtPctSinal(pctRap) + ' ' : '') + '(' + difRapTxt + ')';
+  else if (ladoRap < 0) rapTxt = 'Em RAP você perde cerca de ' + (temBaseRap ? fmtPct(-pctRap) + ' ' : '') + '(' + difRapTxt + ')';
+  else rapTxt = 'Em RAP os dois lados ficam quase iguais (' + difRapTxt + (temBaseRap ? ', ' + fmtPctSinal(pctRap) : '') + ')';
+  if (ladoValor > 0 && ladoRap < 0) {
+    n--;
+    rapTxt += ': value e RAP discordam, por isso o veredito caiu um nível.';
+  } else if (ladoValor < 0 && ladoRap > 0) {
+    n++;
+    rapTxt += ': value e RAP discordam, por isso o veredito subiu um nível.';
+  } else {
+    rapTxt += '.';
+  }
+
+  // 2. Demanda média dos dois lados.
+  var mD = demandaMediaLado(dou);
+  var mR = demandaMediaLado(rec);
+  var motivoDem = null;
+  if (mD != null && mR != null) {
+    var dd = mR - mD;
+    var rebaixou = false;
+    if (dd <= -P.demRebaixa && n > 0) {
+      n--;
+      rebaixou = true;
+    }
+    if (Math.abs(dd) >= P.demMotivo) {
+      var nR = nomeDemanda(mR);
+      var nD = nomeDemanda(mD);
+      var comp = nR !== nD ? ' (' + nR + ' contra ' + nD + ')' : '';
+      motivoDem = dd > 0
+        ? 'O que você recebe tem demanda maior que o que você dá' + comp + ': fica mais fácil revender.'
+        : 'O que você recebe tem demanda menor que o que você dá' + comp + ': vai ser mais difícil revender' +
+          (rebaixou ? ', por isso o veredito caiu um nível.' : '.');
+    }
+  }
+
+  // 3. Alertas fortes viram "Cuidado".
+  // Cópias do mesmo item geram um aviso só: "Nome (2 cópias) ...".
+  var listaFortes = [];
+  var fortesPorChave = {};
+  function addForte(i, resto) {
+    var chave = i.nome + '|' + resto;
+    if (fortesPorChave[chave]) {
+      fortesPorChave[chave].n++;
+      return;
+    }
+    fortesPorChave[chave] = { nome: i.nome, resto: resto, n: 1 };
+    listaFortes.push(fortesPorChave[chave]);
+  }
+  rec.forEach(function (i) {
+    if (i.projected) {
+      addForte(i, ' é projected' + (i.value == null
+        ? ' e não tem value: o RAP está inflado, então o ganho pode não ser real.'
+        : ': o RAP está inflado, confie só no value.'));
+    }
+    if (i.dem === 0) addForte(i, ' tem demanda terrível: pode ser muito difícil revender.');
+    if (i.rap24 != null && i.rap24 >= P.alertaRap24) {
+      addForte(i, ' teve o RAP subindo ' + fmtPct(i.rap24) + ' em 24h: pode ser manipulação.');
+    }
+  });
+  dou.forEach(function (i) {
+    if (i.hold) addForte(i, ' está em hold e não pode ser trocado agora.');
+  });
+  var fortes = listaFortes.map(function (f) {
+    return f.nome + (f.n > 1 ? ' (' + f.n + ' cópias)' : '') + f.resto;
+  });
+
+  // 4. Motivo extra (o mais importante que sobrar).
+  var extras = [];
+  if (tipo === 'upgrade') extras.push('É um upgrade (menos itens, porém maiores): costuma exigir pagar um pouco a mais.');
+  if (tipo === 'downgrade') extras.push('É um downgrade (mais itens, porém menores): costuma valer receber um pouco a mais.');
+  if (robuxRecebo) extras.push('Os Robux recebidos já contam com o desconto de ' + Math.round(P.taxaRobux * 100) + '% do Roblox.');
+  if (dou.some(function (i) { return !i.doInventario; })) extras.push('Proposta simulada: há item no lado Dou que não está no seu inventário.');
+
+  var motivos;
+  if (fortes.length) {
+    motivos = [fortes[0], valorTxt + ' Sem esse alerta, o veredito seria "' + NIVEIS[n].titulo + '".', rapTxt];
+    if (fortes[1]) motivos.push(fortes[1]);
+    else if (motivoDem) motivos.push(motivoDem);
+    return { titulo: 'Cuidado', cor: 'neg', nivel: -1, motivos: motivos };
+  }
+  // Até 4 motivos: value, RAP, demanda e o extra mais importante.
+  motivos = [valorTxt, rapTxt];
+  if (motivoDem) motivos.push(motivoDem);
+  for (var k = 0; k < extras.length && motivos.length < 4; k++) motivos.push(extras[k]);
+  return { titulo: NIVEIS[n].titulo, cor: NIVEIS[n].cor, nivel: n, motivos: motivos };
+}
+
 function parametros(cfg) {
   const demandaCurta = {};
   const tendenciaCurta = {};
@@ -261,13 +440,7 @@ function paginaAvaliador(D, P) {
 
   // ---------- Itens ----------
   function deCatalogo(id) {
-    var c = C[id];
-    if (!c) return null;
-    return {
-      id: String(id), nome: c[0], sigla: c[1], rap: c[2] >= 0 ? c[2] : 0, value: c[3] > 0 ? c[3] : null,
-      dem: c[4], tend: c[5], projected: !!(c[6] & 1), hyped: !!(c[6] & 2), rare: !!(c[6] & 4),
-      rap24: c[7], val24: c[8], doInventario: false, hold: false, serial: null, foraRolimons: false,
-    };
+    return itemDoCatalogo(C, id);
   }
   function deInventario(uaid) {
     var x = INV[uaid];
@@ -289,9 +462,6 @@ function paginaAvaliador(D, P) {
   }
   function resolver(e) {
     return e.u ? deInventario(e.u) : deCatalogo(e.id);
-  }
-  function valorEfetivo(i) {
-    return i.value != null ? i.value : i.rap;
   }
 
   // ---------- Proposta salva ----------
@@ -371,14 +541,7 @@ function paginaAvaliador(D, P) {
   }
 
   function somar(itens, robuxBruto, recebe) {
-    var robux = recebe ? Math.floor(robuxBruto * (1 - P.taxaRobux)) : robuxBruto;
-    var t = { value: robux, ajustado: robux, rap: robux, robux: robux, qtd: itens.length };
-    itens.forEach(function (i) {
-      t.value += valorEfetivo(i);
-      t.ajustado += valorAjustado(i, P);
-      t.rap += i.rap;
-    });
-    return t;
+    return somarLado(itens, robuxBruto, recebe, P);
   }
   function corDif(dif, base) {
     if (!(base > 0)) return dif > 0 ? 'pos' : dif < 0 ? 'neg' : 'sub';
@@ -391,8 +554,7 @@ function paginaAvaliador(D, P) {
     return '<td class="num ' + corDif(dif, base) + '">' + txt + pct + '</td>';
   }
   function tipoTroca(td, tr) {
-    if (!td.qtd || !tr.qtd || td.qtd === tr.qtd) return null;
-    return tr.qtd < td.qtd ? 'upgrade' : 'downgrade';
+    return tipoTrocaLados(td, tr);
   }
   function desenharResumo(td, tr, tipo) {
     var vazio = !td.qtd && !tr.qtd && !td.robux && !tr.robux;
@@ -471,142 +633,9 @@ function paginaAvaliador(D, P) {
   }
 
   // ---------- Veredito (mensagem "vale ou não a pena") ----------
-  var NIVEIS = [
-    { titulo: 'Não vale de jeito nenhum', cor: 'neg' },
-    { titulo: 'Não vale a pena', cor: 'neg' },
-    { titulo: 'Troca justa', cor: 'warn' },
-    { titulo: 'Vale a pena', cor: 'pos' },
-    { titulo: 'Vale muito a pena', cor: 'pos' },
-  ];
-  // Demanda média de um lado, ponderada pelo valor de cada item (ignora itens sem dado).
-  function demandaMedia(itens) {
-    var soma = 0;
-    var peso = 0;
-    itens.forEach(function (i) {
-      if (i.dem >= 0) {
-        var w = Math.max(valorEfetivo(i), 1);
-        soma += i.dem * w;
-        peso += w;
-      }
-    });
-    return peso ? soma / peso : null;
-  }
-  function nomeDemanda(m) {
-    return String(P.demandaCurta[Math.round(m)] || '?').toLowerCase();
-  }
+  // A regra fica em calcularVeredito (compartilhada com a aba Anúncios).
   function veredito(dou, rec, td, tr, tipo) {
-    var temDou = td.qtd || td.robux;
-    var temRec = tr.qtd || tr.robux;
-    if (!temDou && !temRec) return null;
-    if (!temDou || !temRec) {
-      return { titulo: 'Proposta incompleta', cor: 'sub', motivos: ['Adicione itens (ou Robux) nos dois lados para avaliar.'] };
-    }
-
-    // 1. Nível pela diferença do value ajustado (Robux já com a taxa).
-    var dif = tr.ajustado - td.ajustado;
-    var temBase = td.ajustado > 0;
-    var pct = temBase ? (dif / td.ajustado) * 100 : dif > 0 ? 100 : 0;
-    var n = pct >= P.forte ? 4 : pct >= P.faixa ? 3 : pct > -P.faixa ? 2 : pct > -P.forte ? 1 : 0;
-    var difTxt = (dif > 0 ? '+' : '') + fmtNum(dif);
-    var valorTxt;
-    if (n >= 3) valorTxt = 'Você ganha cerca de ' + (temBase ? fmtPctSinal(pct) + ' ' : '') + 'em value ajustado (' + difTxt + ').';
-    else if (n === 2) valorTxt = 'Os dois lados valem quase o mesmo em value ajustado (' + difTxt + (temBase ? ', ' + fmtPctSinal(pct) : '') + ').';
-    else valorTxt = 'Você perde cerca de ' + (temBase ? fmtPct(-pct) + ' ' : '') + 'em value ajustado (' + difTxt + ').';
-
-    // 1b. RAP como segunda opinião. Se value e RAP discordam (um passa da faixa
-    // justa para o ganho e o outro para a perda), o veredito vai um nível para o meio.
-    var difRap = tr.rap - td.rap;
-    var temBaseRap = td.rap > 0;
-    var pctRap = temBaseRap ? (difRap / td.rap) * 100 : difRap > 0 ? 100 : 0;
-    var difRapTxt = (difRap > 0 ? '+' : '') + fmtNum(difRap);
-    var ladoValor = n >= 3 ? 1 : n <= 1 ? -1 : 0;
-    var ladoRap = pctRap >= P.faixa ? 1 : pctRap <= -P.faixa ? -1 : 0;
-    var rapTxt;
-    if (ladoRap > 0) rapTxt = 'Em RAP você ganha cerca de ' + (temBaseRap ? fmtPctSinal(pctRap) + ' ' : '') + '(' + difRapTxt + ')';
-    else if (ladoRap < 0) rapTxt = 'Em RAP você perde cerca de ' + (temBaseRap ? fmtPct(-pctRap) + ' ' : '') + '(' + difRapTxt + ')';
-    else rapTxt = 'Em RAP os dois lados ficam quase iguais (' + difRapTxt + (temBaseRap ? ', ' + fmtPctSinal(pctRap) : '') + ')';
-    if (ladoValor > 0 && ladoRap < 0) {
-      n--;
-      rapTxt += ': value e RAP discordam, por isso o veredito caiu um nível.';
-    } else if (ladoValor < 0 && ladoRap > 0) {
-      n++;
-      rapTxt += ': value e RAP discordam, por isso o veredito subiu um nível.';
-    } else {
-      rapTxt += '.';
-    }
-
-    // 2. Demanda média dos dois lados.
-    var mD = demandaMedia(dou);
-    var mR = demandaMedia(rec);
-    var motivoDem = null;
-    if (mD != null && mR != null) {
-      var dd = mR - mD;
-      var rebaixou = false;
-      if (dd <= -P.demRebaixa && n > 0) {
-        n--;
-        rebaixou = true;
-      }
-      if (Math.abs(dd) >= P.demMotivo) {
-        var nR = nomeDemanda(mR);
-        var nD = nomeDemanda(mD);
-        var comp = nR !== nD ? ' (' + nR + ' contra ' + nD + ')' : '';
-        motivoDem = dd > 0
-          ? 'O que você recebe tem demanda maior que o que você dá' + comp + ': fica mais fácil revender.'
-          : 'O que você recebe tem demanda menor que o que você dá' + comp + ': vai ser mais difícil revender' +
-            (rebaixou ? ', por isso o veredito caiu um nível.' : '.');
-      }
-    }
-
-    // 3. Alertas fortes viram "Cuidado".
-    // Cópias do mesmo item geram um aviso só: "Nome (2 cópias) ...".
-    var listaFortes = [];
-    var fortesPorChave = {};
-    function addForte(i, resto) {
-      var chave = i.nome + '|' + resto;
-      if (fortesPorChave[chave]) {
-        fortesPorChave[chave].n++;
-        return;
-      }
-      fortesPorChave[chave] = { nome: i.nome, resto: resto, n: 1 };
-      listaFortes.push(fortesPorChave[chave]);
-    }
-    rec.forEach(function (i) {
-      if (i.projected) {
-        addForte(i, ' é projected' + (i.value == null
-          ? ' e não tem value: o RAP está inflado, então o ganho pode não ser real.'
-          : ': o RAP está inflado, confie só no value.'));
-      }
-      if (i.dem === 0) addForte(i, ' tem demanda terrível: pode ser muito difícil revender.');
-      if (i.rap24 != null && i.rap24 >= P.alertaRap24) {
-        addForte(i, ' teve o RAP subindo ' + fmtPct(i.rap24) + ' em 24h: pode ser manipulação.');
-      }
-    });
-    dou.forEach(function (i) {
-      if (i.hold) addForte(i, ' está em hold e não pode ser trocado agora.');
-    });
-    var fortes = listaFortes.map(function (f) {
-      return f.nome + (f.n > 1 ? ' (' + f.n + ' cópias)' : '') + f.resto;
-    });
-
-    // 4. Motivo extra (o mais importante que sobrar).
-    var extras = [];
-    if (tipo === 'upgrade') extras.push('É um upgrade (menos itens, porém maiores): costuma exigir pagar um pouco a mais.');
-    if (tipo === 'downgrade') extras.push('É um downgrade (mais itens, porém menores): costuma valer receber um pouco a mais.');
-    if (proposta.robuxRecebo) extras.push('Os Robux recebidos já contam com o desconto de ' + Math.round(P.taxaRobux * 100) + '% do Roblox.');
-    if (dou.some(function (i) { return !i.doInventario; })) extras.push('Proposta simulada: há item no lado Dou que não está no seu inventário.');
-
-    var motivos;
-    if (fortes.length) {
-      motivos = [fortes[0], valorTxt + ' Sem esse alerta, o veredito seria "' + NIVEIS[n].titulo + '".', rapTxt];
-      if (fortes[1]) motivos.push(fortes[1]);
-      else if (motivoDem) motivos.push(motivoDem);
-      return { titulo: 'Cuidado', cor: 'neg', motivos: motivos };
-    }
-    // Até 4 motivos: value, RAP, demanda e o extra mais importante.
-    motivos = [valorTxt, rapTxt];
-    if (motivoDem) motivos.push(motivoDem);
-    for (var k = 0; k < extras.length && motivos.length < 4; k++) motivos.push(extras[k]);
-    return { titulo: NIVEIS[n].titulo, cor: NIVEIS[n].cor, motivos: motivos };
+    return calcularVeredito(dou, rec, td, tr, tipo, proposta.robuxRecebo, P);
   }
   function desenharVeredito(v) {
     var el = $('av-veredito');
@@ -785,8 +814,14 @@ function paginaAvaliador(D, P) {
     if (novas) {
       atualizar();
       if (!$('fb-folha').classList.contains('oculto')) listarBusca();
+      // A aba Anúncios usa as mesmas miniaturas (objeto compartilhado).
+      if (window.thAoReceberMiniaturas) {
+        try { window.thAoReceberMiniaturas(); } catch (e) {}
+      }
     }
   };
+  // A aba Anúncios pede miniaturas pela mesma ponte.
+  window.thPedirMiniaturas = pedirMiniaturas;
 
   // ---------- Eventos ----------
   ['dou', 'recebo'].forEach(function (lado) {
@@ -876,6 +911,8 @@ function paginaAvaliador(D, P) {
 }
 
 // <script> completo da aba: funções auxiliares + dados + paginaAvaliador.
+// Os dados (TH_D) e os parâmetros (TH_P) ficam globais para a aba Anúncios,
+// que vem num <script> logo depois e usa as mesmas funções.
 function script(json, cfg) {
   return (
     '<script>\n' +
@@ -883,7 +920,15 @@ function script(json, cfg) {
     a.fmtPct.toString() + '\n' +
     a.fmtPctSinal.toString() + '\n' +
     valorAjustado.toString() + '\n' +
-    '(' + paginaAvaliador.toString() + ')(' + json + ', ' + serializar(parametros(cfg)) + ');\n' +
+    valorEfetivo.toString() + '\n' +
+    itemDoCatalogo.toString() + '\n' +
+    somarLado.toString() + '\n' +
+    tipoTrocaLados.toString() + '\n' +
+    demandaMediaLado.toString() + '\n' +
+    calcularVeredito.toString() + '\n' +
+    'var TH_D = ' + json + ';\n' +
+    'var TH_P = ' + serializar(parametros(cfg)) + ';\n' +
+    '(' + paginaAvaliador.toString() + ')(TH_D, TH_P);\n' +
     '</script>'
   );
 }

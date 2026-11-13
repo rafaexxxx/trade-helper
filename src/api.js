@@ -199,6 +199,23 @@ function miniaturasEmCache(store) {
   return r;
 }
 
+// Anúncios de trade recentes do Rolimon's (aba Anúncios).
+// Formato esperado (fontes de terceiros, conferido no Diagnóstico):
+// { success, trade_ad_count, trade_ads: [[id, criado, userId, username, {items, robux}, {items, tags}], ...] }
+// Aqui só se confere o envelope; cada anúncio é lido em anuncios.js.
+async function buscarAnunciosRecentes() {
+  const url = 'https://api.rolimons.com/tradeads/v1/getrecentads';
+  const j = await requisitar(url);
+  if (!j || j.success === false) {
+    throw erroApi("O Rolimon's recusou a lista de anúncios", 200, JSON.stringify(j || {}).slice(0, 300), url);
+  }
+  const lista = Array.isArray(j.trade_ads) ? j.trade_ads : null;
+  if (!lista) throw erroApi('Resposta sem trade_ads', 200, JSON.stringify(j).slice(0, 300), url);
+  const resto = {};
+  for (const k of Object.keys(j)) if (k !== 'trade_ads') resto[k] = j[k];
+  return { lista, resto: JSON.stringify(resto).slice(0, 200) };
+}
+
 async function carregarTudo(store, ajustes) {
   const avisos = [];
 
@@ -261,4 +278,4 @@ async function carregarTudo(store, ajustes) {
   };
 }
 
-module.exports = { carregarTudo, buscarMiniaturas, miniaturasEmCache };
+module.exports = { carregarTudo, buscarMiniaturas, miniaturasEmCache, buscarAnunciosRecentes };

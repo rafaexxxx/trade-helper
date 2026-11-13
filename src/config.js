@@ -65,4 +65,26 @@ module.exports = {
   // dos itens que você não tem: 1 arquivo a cada X min, guardado por Y horas.
   RETRATO_CATALOGO_INTERVALO_MIN: 60,
   RETRATO_CATALOGO_HORAS: 30,
+
+  // ===== Anúncios (Trade Ads do Rolimon's) =====
+  // Busca nova no máximo a cada X min (evita bloqueio do Rolimon's).
+  ANUNCIOS_CACHE_MIN: 3,
+  // Anúncios já vistos ficam guardados no iPhone por X horas (a lista cresce
+  // entre as consultas). Um anúncio guardado pode já ter sido fechado.
+  ANUNCIOS_GUARDAR_HORAS: 2,
+  ANUNCIOS_MAX_GUARDADOS: 3000,
+  // Anúncios que pedem só a tag "upgrade" (a pessoa dá mais itens que você):
+  // sua combinação precisa te dar um ganho entre MIN e MAX (%), e a escolhida
+  // é a mais perto de ALVO (equilíbrio entre ganho e chance de aceitarem).
+  ANUNCIO_UPGRADE_MIN_PCT: 3,
+  ANUNCIO_UPGRADE_MAX_PCT: 15,
+  ANUNCIO_UPGRADE_ALVO_PCT: 9,
+  // Tag "downgrade" (você dá mais itens): até quanto (%) você aceita pagar a mais.
+  ANUNCIO_DOWNGRADE_PAGAR_MAX_PCT: 5,
+  // Tag "any": mesmo número de itens, diferença de até ±X%.
+  ANUNCIO_ANY_PCT: 3,
+  // Quantos dos seus itens entram na busca de combinações (mais = mais lento).
+  ANUNCIO_COMBINACAO_MAX_ITENS: 25,
+  // Quantos cartões cada bloco da aba mostra.
+  ANUNCIOS_MAX_NA_LISTA: 40,
 };
