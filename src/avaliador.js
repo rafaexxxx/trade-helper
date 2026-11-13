@@ -124,8 +124,12 @@ function secao(cfg, baseData, erro) {
   }
   return (
     '<div id="aba-avaliar" class="oculto">' +
+    // Dou e Recebo juntos num cartão só, separados por uma linha roxa escura.
+    '<div class="av-proposta">' +
     bloco('dou', 'Dou') +
+    '<div class="av-divisor"></div>' +
     bloco('recebo', 'Recebo') +
+    '</div>' +
     '<div id="av-veredito" class="veredito oculto">' +
     '<b id="av-ver-titulo"></b>' +
     '<ul id="av-ver-motivos"></ul>' +
@@ -173,6 +177,11 @@ function folhas() {
 
 function css() {
   return `
+:root{--av-cartao:rgba(236,228,248,.7);--av-divisor:#9d84cf}
+@media (prefers-color-scheme: dark){:root{--av-cartao:rgba(51,37,74,.55);--av-divisor:#130d1c}}
+.av-proposta{margin:16px 0 0;padding:2px 12px 14px;background:var(--av-cartao);border:1px solid var(--linha);border-radius:12px}
+.av-proposta h2{margin:12px 0 6px}
+.av-divisor{height:3px;margin:16px -12px 0;background:var(--av-divisor)}
 .av-acoes{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:8px 0 0}
 .btn{font:inherit;font-size:14px;font-weight:500;padding:8px 12px;border:1px solid var(--linha);border-radius:8px;background:var(--cab);color:var(--link)}
 .btn:disabled{opacity:.45}
