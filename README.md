@@ -39,7 +39,7 @@ Pronto! Das próximas vezes é só abrir o script. Ele confere sozinho se há ve
 ## ⚖️ Avaliar trade
 
 1. No painel, toque em **Avaliar trade** no topo.
-2. Em **Dou**, toque em **+ Adicionar item**: escolha no **Meu inventário** ou busque no **Catálogo** (para simular). Em **Recebo**, busque pelo nome ou sigla.
+2. Em **Dou**, toque em **+ Adicionar item**: escolha no **Meu inventário** ou busque no **Catálogo** (para simular). Em **Recebo**, busque pelo nome ou sigla. Cada resultado mostra **Value** e **RAP** lado a lado, e dá para ordenar **por value** ou **por RAP**.
 3. Se houver Robux, digite nos campos **Robux** de cada lado (no máximo 4 itens por lado, como no Roblox).
 4. Leia o **veredito** (cartão abaixo dos blocos). **Resumo** (Dou | Recebo | Diferença) e **Alertas** ficam recolhidos: toque para abrir (o painel lembra se você os deixou abertos). Tocar num item da proposta permite removê-lo ou abri-lo no Rolimon's.
 
@@ -62,9 +62,10 @@ Como a conta é feita:
 | −10% a −3% | **Não vale a pena** |
 | ≤ −10% | **Não vale de jeito nenhum** |
 
+- **RAP (segunda opinião)**: o cartão sempre diz como a troca fica em RAP. Se value e RAP discordarem (um passa de ±3% para o ganho e o outro para a perda), o veredito vai um nível para o meio: cai se o value diz ganho, sobe se o value diz perda.
 - **Demanda**: compara a demanda média dos dois lados, ponderada pelo valor dos itens. Uma diferença de 0,75 nível vira motivo; se o que você recebe tiver demanda pelo menos 1,5 nível **menor**, o veredito cai um nível.
 - **Cuidado** substitui o veredito quando um item recebido é projected, tem demanda terrível ou teve o RAP disparando em 24h, ou quando um item seu está em hold. O cartão também diz qual seria o veredito sem o alerta.
-- O cartão mostra até 3 motivos. É uma segunda opinião automática: a decisão é sua.
+- O cartão mostra até 4 motivos (value, RAP, demanda e um extra). É uma segunda opinião automática: a decisão é sua.
 
 > Os pesos são estimativas para ajudar a decidir, não uma regra do mercado. Ajuste-os em `src/config.js`.
 

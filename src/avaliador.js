@@ -157,6 +157,7 @@ function folhas() {
     '<div class="fb-topo"><b id="fb-titulo">Adicionar</b><button id="fb-fechar">Fechar</button></div>' +
     '<div class="seg" id="fb-seg"><button data-f="inv" class="on">Meu inventário</button><button data-f="cat">Catálogo</button></div>' +
     '<input id="fb-q" type="search" placeholder="Nome ou sigla" autocomplete="off">' +
+    '<div class="seg mini" id="fb-ordem"><button data-o="value" class="on">Por value</button><button data-o="rap">Por RAP</button></div>' +
     '<p class="fb-info" id="fb-info"></p>' +
     '<div class="fb-lista" id="fb-lista"></div>' +
     '</div>' +
@@ -195,7 +196,10 @@ function css() {
 .fb-item{display:flex;align-items:center;gap:10px;width:100%;padding:8px 0;border:0;border-bottom:1px solid var(--linha);background:none;color:var(--fg);font:inherit;font-size:14px;text-align:left;-webkit-tap-highlight-color:transparent}
 .fb-item:active{background:var(--cab)}
 .fb-txt{flex:1;min-width:0}
-.fb-val{font-weight:600;white-space:nowrap}
+.fb-num{display:flex;flex-direction:column;align-items:flex-end;min-width:56px;font-weight:600;white-space:nowrap}
+.fb-rot{font-size:10px;font-weight:600;color:var(--rotulo);text-transform:uppercase;letter-spacing:.04em}
+.seg.mini{margin:8px 0 0}
+.seg.mini button{font-size:12px;padding:4px 0}
 .folha .remover{color:var(--neg)}
 .diag-ponte{margin:8px 0 0}
 .veredito{margin:24px 0 0;padding:12px 14px;background:var(--cab);border-radius:10px;border-left:4px solid var(--sub)}
@@ -500,6 +504,28 @@ function paginaAvaliador(D, P) {
     else if (n === 2) valorTxt = 'Os dois lados valem quase o mesmo em value ajustado (' + difTxt + (temBase ? ', ' + fmtPctSinal(pct) : '') + ').';
     else valorTxt = 'Você perde cerca de ' + (temBase ? fmtPct(-pct) + ' ' : '') + 'em value ajustado (' + difTxt + ').';
 
+    // 1b. RAP como segunda opinião. Se value e RAP discordam (um passa da faixa
+    // justa para o ganho e o outro para a perda), o veredito vai um nível para o meio.
+    var difRap = tr.rap - td.rap;
+    var temBaseRap = td.rap > 0;
+    var pctRap = temBaseRap ? (difRap / td.rap) * 100 : difRap > 0 ? 100 : 0;
+    var difRapTxt = (difRap > 0 ? '+' : '') + fmtNum(difRap);
+    var ladoValor = n >= 3 ? 1 : n <= 1 ? -1 : 0;
+    var ladoRap = pctRap >= P.faixa ? 1 : pctRap <= -P.faixa ? -1 : 0;
+    var rapTxt;
+    if (ladoRap > 0) rapTxt = 'Em RAP você ganha cerca de ' + (temBaseRap ? fmtPctSinal(pctRap) + ' ' : '') + '(' + difRapTxt + ')';
+    else if (ladoRap < 0) rapTxt = 'Em RAP você perde cerca de ' + (temBaseRap ? fmtPct(-pctRap) + ' ' : '') + '(' + difRapTxt + ')';
+    else rapTxt = 'Em RAP os dois lados ficam quase iguais (' + difRapTxt + (temBaseRap ? ', ' + fmtPctSinal(pctRap) : '') + ')';
+    if (ladoValor > 0 && ladoRap < 0) {
+      n--;
+      rapTxt += ': value e RAP discordam, por isso o veredito caiu um nível.';
+    } else if (ladoValor < 0 && ladoRap > 0) {
+      n++;
+      rapTxt += ': value e RAP discordam, por isso o veredito subiu um nível.';
+    } else {
+      rapTxt += '.';
+    }
+
     // 2. Demanda média dos dois lados.
     var mD = demandaMedia(dou);
     var mR = demandaMedia(rec);
@@ -562,14 +588,15 @@ function paginaAvaliador(D, P) {
 
     var motivos;
     if (fortes.length) {
-      motivos = [fortes[0], valorTxt + ' Sem esse alerta, o veredito seria "' + NIVEIS[n].titulo + '".'];
+      motivos = [fortes[0], valorTxt + ' Sem esse alerta, o veredito seria "' + NIVEIS[n].titulo + '".', rapTxt];
       if (fortes[1]) motivos.push(fortes[1]);
       else if (motivoDem) motivos.push(motivoDem);
       return { titulo: 'Cuidado', cor: 'neg', motivos: motivos };
     }
-    motivos = [valorTxt];
+    // Até 4 motivos: value, RAP, demanda e o extra mais importante.
+    motivos = [valorTxt, rapTxt];
     if (motivoDem) motivos.push(motivoDem);
-    for (var k = 0; k < extras.length && motivos.length < 3; k++) motivos.push(extras[k]);
+    for (var k = 0; k < extras.length && motivos.length < 4; k++) motivos.push(extras[k]);
     return { titulo: NIVEIS[n].titulo, cor: NIVEIS[n].cor, motivos: motivos };
   }
   function desenharVeredito(v) {
@@ -598,19 +625,25 @@ function paginaAvaliador(D, P) {
   }
 
   // ---------- Busca (folha) ----------
-  var busca = { lado: 'dou', fonte: 'inv', timer: null, resultados: [] };
-  var indice = null; // [id, nome minúsculo, sigla minúscula, valor efetivo], do maior para o menor
+  var busca = { lado: 'dou', fonte: 'inv', ordem: 'value', timer: null, resultados: [] };
+  try {
+    if (localStorage.getItem('ordemBusca') === 'rap') busca.ordem = 'rap';
+  } catch (e) {}
+  // Dois índices do catálogo, do maior para o menor: por valor efetivo e por RAP.
+  // Cada linha: [id, nome minúsculo, sigla minúscula, valor efetivo, RAP]
+  var indice = null;
+  var indiceRap = null;
   function montarIndice() {
-    indice = Object.keys(C).map(function (id) {
+    var base = Object.keys(C).map(function (id) {
       var c = C[id];
-      return [id, c[0].toLowerCase(), c[1].toLowerCase(), c[3] > 0 ? c[3] : Math.max(c[2], 0)];
+      return [id, c[0].toLowerCase(), c[1].toLowerCase(), c[3] > 0 ? c[3] : Math.max(c[2], 0), Math.max(c[2], 0)];
     });
-    indice.sort(function (x, y) { return y[3] - x[3]; });
+    indice = base.slice().sort(function (x, y) { return y[3] - x[3]; });
+    indiceRap = base.slice().sort(function (x, y) { return y[4] - x[4]; });
   }
   function detalheBusca(i) {
     var d = [];
     if (i.sigla) d.push(i.sigla);
-    d.push('RAP ' + fmtNum(i.rap));
     d.push(P.demandaCurta[i.dem] || '?');
     if (i.serial) d.push('#' + i.serial);
     if (i.projected) d.push('projected');
@@ -630,15 +663,20 @@ function paginaAvaliador(D, P) {
         if (q && (i.nome + ' ' + i.sigla).toLowerCase().indexOf(q) < 0) return;
         res.push({ e: { u: u }, i: i });
       });
+      var chave = busca.ordem === 'rap'
+        ? function (r) { return r.i.rap; }
+        : function (r) { return valorEfetivo(r.i); };
+      res.sort(function (x, y) { return chave(y) - chave(x); });
       if (!res.length) info = q ? 'Nada encontrado no seu inventário.' : 'Todos os seus itens já estão na proposta.';
     } else if (q.length < 2) {
       info = 'Digite pelo menos 2 letras do nome ou a sigla.';
     } else {
       if (!indice) montarIndice();
+      var lista = busca.ordem === 'rap' ? indiceRap : indice;
       var exatos = [];
       var outros = [];
-      for (var k = 0; k < indice.length; k++) {
-        var x = indice[k];
+      for (var k = 0; k < lista.length; k++) {
+        var x = lista[k];
         if (x[2] && x[2] === q) exatos.push(x[0]);
         else if (outros.length < P.maxBusca && (x[1].indexOf(q) >= 0 || (x[2] && x[2].indexOf(q) === 0))) outros.push(x[0]);
       }
@@ -653,7 +691,8 @@ function paginaAvaliador(D, P) {
       var i = r.i;
       return '<button class="fb-item" data-k="' + k + '">' + miniatura(i.id) +
         '<span class="fb-txt"><span class="nome">' + esc(i.nome) + '</span><span class="det">' + esc(detalheBusca(i)) + '</span></span>' +
-        '<span class="fb-val">' + (i.value != null ? fmtNum(i.value) : '—') + '</span></button>';
+        '<span class="fb-num"><span class="fb-rot">Value</span>' + (i.value != null ? fmtNum(i.value) : '—') + '</span>' +
+        '<span class="fb-num"><span class="fb-rot">RAP</span>' + fmtNum(i.rap) + '</span></button>';
     }).join('');
     if (busca.fonte === 'cat') pedirMiniaturas(res.map(function (r) { return r.i.id; }));
   }
@@ -759,6 +798,21 @@ function paginaAvaliador(D, P) {
   for (var k = 0; k < fbSeg.length; k++) {
     fbSeg[k].addEventListener('click', function () { fonteBusca(this.getAttribute('data-f')); });
   }
+  // Ordem da busca (value ou RAP), lembrada no iPhone.
+  function marcarOrdem() {
+    var bs = document.querySelectorAll('#fb-ordem button');
+    for (var k = 0; k < bs.length; k++) bs[k].classList.toggle('on', bs[k].getAttribute('data-o') === busca.ordem);
+  }
+  var fbOrdem = document.querySelectorAll('#fb-ordem button');
+  for (var k = 0; k < fbOrdem.length; k++) {
+    fbOrdem[k].addEventListener('click', function () {
+      busca.ordem = this.getAttribute('data-o');
+      try { localStorage.setItem('ordemBusca', busca.ordem); } catch (e) {}
+      marcarOrdem();
+      listarBusca();
+    });
+  }
+  marcarOrdem();
   $('fb-q').addEventListener('input', function () {
     clearTimeout(busca.timer);
     busca.timer = setTimeout(listarBusca, 150);
