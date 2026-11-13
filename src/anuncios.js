@@ -1,7 +1,7 @@
 // Aba "Anúncios": cruza os Trade Ads recentes do Rolimon's com o seu inventário.
 // Lado Scriptable: busca, lê (formato conferido com cuidado) e guarda os anúncios
 // por algumas horas. Lado página: regras de match, combinações e desenho, usando
-// as funções do avaliador (value ajustado e veredito) já injetadas na página.
+// as funções do avaliador (value base e veredito) já injetadas na página.
 const api = require('api');
 const avaliador = require('avaliador');
 
@@ -178,7 +178,7 @@ function secao(cfg, erro) {
     '<details class="bloco" data-chave="an-tags" open><summary>Upgrade, downgrade e any<span class="n" id="an-n-tags"></span></summary>' +
     '<div id="an-lista-tags"></div></details>' +
     '<p class="av-nota">Ficam de fora anúncios que oferecem item projected, com demanda terrível ou com o RAP subindo mais de ' +
-    cfg.ALERTA_RAP_24H_PCT + '% em 24h. "Pedem seus itens": só com veredito "Vale a pena" ou melhor. Upgrade: você ganha de ' +
+    cfg.ALERTA_RAP_24H_PCT + '% em 24h. As contas usam o value (item sem value entra pelo RAP). "Pedem seus itens": só com veredito "Vale a pena" ou melhor. Upgrade: você ganha de ' +
     cfg.ANUNCIO_UPGRADE_MIN_PCT + '% a ' + cfg.ANUNCIO_UPGRADE_MAX_PCT + '%. Downgrade: você paga até ' +
     cfg.ANUNCIO_DOWNGRADE_PAGAR_MAX_PCT + '% a mais. Any: mesmo número de itens, ±' + cfg.ANUNCIO_ANY_PCT +
     '%. Itens em hold não entram. Os anúncios guardados (últimas ' + cfg.ANUNCIOS_GUARDAR_HORAS +
@@ -223,6 +223,8 @@ function css() {
 .an-ver[data-cor=neg] b{color:var(--neg)}
 .an-ver span{font-size:12px;color:var(--sub)}
 .an-nota{margin:4px 0 0;font-size:12px;color:var(--sub)}
+.an-nota.warn{color:var(--warn)}
+.an-t tfoot td{padding:6px 4px}
 .an-mais{margin:10px 0 0;font-size:12px;color:var(--sub)}
 #diag-anuncios{white-space:pre-wrap;overflow-wrap:anywhere}
 `;
@@ -277,18 +279,18 @@ function paginaAnuncios(D, P, PA) {
     i.uaid = x[0];
     i.serial = x[2];
     i.doInventario = true;
-    i.aj = valorAjustado(i, P);
+    i.vb = valorEfetivo(i);
     meus.push(i);
     (porAsset[i.id] = porAsset[i.id] || []).push(i);
   });
-  var meusOrdenados = meus.slice().sort(function (x, y) { return y.aj - x.aj; });
+  var meusOrdenados = meus.slice().sort(function (x, y) { return y.vb - x.vb; });
 
-  // Ganho em % (value ajustado) de quem dá td e recebe tr; mesma conta do veredito.
+  // Ganho em % (value base) de quem dá td e recebe tr; mesma conta do veredito.
   function ganho(td, tr) {
-    return td.ajustado > 0 ? ((tr.ajustado - td.ajustado) / td.ajustado) * 100 : null;
+    return td.value > 0 ? ((tr.value - td.value) / td.value) * 100 : null;
   }
 
-  // Melhor combinação dos seus itens para receber T (value ajustado da oferta):
+  // Melhor combinação dos seus itens para receber T (value base da oferta):
   // de minQ a maxQ itens, ganho entre lo% e hi%, o mais perto de alvo%.
   // Empate: a com menos itens. Resultados guardados (ofertas repetidas são comuns).
   var memoCombinacao = {};
@@ -305,8 +307,8 @@ function paginaAnuncios(D, P, PA) {
     var sMax = T / (1 + lo / 100);
     var pool = [];
     for (var k = 0; k < meusOrdenados.length && pool.length < PA.pool; k++) {
-      var aj = meusOrdenados[k].aj;
-      if (aj > 0 && aj <= sMax) pool.push(meusOrdenados[k]);
+      var vb = meusOrdenados[k].vb;
+      if (vb > 0 && vb <= sMax) pool.push(meusOrdenados[k]);
     }
     var melhor = null;
     var escolha = [];
@@ -322,7 +324,7 @@ function paginaAnuncios(D, P, PA) {
       testar(soma);
       if (escolha.length >= maxQ) return;
       for (var k = inicio; k < pool.length; k++) {
-        var s = soma + pool[k].aj;
+        var s = soma + pool[k].vb;
         if (s > sMax) continue;
         escolha.push(pool[k]);
         descer(k + 1, s);
@@ -389,9 +391,9 @@ function paginaAnuncios(D, P, PA) {
     var kq = rec.length;
     if (!kq) return { descarte: 'oferta só de Robux' };
     var opcoes = [];
-    if (querUp) opcoes.push({ tag: 'upgrade', c: melhorCombinacao(tr.ajustado, 1, kq - 1, PA.upMin, PA.upMax, PA.upAlvo) });
-    if (querDown) opcoes.push({ tag: 'downgrade', c: melhorCombinacao(tr.ajustado, kq + 1, P.maxItens, -PA.downPagar, 0, 0) });
-    if (querAny) opcoes.push({ tag: 'any', c: melhorCombinacao(tr.ajustado, kq, kq, -PA.any, PA.any, PA.any) });
+    if (querUp) opcoes.push({ tag: 'upgrade', c: melhorCombinacao(tr.value, 1, kq - 1, PA.upMin, PA.upMax, PA.upAlvo) });
+    if (querDown) opcoes.push({ tag: 'downgrade', c: melhorCombinacao(tr.value, kq + 1, P.maxItens, -PA.downPagar, 0, 0) });
+    if (querAny) opcoes.push({ tag: 'any', c: melhorCombinacao(tr.value, kq, kq, -PA.any, PA.any, PA.any) });
     var melhor = null;
     opcoes.forEach(function (o) {
       if (o.c && (!melhor || o.c.pct > melhor.c.pct)) melhor = o;
@@ -404,7 +406,7 @@ function paginaAnuncios(D, P, PA) {
     var p = ganho(td, tr);
     var nota;
     if (melhor.tag === 'upgrade') {
-      nota = 'Ele quer upgrade: você dá menos itens e ganha ' + fmtPct(p) + ' em value ajustado.';
+      nota = 'Ele quer upgrade: você dá menos itens e ganha ' + fmtPct(p) + ' em value.';
     } else if (melhor.tag === 'downgrade') {
       nota = 'Ele quer downgrade: você dá mais itens e ' + (p < 0 ? 'paga ' + fmtPct(-p) + ' a mais (normal para quem sobe de item).' : 'não paga nada a mais.');
     } else {
@@ -473,14 +475,16 @@ function paginaAnuncios(D, P, PA) {
       '<td class="num">' + fmtNum(i.rap) + '</td></tr>'
     );
   }
-  function tabelaLado(rotulo, itens, robux, recebe) {
+  // Tabela de um lado com a linha Total (value base e RAP, Robux já incluídos).
+  function tabelaLado(rotulo, itens, robux, recebe, t) {
     var h = '<table class="an-t"><thead><tr><th>' + rotulo + '</th><th class="num">Value</th><th class="num">RAP</th></tr></thead><tbody>';
     h += itens.map(linhaItem).join('');
     if (robux) {
       h += '<tr><td class="item" colspan="3">+ ' + fmtNum(robux) + ' Robux' +
         (recebe ? ' <span class="sub">(' + fmtNum(Math.floor(robux * (1 - P.taxaRobux))) + ' para você)</span>' : '') + '</td></tr>';
     }
-    return h + '</tbody></table>';
+    h += '</tbody><tfoot><tr><td>Total</td><td class="num">' + fmtNum(t.value) + '</td><td class="num">' + fmtNum(t.rap) + '</td></tr></tfoot>';
+    return h + '</table>';
   }
   function cartao(r, k) {
     var ad = r.ad;
@@ -492,10 +496,11 @@ function paginaAnuncios(D, P, PA) {
       '<div class="an-card" data-k="' + k + '" data-cor="' + r.v.cor + '">' +
       '<div class="an-topo"><b>' + esc(ad[3] || 'Jogador ' + ad[2]) + '</b><span class="sub">' + haQuanto(ad[1]) + '</span></div>' +
       '<p class="an-rotulo">' + esc(rotulo) + '</p>' +
-      tabelaLado('Recebo', r.rec, ad[5], true) +
-      tabelaLado(r.modo === 'tag' ? 'Dou (sugestão)' : 'Dou', r.dou, 0, false) +
+      tabelaLado('Recebo', r.rec, ad[5], true, r.tr) +
+      tabelaLado(r.modo === 'tag' ? 'Dou (sugestão)' : 'Dou', r.dou, 0, false, r.td) +
       '<div class="an-ver" data-cor="' + r.v.cor + '"><b>' + esc(r.v.titulo) + '</b>' +
-      '<span>Value aj. ' + pctTxt(r.pct) + ' · RAP ' + pctTxt(pctRap) + '</span></div>' +
+      '<span>Value ' + fmtNum(r.tr.value) + ' × ' + fmtNum(r.td.value) + ' (' + pctTxt(r.pct) + ') · RAP ' + pctTxt(pctRap) + '</span></div>' +
+      (r.v.semDemanda ? '<p class="an-nota warn">Você recebe itens sem dados de demanda: podem ser difíceis de revender (o veredito caiu um nível).</p>' : '') +
       (r.nota ? '<p class="an-nota">' + esc(r.nota) + '</p>' : '') +
       '</div>'
     );

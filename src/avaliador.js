@@ -22,26 +22,13 @@ function pct1(antes, depois) {
   return Math.round(((depois - antes) / antes) * 1000) / 10;
 }
 
-// ---------- Value ajustado ----------
-// ATENÇÃO: esta função também é injetada na página (toString), então não pode
-// usar nada de fora dela. P = parâmetros vindos do config.js.
-function valorAjustado(i, P) {
-  var base;
-  if (i.value != null) base = i.value;
-  else if (i.projected) base = i.rap * P.projetadoSemValue;
-  else base = i.rap * P.semValue;
-  var d = P.demanda[String(i.dem)];
-  var t = P.tendencia[String(i.tend)];
-  if (d == null) d = 1;
-  if (t == null) t = 1;
-  return base * d * t * (i.hyped ? P.hyped : 1);
-}
-
 // ---------- Funções compartilhadas pelas abas (também injetadas na página) ----------
-// Como valorAjustado, não podem usar nada de fora delas, exceto as outras
-// funções injetadas (fmtNum, fmtPct, fmtPctSinal, valorAjustado e estas).
+// ATENÇÃO: são injetadas na página (toString), então não podem usar nada de fora
+// delas, exceto as outras funções injetadas (fmtNum, fmtPct, fmtPctSinal e estas).
+// P = parâmetros vindos do config.js.
 
-// Valor sem ajuste: value, ou RAP se não houver value.
+// Value base (o que vale na troca): o value do Rolimon's; sem value, o RAP.
+// Item com value ignora o próprio RAP.
 function valorEfetivo(i) {
   return i.value != null ? i.value : i.rap;
 }
@@ -60,10 +47,9 @@ function itemDoCatalogo(C, id) {
 // Totais de um lado da troca. Quem RECEBE Robux fica só com a parte sem a taxa.
 function somarLado(itens, robuxBruto, recebe, P) {
   var robux = recebe ? Math.floor(robuxBruto * (1 - P.taxaRobux)) : robuxBruto;
-  var t = { value: robux, ajustado: robux, rap: robux, robux: robux, qtd: itens.length };
+  var t = { value: robux, rap: robux, robux: robux, qtd: itens.length };
   itens.forEach(function (i) {
     t.value += valorEfetivo(i);
-    t.ajustado += valorAjustado(i, P);
     t.rap += i.rap;
   });
   return t;
@@ -109,38 +95,26 @@ function calcularVeredito(dou, rec, td, tr, tipo, robuxRecebo, P) {
     return { titulo: 'Proposta incompleta', cor: 'sub', nivel: null, motivos: ['Adicione itens (ou Robux) nos dois lados para avaliar.'] };
   }
 
-  // 1. Nível pela diferença do value ajustado (Robux já com a taxa).
-  var dif = tr.ajustado - td.ajustado;
-  var temBase = td.ajustado > 0;
-  var pct = temBase ? (dif / td.ajustado) * 100 : dif > 0 ? 100 : 0;
+  // 1. Nível pela diferença do value base (Robux já com a taxa).
+  var dif = tr.value - td.value;
+  var temBase = td.value > 0;
+  var pct = temBase ? (dif / td.value) * 100 : dif > 0 ? 100 : 0;
   var n = pct >= P.forte ? 4 : pct >= P.faixa ? 3 : pct > -P.faixa ? 2 : pct > -P.forte ? 1 : 0;
   var difTxt = (dif > 0 ? '+' : '') + fmtNum(dif);
   var valorTxt;
-  if (n >= 3) valorTxt = 'Você ganha cerca de ' + (temBase ? fmtPctSinal(pct) + ' ' : '') + 'em value ajustado (' + difTxt + ').';
-  else if (n === 2) valorTxt = 'Os dois lados valem quase o mesmo em value ajustado (' + difTxt + (temBase ? ', ' + fmtPctSinal(pct) : '') + ').';
-  else valorTxt = 'Você perde cerca de ' + (temBase ? fmtPct(-pct) + ' ' : '') + 'em value ajustado (' + difTxt + ').';
+  if (n >= 3) valorTxt = 'Você ganha cerca de ' + (temBase ? fmtPctSinal(pct) + ' ' : '') + 'em value (' + difTxt + ').';
+  else if (n === 2) valorTxt = 'Os dois lados valem quase o mesmo em value (' + difTxt + (temBase ? ', ' + fmtPctSinal(pct) : '') + ').';
+  else valorTxt = 'Você perde cerca de ' + (temBase ? fmtPct(-pct) + ' ' : '') + 'em value (' + difTxt + ').';
 
-  // 1b. RAP como segunda opinião. Se value e RAP discordam (um passa da faixa
-  // justa para o ganho e o outro para a perda), o veredito vai um nível para o meio.
+  // 1b. RAP só como informação (não muda o veredito).
   var difRap = tr.rap - td.rap;
   var temBaseRap = td.rap > 0;
   var pctRap = temBaseRap ? (difRap / td.rap) * 100 : difRap > 0 ? 100 : 0;
   var difRapTxt = (difRap > 0 ? '+' : '') + fmtNum(difRap);
-  var ladoValor = n >= 3 ? 1 : n <= 1 ? -1 : 0;
-  var ladoRap = pctRap >= P.faixa ? 1 : pctRap <= -P.faixa ? -1 : 0;
   var rapTxt;
-  if (ladoRap > 0) rapTxt = 'Em RAP você ganha cerca de ' + (temBaseRap ? fmtPctSinal(pctRap) + ' ' : '') + '(' + difRapTxt + ')';
-  else if (ladoRap < 0) rapTxt = 'Em RAP você perde cerca de ' + (temBaseRap ? fmtPct(-pctRap) + ' ' : '') + '(' + difRapTxt + ')';
-  else rapTxt = 'Em RAP os dois lados ficam quase iguais (' + difRapTxt + (temBaseRap ? ', ' + fmtPctSinal(pctRap) : '') + ')';
-  if (ladoValor > 0 && ladoRap < 0) {
-    n--;
-    rapTxt += ': value e RAP discordam, por isso o veredito caiu um nível.';
-  } else if (ladoValor < 0 && ladoRap > 0) {
-    n++;
-    rapTxt += ': value e RAP discordam, por isso o veredito subiu um nível.';
-  } else {
-    rapTxt += '.';
-  }
+  if (pctRap >= P.faixa) rapTxt = 'Em RAP você ganha cerca de ' + (temBaseRap ? fmtPctSinal(pctRap) + ' ' : '') + '(' + difRapTxt + ').';
+  else if (pctRap <= -P.faixa) rapTxt = 'Em RAP você perde cerca de ' + (temBaseRap ? fmtPct(-pctRap) + ' ' : '') + '(' + difRapTxt + ').';
+  else rapTxt = 'Em RAP os dois lados ficam quase iguais (' + difRapTxt + (temBaseRap ? ', ' + fmtPctSinal(pctRap) : '') + ').';
 
   // 2. Demanda média dos dois lados.
   var mD = demandaMediaLado(dou);
@@ -162,6 +136,21 @@ function calcularVeredito(dou, rec, td, tr, tipo, robuxRecebo, P) {
         : 'O que você recebe tem demanda menor que o que você dá' + comp + ': vai ser mais difícil revender' +
           (rebaixou ? ', por isso o veredito caiu um nível.' : '.');
     }
+  }
+
+  // 2b. Você dá itens com demanda conhecida e a maior parte do value que recebe
+  // é de itens sem dados de demanda: aviso e o veredito cai um nível.
+  var motivoSemDem = null;
+  var valorItensRec = tr.value - tr.robux;
+  var valorSemDem = 0;
+  rec.forEach(function (i) {
+    if (!(i.dem >= 0)) valorSemDem += valorEfetivo(i);
+  });
+  if (mD != null && valorItensRec > 0 && valorSemDem / valorItensRec > P.semDadosFracao) {
+    var caiu = n > 0;
+    if (caiu) n--;
+    motivoSemDem = 'A maior parte do value que você recebe é de itens sem dados de demanda: podem ser difíceis de revender' +
+      (caiu ? ', por isso o veredito caiu um nível.' : '.');
   }
 
   // 3. Alertas fortes viram "Cuidado".
@@ -206,14 +195,16 @@ function calcularVeredito(dou, rec, td, tr, tipo, robuxRecebo, P) {
   if (fortes.length) {
     motivos = [fortes[0], valorTxt + ' Sem esse alerta, o veredito seria "' + NIVEIS[n].titulo + '".', rapTxt];
     if (fortes[1]) motivos.push(fortes[1]);
+    else if (motivoSemDem) motivos.push(motivoSemDem);
     else if (motivoDem) motivos.push(motivoDem);
-    return { titulo: 'Cuidado', cor: 'neg', nivel: -1, motivos: motivos };
+    return { titulo: 'Cuidado', cor: 'neg', nivel: -1, motivos: motivos, semDemanda: !!motivoSemDem };
   }
-  // Até 4 motivos: value, RAP, demanda e o extra mais importante.
+  // Até 4 motivos: value, RAP, demanda (sem dados e média) e o extra mais importante.
   motivos = [valorTxt, rapTxt];
+  if (motivoSemDem) motivos.push(motivoSemDem);
   if (motivoDem) motivos.push(motivoDem);
   for (var k = 0; k < extras.length && motivos.length < 4; k++) motivos.push(extras[k]);
-  return { titulo: NIVEIS[n].titulo, cor: NIVEIS[n].cor, nivel: n, motivos: motivos };
+  return { titulo: NIVEIS[n].titulo, cor: NIVEIS[n].cor, nivel: n, motivos: motivos.slice(0, 4), semDemanda: !!motivoSemDem };
 }
 
 function parametros(cfg) {
@@ -224,11 +215,7 @@ function parametros(cfg) {
     tendenciaCurta[k] = a.tendenciaCurta(k);
   }
   return {
-    demanda: cfg.PESO_DEMANDA,
-    tendencia: cfg.PESO_TENDENCIA,
-    hyped: cfg.PESO_HYPED,
-    semValue: cfg.PESO_SEM_VALUE,
-    projetadoSemValue: cfg.PESO_PROJECTED_SEM_VALUE,
+    semDadosFracao: cfg.DEMANDA_SEM_DADOS_FRACAO,
     faixa: cfg.FAIXA_JUSTA_PCT,
     forte: cfg.VEREDITO_FORTE_PCT,
     demMotivo: cfg.DEMANDA_DIF_MOTIVO,
@@ -312,7 +299,7 @@ function secao(cfg, baseData, erro) {
     '<div id="av-veredito" class="veredito oculto">' +
     '<b id="av-ver-titulo"></b>' +
     '<ul id="av-ver-motivos"></ul>' +
-    '<p class="ver-nota">Segunda opinião automática, com pesos estimados (config.js). A decisão é sua.</p>' +
+    '<p class="ver-nota">Segunda opinião automática pelo value (item sem value entra pelo RAP). A decisão é sua.</p>' +
     '</div>' +
     '<details class="bloco" data-chave="av-resumo"><summary>Resumo</summary>' +
     '<p class="vazio" id="av-vazio">Monte a proposta acima para ver a comparação.</p>' +
@@ -321,7 +308,7 @@ function secao(cfg, baseData, erro) {
     '<thead><tr><th></th><th class="num">Dou</th><th class="num">Recebo</th><th class="num">Diferença</th></tr></thead>' +
     '<tbody></tbody></table>' +
     '<p class="av-nota">Os totais incluem Robux, e quem recebe Robux fica com ' + Math.round((1 - cfg.TAXA_ROBUX) * 100) +
-    '%. O value ajustado aplica os pesos de demanda, tendência e hyped (config.js). Faixa justa: ±' + cfg.FAIXA_JUSTA_PCT + '%.</p>' +
+    '%. Value: o value do Rolimon\'s; item sem value entra pelo RAP. O RAP é só informativo. Faixa justa: ±' + cfg.FAIXA_JUSTA_PCT + '%.</p>' +
     '</div>' +
     '</details>' +
     '<details class="bloco" data-chave="av-alertas"><summary>Alertas<span class="n" id="n-alertas"></span></summary>' +
@@ -405,8 +392,8 @@ function css() {
 }
 
 // ---------- Código que roda DENTRO da página ----------
-// Recebe D (dados) e P (parâmetros). Usa fmtNum, fmtPct, fmtPctSinal e
-// valorAjustado, que são injetados antes dela no <script>.
+// Recebe D (dados) e P (parâmetros). Usa fmtNum, fmtPct, fmtPctSinal e as
+// funções compartilhadas, que são injetadas antes dela no <script>.
 function paginaAvaliador(D, P) {
   var C = D.catalogo;
   var qtdCatalogo = Object.keys(C).length;
@@ -562,8 +549,7 @@ function paginaAvaliador(D, P) {
     $('av-vazio').classList.toggle('oculto', !vazio);
     if (vazio) return;
     var linhas = [
-      ['Value', td.value, tr.value, ''],
-      ['Value ajustado', td.ajustado, tr.ajustado, 'forte'],
+      ['Value', td.value, tr.value, 'forte'],
       ['RAP', td.rap, tr.rap, ''],
     ];
     var h = linhas.map(function (l) {
@@ -595,7 +581,7 @@ function paginaAvaliador(D, P) {
     rec.forEach(function (i) {
       if (i.projected) {
         add(i, i.value == null
-          ? 'projected sem value: o RAP está inflado, contei só ' + Math.round(P.projetadoSemValue * 100) + '% dele'
+          ? 'projected sem value: o RAP está inflado e entra inteiro no value'
           : 'projected: o RAP está inflado, confie no value', 'neg');
       }
       if (i.dem === 0) add(i, 'demanda terrível (difícil revender)', 'neg');
@@ -919,7 +905,6 @@ function script(json, cfg) {
     a.fmtNum.toString() + '\n' +
     a.fmtPct.toString() + '\n' +
     a.fmtPctSinal.toString() + '\n' +
-    valorAjustado.toString() + '\n' +
     valorEfetivo.toString() + '\n' +
     itemDoCatalogo.toString() + '\n' +
     somarLado.toString() + '\n' +
@@ -935,7 +920,6 @@ function script(json, cfg) {
 
 module.exports = {
   PONTE,
-  valorAjustado,
   prepararDados,
   serializar,
   secao,

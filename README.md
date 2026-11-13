@@ -6,7 +6,7 @@ Painel do inventário de Limiteds para iPhone, feito para rodar no app **[Script
 - 🚨 Alertas de risco: projected, demanda baixa/terrível, tendência de queda, RAP muito diferente do value (bloco recolhível, com contador colorido)
 - 🔄 Mudanças relevantes desde a última consulta ou nas últimas 24h (limite configurável, padrão 5%; bloco recolhível)
 - 📋 Tabela com miniaturas, busca e ordenação; tocar num item abre o Rolimon's ou o Roblox
-- ⚖️ **Avaliar trade** (aba no topo): monte "dou X, recebo Y" (com Robux) e veja value, value ajustado, RAP e alertas
+- ⚖️ **Avaliar trade** (aba no topo): monte "dou X, recebo Y" (com Robux) e veja value, RAP, veredito e alertas
 - 📣 **Anúncios** (aba no topo): cruza os Trade Ads recentes do Rolimon's com o seu inventário e mostra os que valem a pena para você
 - 🧩 Widgets grande, médio e pequeno (e da tela bloqueada)
 - 🔒 **Somente leitura**: não usa login, cookie nem envia trades. Usa só APIs públicas.
@@ -46,8 +46,8 @@ Pronto! Das próximas vezes é só abrir o script. Ele confere sozinho se há ve
 
 Como a conta é feita:
 
-- **Value**: value do Rolimon's (ou RAP, se o item não tiver value) + Robux.
-- **Value ajustado**: o mesmo, multiplicado por pesos de demanda, tendência e hyped. Item sem value usa o RAP com desconto, e item **projected sem value** conta só uma fração do RAP.
+- **Value (value base)**: é o número que decide. Item **com value** no Rolimon's vale o value (o RAP dele não entra); item **sem value** vale o RAP. Somam-se os Robux.
+- **RAP**: aparece na tabela, no Resumo e no veredito só como informação.
 - **Robux**: quem recebe fica com 70% (taxa de 30% do Roblox).
 - **Cores da diferença**: verde = ganho; amarelo = faixa justa (±3%); vermelho = perda.
 - **24h**: variação do RAP desde ~24h atrás, mostrada na linha pequena embaixo do nome do item (só quando já existe histórico). Para isso, painel e widget guardam 1 retrato compacto do catálogo por hora (por 30h). Aparece depois de umas 24h de uso.
@@ -55,7 +55,7 @@ Como a conta é feita:
 
 ### Veredito
 
-| Diferença do value ajustado | Mensagem |
+| Diferença do value | Mensagem |
 |---|---|
 | ≥ +10% | **Vale muito a pena** |
 | +3% a +10% | **Vale a pena** |
@@ -63,12 +63,13 @@ Como a conta é feita:
 | −10% a −3% | **Não vale a pena** |
 | ≤ −10% | **Não vale de jeito nenhum** |
 
-- **RAP (segunda opinião)**: o cartão sempre diz como a troca fica em RAP. Se value e RAP discordarem (um passa de ±3% para o ganho e o outro para a perda), o veredito vai um nível para o meio: cai se o value diz ganho, sobe se o value diz perda.
+- **RAP (informativo)**: o cartão sempre diz como a troca fica em RAP, mas isso não muda o veredito.
 - **Demanda**: compara a demanda média dos dois lados, ponderada pelo valor dos itens. Uma diferença de 0,75 nível vira motivo; se o que você recebe tiver demanda pelo menos 1,5 nível **menor**, o veredito cai um nível.
+- **Sem dados de demanda**: se você dá itens com demanda conhecida e mais da metade do value que recebe é de itens **sem dados de demanda**, o cartão avisa (podem ser difíceis de revender) e o veredito cai um nível.
 - **Cuidado** substitui o veredito quando um item recebido é projected, tem demanda terrível ou teve o RAP disparando em 24h, ou quando um item seu está em hold. O cartão também diz qual seria o veredito sem o alerta.
 - O cartão mostra até 4 motivos (value, RAP, demanda e um extra). É uma segunda opinião automática: a decisão é sua.
 
-> Os pesos são estimativas para ajudar a decidir, não uma regra do mercado. Ajuste-os em `src/config.js`.
+> Os limites (faixa justa, demanda etc.) são estimativas para ajudar a decidir, não uma regra do mercado. Ajuste-os em `src/config.js`.
 
 ---
 
@@ -88,7 +89,8 @@ O que entra na lista:
 | **Any** (tag) | Ele aceita qualquer item | Uma combinação com o **mesmo número de itens**, diferença de **±3%** |
 
 - Sempre ficam de fora anúncios que oferecem item **projected**, com **demanda terrível** ou com o **RAP subindo mais de 15% em 24h**, além de itens fora do catálogo do Rolimon's.
-- As contas usam o **value ajustado** (a mesma regra do avaliador), e os Robux oferecidos entram com a taxa de 30%. O cartão mostra o veredito do avaliador e a diferença em value ajustado e em RAP.
+- As contas usam o **value base** (a mesma regra do avaliador: value, ou RAP para item sem value), e os Robux oferecidos entram com a taxa de 30%. Cada tabela tem a linha **Total** (value e RAP), e o rodapé mostra o veredito e "Value recebo × dou (+%) · RAP +%".
+- Quando a maior parte do que você recebe é de itens sem dados de demanda, o cartão mostra um aviso em amarelo e o veredito cai um nível.
 - As outras tags (demand, rap, adds...) não geram sugestões. A contagem de tags vistas fica no **Diagnóstico**.
 - Os anúncios só são buscados com o painel aberto: o widget não muda.
 
@@ -105,15 +107,11 @@ Ficam em [`src/config.js`](src/config.js):
 | `CACHE_ROLIMONS_MIN` | 5 | Minutos reaproveitando os values baixados |
 | `CACHE_INVENTARIO_MIN` | 1 | Minutos reaproveitando o inventário baixado |
 | `WIDGET_ATUALIZAR_MIN` | 30 | Intervalo pedido ao iOS para atualizar o widget |
-| `PESO_DEMANDA` | 0,80 / 0,90 / 1 / 1,03 / 1,05 | Multiplicador do value ajustado por demanda (terrível → incrível; sem dados 0,95) |
-| `PESO_TENDENCIA` | 0,95 / 0,98 / 1 / 1,03 / 0,98 | Multiplicador por tendência (caindo, instável, estável, subindo, oscilando) |
-| `PESO_HYPED` | 0,95 | Multiplicador para itens hyped |
-| `PESO_SEM_VALUE` | 0,95 | Multiplicador do RAP quando o item não tem value |
-| `PESO_PROJECTED_SEM_VALUE` | 0,5 | Fração do RAP usada para item projected sem value |
 | `FAIXA_JUSTA_PCT` | 3 | Diferença (%) considerada justa (amarelo) |
 | `VEREDITO_FORTE_PCT` | 10 | A partir daqui: "Vale muito a pena" / "Não vale de jeito nenhum" |
 | `DEMANDA_DIF_MOTIVO` | 0,75 | Diferença de demanda média que vira motivo no veredito |
 | `DEMANDA_DIF_REBAIXA` | 1,5 | Diferença de demanda (contra você) que rebaixa o veredito um nível |
+| `DEMANDA_SEM_DADOS_FRACAO` | 0,5 | Fração do value recebido sem dados de demanda que gera aviso e rebaixa um nível |
 | `ALERTA_RAP_24H_PCT` | 15 | Alerta se o RAP de um item recebido subir mais que isso em 24h |
 | `TAXA_ROBUX` | 0,3 | Taxa do Roblox sobre Robux recebidos |
 | `MAX_ITENS_POR_LADO` | 4 | Itens por lado na proposta |
@@ -145,7 +143,7 @@ versao.json      → versão + lista de arquivos que o loader baixa
 src/config.js    → configurações
 src/api.js       → APIs do Roblox e do Rolimon's, cache e novas tentativas
 src/analise.js   → totais, riscos, mudanças e formatação
-src/avaliador.js → aba "Avaliar trade" (catálogo enxuto, value ajustado, veredito, busca)
+src/avaliador.js → aba "Avaliar trade" (catálogo enxuto, value base, veredito, busca)
 src/anuncios.js  → aba "Anúncios" (Trade Ads: leitura, matches e combinações)
 src/historico.js → armazenamento local no iPhone (cache, ajustes, retratos)
 src/html.js      → página do painel (abas Inventário, Avaliar trade e Anúncios)

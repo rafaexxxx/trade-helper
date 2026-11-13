@@ -30,20 +30,11 @@ module.exports = {
   // Quantos itens o widget grande lista.
   WIDGET_MAX_ITENS_GRANDE: 6,
 
-  // ===== Avaliador de trade =====
-  // "Value ajustado" = value (ou RAP, se não tiver value) x multiplicadores abaixo.
-  // 1 = neutro; abaixo de 1 desconta, acima de 1 dá bônus.
-  // Demanda: -1 sem dados, 0 terrível, 1 baixa, 2 normal, 3 alta, 4 incrível.
-  PESO_DEMANDA: { '-1': 0.95, 0: 0.8, 1: 0.9, 2: 1.0, 3: 1.03, 4: 1.05 },
-  // Tendência: -1 sem dados, 0 caindo, 1 instável, 2 estável, 3 subindo, 4 oscilando.
-  PESO_TENDENCIA: { '-1': 1.0, 0: 0.95, 1: 0.98, 2: 1.0, 3: 1.03, 4: 0.98 },
-  PESO_HYPED: 0.95,
-  // Item sem value no Rolimon's: usa o RAP com este desconto.
-  PESO_SEM_VALUE: 0.95,
-  // Item projected sem value: o RAP está inflado; usa só esta fração dele.
-  PESO_PROJECTED_SEM_VALUE: 0.5,
+  // ===== Avaliador de trade e Anúncios =====
+  // As contas usam o "value base": o value do Rolimon's; item sem value entra
+  // pelo RAP. O RAP aparece só como informação (não muda o veredito).
 
-  // Diferença (%) do value ajustado considerada "justa" (amarelo).
+  // Diferença (%) do value considerada "justa" (amarelo).
   FAIXA_JUSTA_PCT: 3,
   // Veredito: a partir desta diferença (%) vira "Vale muito a pena" / "Não vale de jeito nenhum".
   VEREDITO_FORTE_PCT: 10,
@@ -52,6 +43,9 @@ module.exports = {
   // o veredito cai um nível.
   DEMANDA_DIF_MOTIVO: 0.75,
   DEMANDA_DIF_REBAIXA: 1.5,
+  // Se você dá itens com demanda conhecida e mais que esta fração do value que
+  // você recebe é de itens SEM dados de demanda: aviso e o veredito cai um nível.
+  DEMANDA_SEM_DADOS_FRACAO: 0.5,
   // Alerta quando o RAP de um item recebido sobe mais que isto (%) em 24h.
   ALERTA_RAP_24H_PCT: 15,
   // Taxa do Roblox sobre Robux recebidos numa trade (quem recebe fica com 70%).
