@@ -108,7 +108,7 @@ function bloco(lado, titulo) {
   return (
     '<h2>' + titulo + '<span class="n" id="n-' + lado + '"></span></h2>' +
     '<table id="av-' + lado + '" class="av-t">' +
-    '<thead><tr><th>Item</th><th class="num">Value</th><th class="num">RAP</th><th>Dem.</th><th class="num">24h</th></tr></thead>' +
+    '<thead><tr><th>Item</th><th class="num">Value</th><th class="num">RAP</th><th>Dem.</th></tr></thead>' +
     '<tbody></tbody></table>' +
     '<div class="av-acoes">' +
     '<button class="btn" id="add-' + lado + '">+ Adicionar item</button>' +
@@ -117,18 +117,13 @@ function bloco(lado, titulo) {
   );
 }
 
-// Seção da aba. baseData = data do retrato do catálogo usado no 24h (ou null).
+// Seção da aba. A data base das 24h fica só no Diagnóstico (painel minimalista).
 function secao(cfg, baseData, erro) {
   if (erro) {
     return '<div id="aba-avaliar" class="oculto"><p class="aviso">O avaliador não pôde ser montado: ' + esc(erro) + '</p></div>';
   }
-  const linhaBase = baseData
-    ? 'Variação 24h comparando com ' + a.fmtData(baseData)
-    : 'Variação de 24h ainda em formação. Ela aparece depois de umas 24h de uso do painel ou do widget.';
   return (
     '<div id="aba-avaliar" class="oculto">' +
-    '<p class="comp">' + esc(linhaBase) + '</p>' +
-    '<p class="aviso oculto" id="av-aviso"></p>' +
     bloco('dou', 'Dou') +
     bloco('recebo', 'Recebo') +
     '<div id="av-veredito" class="veredito oculto">' +
@@ -136,7 +131,7 @@ function secao(cfg, baseData, erro) {
     '<ul id="av-ver-motivos"></ul>' +
     '<p class="ver-nota">Segunda opinião automática, com pesos estimados (config.js). A decisão é sua.</p>' +
     '</div>' +
-    '<h2>Resumo</h2>' +
+    '<details class="bloco" data-chave="av-resumo"><summary>Resumo</summary>' +
     '<p class="vazio" id="av-vazio">Monte a proposta acima para ver a comparação.</p>' +
     '<div id="av-resumo-bloco" class="oculto">' +
     '<table id="av-resumo" class="av-t">' +
@@ -145,8 +140,10 @@ function secao(cfg, baseData, erro) {
     '<p class="av-nota">Os totais incluem Robux, e quem recebe Robux fica com ' + Math.round((1 - cfg.TAXA_ROBUX) * 100) +
     '%. O value ajustado aplica os pesos de demanda, tendência e hyped (config.js). Faixa justa: ±' + cfg.FAIXA_JUSTA_PCT + '%.</p>' +
     '</div>' +
-    '<h2>Alertas<span class="n" id="n-alertas"></span></h2>' +
+    '</details>' +
+    '<details class="bloco" data-chave="av-alertas"><summary>Alertas<span class="n" id="n-alertas"></span></summary>' +
     '<ul class="lista" id="av-alertas"></ul>' +
+    '</details>' +
     '<button class="btn sec" id="av-limpar">Limpar proposta</button>' +
     '</div>'
   );
@@ -319,9 +316,9 @@ function paginaAvaliador(D, P) {
   function corTend(t) {
     return t === 0 ? 'neg' : t === 3 ? 'pos' : t === 1 || t === 4 ? 'warn' : '';
   }
-  function variacao(p) {
-    if (p == null) return '<span class="sub">—</span>';
-    return '<span class="' + (p > 0 ? 'pos' : p < 0 ? 'neg' : 'sub') + '">' + fmtPctSinal(p) + '</span>';
+  // Variação de 24h do RAP, mostrada na linha pequena só quando existe.
+  function variacao24(p) {
+    return '<span class="' + (p > 0 ? 'pos' : p < 0 ? 'neg' : 'sub') + '">24h ' + fmtPctSinal(p) + '</span>';
   }
   function miniatura(id) {
     return THUMBS[id] ? '<img class="thumb" src="' + esc(THUMBS[id]) + '" alt="">' : '<span class="thumb"></span>';
@@ -330,6 +327,7 @@ function paginaAvaliador(D, P) {
     var d = [];
     if (i.serial) d.push('#' + esc(i.serial));
     if (i.tend >= 0) d.push('<span class="' + corTend(i.tend) + '">' + esc(P.tendenciaCurta[i.tend]) + '</span>');
+    if (i.rap24 != null) d.push(variacao24(i.rap24));
     if (i.projected) d.push('<span class="neg">projected</span>');
     if (i.hyped) d.push('hyped');
     if (i.rare) d.push('rare');
@@ -347,15 +345,14 @@ function paginaAvaliador(D, P) {
       (det ? '<span class="det">' + det + '</span>' : '') + '</div></div></td>' +
       '<td class="num">' + (i.value != null ? fmtNum(i.value) : '<span class="sub">—</span>') + '</td>' +
       '<td class="num">' + fmtNum(i.rap) + '</td>' +
-      '<td class="' + corDem(i.dem) + '">' + esc(P.demandaCurta[i.dem] || '?') + '</td>' +
-      '<td class="num">' + variacao(i.rap24) + '</td></tr>'
+      '<td class="' + corDem(i.dem) + '">' + esc(P.demandaCurta[i.dem] || '?') + '</td></tr>'
     );
   }
   function desenharLado(lado, itens) {
     var tb = $('av-' + lado).tBodies[0];
     tb.innerHTML = itens.length
       ? itens.map(function (i, k) { return linha(i, lado, k); }).join('')
-      : '<tr class="vazia"><td colspan="5">Nenhum item. Toque em "Adicionar item".</td></tr>';
+      : '<tr class="vazia"><td colspan="4">Nenhum item. Toque em "Adicionar item".</td></tr>';
     $('n-' + lado).textContent = itens.length + '/' + P.maxItens;
     $('add-' + lado).disabled = itens.length >= P.maxItens;
   }
@@ -445,6 +442,12 @@ function paginaAvaliador(D, P) {
     return L;
   }
   function desenharAlertas(L) {
+    var pior = 'sub';
+    L.forEach(function (x) {
+      if (x.cor === 'neg') pior = 'neg';
+      else if (x.cor === 'warn' && pior !== 'neg') pior = 'warn';
+    });
+    $('n-alertas').className = 'n ' + pior;
     $('n-alertas').textContent = L.length;
     $('av-alertas').innerHTML = L.length
       ? L.map(function (x) {

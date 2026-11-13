@@ -106,18 +106,34 @@ function porPeriodo(conteudoUltima, conteudoDia) {
   );
 }
 
-function linhaComparacao(c, semBase) {
-  return c.base ? 'Comparando com ' + a.fmtData(c.base.data) : semBase;
+// Hora curta ("13:35"); com a data na frente quando não for o mesmo dia.
+function quando(ms, agora) {
+  const x = new Date(ms);
+  const y = new Date(agora);
+  const mesmoDia = x.getFullYear() === y.getFullYear() && x.getMonth() === y.getMonth() && x.getDate() === y.getDate();
+  return mesmoDia ? a.fmtData(ms).slice(6) : a.fmtData(ms);
+}
+
+// Cor do contador de alertas: vermelho se houver grave, amarelo se houver médio.
+function corContagemRiscos(riscos) {
+  let cor = 'sub';
+  for (const r of riscos) {
+    for (const m of r.motivos) {
+      if (m.grav === 'alta') return 'neg';
+      if (m.grav === 'media') cor = 'warn';
+    }
+  }
+  return cor;
 }
 
 function gerar(r, cfg) {
   const t = r.totais;
   const u = r.comparacoes.ultima;
   const d = r.comparacoes.dia;
-  const meta = [
-    'Atualizado ' + a.fmtData(r.agora),
-    r.fonte === 'rolimons' ? "itens via Rolimon's" : 'itens via Roblox',
-  ].join(' · ');
+  // Topo compacto: "Atualizado 13:35 · desde 12:10" (o "desde" segue o seletor de período).
+  const desde = (c, sem) => (c.base ? 'desde ' + quando(c.base.data, r.agora) : sem);
+  const meta = 'Atualizado ' + quando(r.agora, r.agora) + ' · ' +
+    porPeriodo(desde(u, 'primeira consulta'), desde(d, '24h em formação'));
 
   const SEM_ULTIMA = 'Primeira consulta, sem comparação ainda.';
   const SEM_DIA = 'Histórico de 24h ainda em formação. Ele cresce a cada uso do painel e do widget.';
@@ -185,6 +201,17 @@ footer{margin-top:16px;color:var(--sub);font-size:11px}
 .folha p{margin:0;padding:12px 16px;text-align:center;font-size:13px;color:var(--sub);border-bottom:1px solid var(--linha)}
 .folha a,.folha button{display:block;width:100%;padding:15px;text-align:center;font:inherit;font-size:17px;color:var(--link);text-decoration:none;background:none;border:0;border-bottom:1px solid var(--linha)}
 .folha .cancelar{font-weight:600;border-bottom:0}
+details.bloco{margin:24px 0 0;font-size:inherit;color:inherit}
+details.bloco>summary{list-style:none;display:flex;align-items:center;font-size:12px;font-weight:600;color:var(--rotulo);text-transform:uppercase;letter-spacing:.06em;padding:8px 0;border-bottom:1px solid var(--linha);-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+details.bloco>summary::-webkit-details-marker{display:none}
+details.bloco>summary::after{content:"›";margin-left:auto;font-size:20px;font-weight:400;line-height:1;transition:transform .15s}
+details.bloco[open]>summary::after{transform:rotate(90deg)}
+details.bloco>summary .n{color:var(--fg);margin-left:6px}
+details.bloco>summary .n.neg{color:var(--neg)}
+details.bloco>summary .n.warn{color:var(--warn)}
+details.bloco>summary .n.sub{color:var(--sub)}
+details.bloco .lista{border-top:0}
+details.bloco .vazio{margin:8px 0}
 ${avaliador.css()}
 </style></head><body>
 
@@ -201,7 +228,6 @@ ${avaliador.css()}
   <button data-p="ultima" class="on">Última consulta</button>
   <button data-p="dia">24h</button>
 </div>
-<p class="comp">${porPeriodo(linhaComparacao(u, SEM_ULTIMA), linhaComparacao(d, 'Sem histórico de 24h ainda.'))}</p>
 
 <div class="resumo">
   <div><span class="rot">Value</span><span class="val">${a.fmtNum(t.value)}</span>${porPeriodo(variacao(u.var && u.var.value), variacao(d.var && d.var.value))}</div>
@@ -210,12 +236,16 @@ ${avaliador.css()}
 </div>
 ${avisos}
 
-<h2>Alertas<span class="n">${r.riscos.length}</span></h2>
-${listaRiscos(r.riscos)}
+<details class="bloco" data-chave="inv-alertas">
+  <summary>Alertas<span class="n ${corContagemRiscos(r.riscos)}">${r.riscos.length}</span></summary>
+  ${listaRiscos(r.riscos)}
+</details>
 
-<h2>Mudanças${porPeriodo(contagem(u), contagem(d))}</h2>
-<div data-periodo="ultima">${listaMudancas(u, cfg, SEM_ULTIMA)}</div>
-<div data-periodo="dia" class="oculto">${listaMudancas(d, cfg, SEM_DIA)}</div>
+<details class="bloco" data-chave="inv-mudancas">
+  <summary>Mudanças${porPeriodo(contagem(u), contagem(d))}</summary>
+  <div data-periodo="ultima">${listaMudancas(u, cfg, SEM_ULTIMA)}</div>
+  <div data-periodo="dia" class="oculto">${listaMudancas(d, cfg, SEM_DIA)}</div>
+</details>
 
 <h2>Itens</h2>
 <input id="busca" type="search" placeholder="Buscar" autocomplete="off">
@@ -273,6 +303,18 @@ ${av.erro ? '' : avaliador.folhas()}
     botoesAba[k].addEventListener('click', function(){ aba(this.getAttribute('data-aba')); window.scrollTo(0, 0); });
   }
   try { if (localStorage.getItem('aba') === 'avaliar') aba('avaliar'); } catch (e) {}
+
+  // Blocos recolhíveis: começam fechados e lembram se você os deixou abertos.
+  var recolhiveis = document.querySelectorAll('details.bloco[data-chave]');
+  for (var k = 0; k < recolhiveis.length; k++) {
+    (function(b){
+      var chave = 'aberto:' + b.getAttribute('data-chave');
+      try { if (localStorage.getItem(chave) === '1') b.open = true; } catch (e) {}
+      b.addEventListener('toggle', function(){
+        try { localStorage.setItem(chave, b.open ? '1' : '0'); } catch (e) {}
+      });
+    })(recolhiveis[k]);
+  }
 
   // Seletor de período (última consulta / 24h)
   function periodo(p){

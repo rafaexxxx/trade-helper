@@ -3,8 +3,8 @@
 Painel do inventário de Limiteds para iPhone, feito para rodar no app **[Scriptable](https://apps.apple.com/app/scriptable/id1405459188)** (gratuito).
 
 - 💰 Value total e RAP total do inventário
-- 🚨 Alertas de risco: projected, demanda baixa/terrível, tendência de queda, RAP muito diferente do value
-- 🔄 Mudanças relevantes desde a última consulta ou nas últimas 24h (limite configurável, padrão 5%)
+- 🚨 Alertas de risco: projected, demanda baixa/terrível, tendência de queda, RAP muito diferente do value (bloco recolhível, com contador colorido)
+- 🔄 Mudanças relevantes desde a última consulta ou nas últimas 24h (limite configurável, padrão 5%; bloco recolhível)
 - 📋 Tabela com miniaturas, busca e ordenação; tocar num item abre o Rolimon's ou o Roblox
 - ⚖️ **Avaliar trade** (aba no topo): monte "dou X, recebo Y" (com Robux) e veja value, value ajustado, RAP e alertas
 - 🧩 Widgets grande, médio e pequeno (e da tela bloqueada)
@@ -41,7 +41,7 @@ Pronto! Das próximas vezes é só abrir o script. Ele confere sozinho se há ve
 1. No painel, toque em **Avaliar trade** no topo.
 2. Em **Dou**, toque em **+ Adicionar item**: escolha no **Meu inventário** ou busque no **Catálogo** (para simular). Em **Recebo**, busque pelo nome ou sigla.
 3. Se houver Robux, digite nos campos **Robux** de cada lado (no máximo 4 itens por lado, como no Roblox).
-4. Leia o **veredito** (cartão acima do Resumo) e confira o **Resumo** (Dou | Recebo | Diferença) e os **Alertas**. Tocar num item da proposta permite removê-lo ou abri-lo no Rolimon's.
+4. Leia o **veredito** (cartão abaixo dos blocos). **Resumo** (Dou | Recebo | Diferença) e **Alertas** ficam recolhidos: toque para abrir (o painel lembra se você os deixou abertos). Tocar num item da proposta permite removê-lo ou abri-lo no Rolimon's.
 
 Como a conta é feita:
 
@@ -49,7 +49,7 @@ Como a conta é feita:
 - **Value ajustado**: o mesmo, multiplicado por pesos de demanda, tendência e hyped. Item sem value usa o RAP com desconto, e item **projected sem value** conta só uma fração do RAP.
 - **Robux**: quem recebe fica com 70% (taxa de 30% do Roblox).
 - **Cores da diferença**: verde = ganho; amarelo = faixa justa (±3%); vermelho = perda.
-- **24h**: variação do RAP desde ~24h atrás. Para isso, painel e widget guardam 1 retrato compacto do catálogo por hora (por 30h). Aparece depois de umas 24h de uso.
+- **24h**: variação do RAP desde ~24h atrás, mostrada na linha pequena embaixo do nome do item (só quando já existe histórico). Para isso, painel e widget guardam 1 retrato compacto do catálogo por hora (por 30h). Aparece depois de umas 24h de uso.
 - A última proposta fica salva no iPhone. O botão **Limpar proposta** pede dois toques.
 
 ### Veredito
