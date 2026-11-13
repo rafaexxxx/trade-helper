@@ -187,6 +187,18 @@ async function buscarMiniaturas(store, assetIds) {
   return r;
 }
 
+// Todas as miniaturas ainda válidas no cache (sem rede). Usado pelo avaliador.
+function miniaturasEmCache(store) {
+  const cache = store.ler('miniaturas') || {};
+  const validade = cfg.MINIATURAS_CACHE_HORAS * 3600000;
+  const agora = Date.now();
+  const r = {};
+  for (const id of Object.keys(cache)) {
+    if (cache[id] && cache[id].url && agora - cache[id].em <= validade) r[id] = cache[id].url;
+  }
+  return r;
+}
+
 async function carregarTudo(store, ajustes) {
   const avisos = [];
 
@@ -249,4 +261,4 @@ async function carregarTudo(store, ajustes) {
   };
 }
 
-module.exports = { carregarTudo, buscarMiniaturas };
+module.exports = { carregarTudo, buscarMiniaturas, miniaturasEmCache };

@@ -5,6 +5,7 @@ const api = require('api');
 const analise = require('analise');
 const html = require('html');
 const widget = require('widget');
+const avaliador = require('avaliador');
 
 async function pedirUsername(atual) {
   const al = new Alert();
@@ -81,6 +82,17 @@ async function executar(ctx) {
   const atual = analise.criarSnapshot(itens, totais, fonte);
   hist.registrarHistorico(store, atual, cfg);
 
+  // Retrato do catálogo (variação de 24h no avaliador). Painel e widget gravam,
+  // mas nunca a partir de um cache antigo (seria um retrato com data errada).
+  const retratoCatalogo = { gravou: false, erro: null };
+  if (dados.origem.values !== 'cache-antigo') {
+    try {
+      retratoCatalogo.gravou = hist.registrarRetratoCatalogo(ctx.dirDados, dados.rolimons, agora, cfg);
+    } catch (e) {
+      retratoCatalogo.erro = e.message || String(e);
+    }
+  }
+
   const miniaturas = await api.buscarMiniaturas(store, itens.map((i) => String(i.assetId)));
   const avisos = (ctx.avisos || []).concat(dados.avisos);
   const robloxItens = dados.roblox ? dados.roblox.itens : [];
@@ -138,10 +150,68 @@ async function executar(ctx) {
   // Só o painel grava o retrato da "última consulta".
   hist.gravarSnapshot(store, atual);
 
+  // Avaliador de trade: catálogo enxuto + variação de 24h + miniaturas conhecidas.
+  // Se algo falhar aqui, só a aba do avaliador mostra o erro; o inventário segue.
+  let baseCatalogo = null;
+  try {
+    baseCatalogo = hist.baseCatalogo24h(ctx.dirDados, agora);
+    const thumbs = Object.assign({}, api.miniaturasEmCache(store), miniaturas);
+    const json = avaliador.serializar(avaliador.prepararDados(dados.rolimons, itens, baseCatalogo, thumbs));
+    resultado.avaliador = { json, base: baseCatalogo ? baseCatalogo.data : null, erro: null };
+  } catch (e) {
+    resultado.avaliador = { json: null, base: null, erro: e.message || String(e) };
+  }
+  let retratos = null;
+  try {
+    retratos = hist.datasRetratosCatalogo(ctx.dirDados).length;
+  } catch (e) {
+    // só diagnóstico
+  }
+  resultado.diag.avaliador = {
+    itensCatalogo: Object.keys(dados.rolimons).length,
+    tamanhoDadosKB: resultado.avaliador.json ? Math.round(resultado.avaliador.json.length / 1024) : null,
+    retratosCatalogo: retratos,
+    retratoGravadoAgora: retratoCatalogo.gravou,
+    erroRetrato: retratoCatalogo.erro,
+    base24hCatalogo: baseCatalogo ? analise.fmtData(baseCatalogo.data) : null,
+    erro: resultado.avaliador.erro,
+  };
+
   const wv = new WebView();
+
+  // Ponte das miniaturas: a página carrega um iframe em avaliador.PONTE com os ids;
+  // aqui a navegação é barrada, as miniaturas são buscadas e devolvidas à página.
+  // Uma fila evita duas buscas gravando o cache ao mesmo tempo.
+  let filaPonte = Promise.resolve();
+  function atenderPonte(url) {
+    const m = /[?&]ids=([\d,]+)/.exec(url);
+    const ids = m ? m[1].split(',').filter(Boolean).slice(0, 100) : [];
+    filaPonte = filaPonte.then(async () => {
+      let mapa = {};
+      let erro = null;
+      try {
+        if (ids.length) mapa = await api.buscarMiniaturas(store, ids);
+      } catch (e) {
+        erro = e.message || String(e);
+      }
+      try {
+        await wv.evaluateJavaScript(
+          'window.receberMiniaturas && window.receberMiniaturas(' + JSON.stringify(mapa) + ',' + JSON.stringify(erro) + ')',
+          false
+        );
+      } catch (e) {
+        // página fechada ou sem a função: ignora
+      }
+    });
+  }
+
   // Links do menu de toque abrem fora do painel (Safari ou app do Roblox).
   wv.shouldAllowRequest = (req) => {
     const url = (req && req.url) || '';
+    if (url.indexOf(avaliador.PONTE) === 0) {
+      atenderPonte(url);
+      return false;
+    }
     if (/^https:\/\/www\.(rolimons|roblox)\.com\//.test(url) && typeof Safari !== 'undefined') {
       Safari.open(url);
       return false;

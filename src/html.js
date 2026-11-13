@@ -1,5 +1,7 @@
 // Página do painel: estilo planilha, tema claro/escuro seguindo o iPhone.
+// Duas abas: Inventário e Avaliar trade (esta vem do módulo avaliador).
 const a = require('analise');
+const avaliador = require('avaliador');
 
 function esc(s) {
   const mapa = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
@@ -122,6 +124,7 @@ function gerar(r, cfg) {
 
   const avisos = r.avisos.map((x) => '<p class="aviso">' + esc(x) + '</p>').join('');
   const contagem = (c) => (c.mudancas ? '<span class="n">' + c.mudancas.length + '</span>' : '');
+  const av = r.avaliador || { erro: 'dados não preparados' };
 
   return `<!doctype html>
 <html lang="pt-BR"><head>
@@ -182,12 +185,19 @@ footer{margin-top:16px;color:var(--sub);font-size:11px}
 .folha p{margin:0;padding:12px 16px;text-align:center;font-size:13px;color:var(--sub);border-bottom:1px solid var(--linha)}
 .folha a,.folha button{display:block;width:100%;padding:15px;text-align:center;font:inherit;font-size:17px;color:var(--link);text-decoration:none;background:none;border:0;border-bottom:1px solid var(--linha)}
 .folha .cancelar{font-weight:600;border-bottom:0}
+${avaliador.css()}
 </style></head><body>
 
-<div class="topo"><h1>Inventário</h1><span class="user">${esc(r.usuario.nome)}</span></div>
+<div class="topo"><h1 id="titulo">Inventário</h1><span class="user">${esc(r.usuario.nome)}</span></div>
 <p class="meta">${meta}</p>
 
-<div class="seg">
+<div class="seg" id="abas">
+  <button data-aba="inv" class="on">Inventário</button>
+  <button data-aba="avaliar">Avaliar trade</button>
+</div>
+
+<div id="aba-inv">
+<div class="seg" id="seg-periodo">
   <button data-p="ultima" class="on">Última consulta</button>
   <button data-p="dia">24h</button>
 </div>
@@ -220,9 +230,13 @@ ${listaRiscos(r.riscos)}
   <tbody>${r.itens.map((i) => linhaItem(i, r.miniaturas[String(i.assetId)])).join('')}</tbody>
   <tfoot><tr><td>Total</td><td class="num">${a.fmtNum(t.value)}</td><td class="num">${a.fmtNum(t.rap)}</td><td></td><td></td></tr></tfoot>
 </table>
+</div>
+
+${avaliador.secao(cfg, av.base, av.erro)}
 
 <details>
   <summary>Diagnóstico</summary>
+  <p class="diag-ponte" id="diag-ponte"></p>
   <textarea readonly>${esc(JSON.stringify(r.diag, null, 2))}</textarea>
 </details>
 
@@ -235,6 +249,7 @@ ${listaRiscos(r.riscos)}
   <a id="link-rbx" href="#">Ver no Roblox</a>
   <button id="cancelar" class="cancelar">Cancelar</button>
 </div>
+${av.erro ? '' : avaliador.folhas()}
 
 <script>
 (function(){
@@ -243,19 +258,35 @@ ${listaRiscos(r.riscos)}
   var busca = document.getElementById('busca');
   var estado = { campo: 'value', dir: 'desc' };
 
+  // Abas (Inventário / Avaliar trade)
+  var TITULOS = { inv: 'Inventário', avaliar: 'Avaliar trade' };
+  function aba(x){
+    document.getElementById('aba-inv').classList.toggle('oculto', x !== 'inv');
+    document.getElementById('aba-avaliar').classList.toggle('oculto', x !== 'avaliar');
+    document.getElementById('titulo').textContent = TITULOS[x];
+    var bs = document.querySelectorAll('#abas button');
+    for (var k = 0; k < bs.length; k++) bs[k].classList.toggle('on', bs[k].getAttribute('data-aba') === x);
+    try { localStorage.setItem('aba', x); } catch (e) {}
+  }
+  var botoesAba = document.querySelectorAll('#abas button');
+  for (var k = 0; k < botoesAba.length; k++) {
+    botoesAba[k].addEventListener('click', function(){ aba(this.getAttribute('data-aba')); window.scrollTo(0, 0); });
+  }
+  try { if (localStorage.getItem('aba') === 'avaliar') aba('avaliar'); } catch (e) {}
+
   // Seletor de período (última consulta / 24h)
   function periodo(p){
     var blocos = document.querySelectorAll('[data-periodo]');
     for (var k = 0; k < blocos.length; k++) {
       blocos[k].classList.toggle('oculto', blocos[k].getAttribute('data-periodo') !== p);
     }
-    var botoes = document.querySelectorAll('.seg button');
+    var botoes = document.querySelectorAll('#seg-periodo button');
     for (var k = 0; k < botoes.length; k++) {
       botoes[k].classList.toggle('on', botoes[k].getAttribute('data-p') === p);
     }
     try { localStorage.setItem('periodo', p); } catch (e) {}
   }
-  var botoesSeg = document.querySelectorAll('.seg button');
+  var botoesSeg = document.querySelectorAll('#seg-periodo button');
   for (var k = 0; k < botoesSeg.length; k++) {
     botoesSeg[k].addEventListener('click', function(){ periodo(this.getAttribute('data-p')); });
   }
@@ -310,6 +341,7 @@ ${listaRiscos(r.riscos)}
   document.getElementById('link-rbx').addEventListener('click', function(){ setTimeout(fechar, 300); });
 })();
 </script>
+${av.erro ? '' : avaliador.script(av.json, cfg)}
 </body></html>`;
 }
 

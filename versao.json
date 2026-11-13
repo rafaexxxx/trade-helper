@@ -1,10 +1,11 @@
 {
-  "versao": "1.4.0",
+  "versao": "2.0.0",
   "arquivos": [
     "src/config.js",
     "src/historico.js",
     "src/api.js",
     "src/analise.js",
+    "src/avaliador.js",
     "src/html.js",
     "src/widget.js",
     "src/painel.js"
