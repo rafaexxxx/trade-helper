@@ -3,31 +3,35 @@
 // só alimenta o histórico por hora.
 const a = require('analise');
 
-// Paleta roxa "tom sobre tom" (fixa, independe do modo claro/escuro do iPhone).
+// Paleta v4.1: sempre grafite (independe do modo claro/escuro do iPhone), com o
+// bloco dos totais no azul #173b82 do painel. RAP em azul claro, como no painel.
 const P = {
-  fundoTopo: '#2a1d3d',
-  fundoBase: '#1a1226',
-  cartao: '#33254a',
-  linha: '#43335e',
-  rotulo: '#b9a3e3',
-  texto: '#efe7ff',
-  secundario: '#c7b5ea',
-  apagado: '#8f80a8',
+  fundoTopo: '#1f2633',
+  fundoBase: '#15181d',
+  azul: '#173b82',
+  linha: '#363c48',
+  rotulo: '#a3abb9',
+  texto: '#eef1f6',
+  rap: '#8fa8ff',
+  apagado: '#8b93a3',
   pos: '#8fe0b8',
   neg: '#ff9db0',
   warn: '#f5c98a',
 };
 
 const CORES = {
-  cartao: new Color(P.cartao),
+  azul: new Color(P.azul),
   linha: new Color(P.linha),
   rotulo: new Color(P.rotulo),
   texto: new Color(P.texto),
-  secundario: new Color(P.secundario),
+  rap: new Color(P.rap),
   apagado: new Color(P.apagado),
   pos: new Color(P.pos),
   neg: new Color(P.neg),
   warn: new Color(P.warn),
+  branco: new Color('#ffffff'),
+  // Textos secundários dentro do bloco azul.
+  brancoSuave: new Color('#ffffff', 0.78),
 };
 
 // Size/LinearGradient podem não existir em algum contexto; sem eles, seguimos sem.
@@ -60,32 +64,37 @@ function texto(pilha, conteudo, fonte, cor, escala) {
   return t;
 }
 
-function rotulo(pilha, conteudo) {
-  return texto(pilha, conteudo.toUpperCase(), Font.semiboldSystemFont(9), CORES.rotulo);
+function rotulo(pilha, conteudo, cor) {
+  return texto(pilha, conteudo.toUpperCase(), Font.semiboldSystemFont(9), cor || CORES.rotulo);
 }
 
 function corVar(p) {
   return p > 0 ? CORES.pos : p < 0 ? CORES.neg : CORES.apagado;
 }
 
+// Variação com seta: "▲ 2,1%".
+function textoVar(p) {
+  return (p > 0 ? '▲ ' : p < 0 ? '▼ ' : '') + a.fmtPct(Math.abs(p));
+}
+
 // Rótulo pequeno + valor grande + variação ao lado.
-function bloco(pilha, nome, valor, v, tamanho, corValor) {
+function bloco(pilha, nome, valor, v, tamanho, corValor, corRotulo) {
   const s = pilha.addStack();
   s.layoutVertically();
-  rotulo(s, nome);
+  rotulo(s, nome, corRotulo);
   const l = s.addStack();
   l.layoutHorizontally();
   l.bottomAlignContent();
-  l.spacing = 4;
-  texto(l, valor, Font.semiboldSystemFont(tamanho), corValor || CORES.texto);
-  if (v && v.pct != null) texto(l, a.fmtPctSinal(v.pct), Font.mediumSystemFont(10), corVar(v.pct));
+  l.spacing = 5;
+  texto(l, valor, Font.boldSystemFont(tamanho), corValor || CORES.texto);
+  if (v && v.pct != null) texto(l, textoVar(v.pct), Font.semiboldSystemFont(10), corVar(v.pct));
 }
 
-function cartao(pilha, padding) {
+function cartao(pilha, padding, cor) {
   const c = pilha.addStack();
   c.layoutVertically();
-  c.backgroundColor = CORES.cartao;
-  c.cornerRadius = 12;
+  c.backgroundColor = cor;
+  c.cornerRadius = 14;
   c.setPadding(padding, padding, padding, padding);
   return c;
 }
@@ -99,12 +108,10 @@ function divisoria(pilha) {
   if (t) s.size = t;
 }
 
-// Célula de largura fixa com texto alinhado à direita (colunas de números).
-function celula(pilha, conteudo, largura, fonte, cor) {
+// Texto alinhado à direita (numa linha própria dentro de uma pilha vertical).
+function direita(pilha, conteudo, fonte, cor) {
   const s = pilha.addStack();
   s.layoutHorizontally();
-  const t = tam(largura, 0);
-  if (t) s.size = t;
   s.addSpacer();
   texto(s, conteudo, fonte, cor, 0.7);
 }
@@ -139,7 +146,7 @@ function linhaItemEmpilhada(pilha, i, img, op) {
     const wi = s.addImage(img);
     const t = tam(op.img, op.img);
     if (t) wi.imageSize = t;
-    wi.cornerRadius = 6;
+    wi.cornerRadius = 7;
     s.addSpacer(8);
   }
   const dir = s.addStack();
@@ -152,17 +159,19 @@ function linhaItemEmpilhada(pilha, i, img, op) {
   texto(l1, nome, Font.mediumSystemFont(op.fonte), CORES.texto, 1);
   l1.addSpacer(6);
   l1.addSpacer();
-  texto(l1, i.value != null ? a.fmtNum(i.value) : '—', Font.semiboldSystemFont(op.fonte), CORES.texto, 1);
+  texto(l1, i.value != null ? a.fmtNum(i.value) : '—', Font.boldSystemFont(op.fonte), CORES.texto, 1);
 
   const vr = varRap(i, op.base);
   const l2 = dir.addStack();
   l2.layoutHorizontally();
   l2.spacing = 4;
   l2.addSpacer();
-  texto(l2, 'RAP ' + a.fmtNum(i.rap), Font.systemFont(9), CORES.secundario, 0.8);
-  if (vr != null) texto(l2, a.fmtPctSinal(vr), Font.mediumSystemFont(9), corVar(vr), 0.8);
+  texto(l2, 'RAP ' + a.fmtNum(i.rap), Font.mediumSystemFont(9), CORES.rap, 0.8);
+  if (vr != null) texto(l2, a.fmtPctSinal(vr), Font.semiboldSystemFont(9), corVar(vr), 0.8);
 }
 
+// Linha do widget grande: [img] Nome / detalhes · RAP 24h ...... value / RAP (empilhados).
+// Sem colunas de largura fixa: o nome usa toda a sobra.
 function linhaItem(pilha, i, img, op) {
   if (op.empilhado) return linhaItemEmpilhada(pilha, i, img, op);
   const s = pilha.addStack();
@@ -173,7 +182,7 @@ function linhaItem(pilha, i, img, op) {
     const wi = s.addImage(img);
     const t = tam(op.img, op.img);
     if (t) wi.imageSize = t;
-    wi.cornerRadius = 6;
+    wi.cornerRadius = 7;
   }
   const vr = varRap(i, op.base);
   const meio = s.addStack();
@@ -187,12 +196,13 @@ function linhaItem(pilha, i, img, op) {
     linhaDet.layoutHorizontally();
     linhaDet.spacing = 4;
     texto(linhaDet, d.t, Font.systemFont(10), d.cor, 0.8);
-    if (vr != null) texto(linhaDet, 'RAP ' + a.fmtPctSinal(vr), Font.mediumSystemFont(10), corVar(vr), 0.8);
+    if (vr != null) texto(linhaDet, 'RAP ' + a.fmtPctSinal(vr), Font.semiboldSystemFont(10), corVar(vr), 0.8);
   }
   s.addSpacer();
-  const valor = i.value != null ? a.fmtNum(i.value) : '—';
-  celula(s, valor, op.largura, Font.semiboldSystemFont(op.fonte), CORES.texto);
-  if (op.rap) celula(s, a.fmtNum(i.rap), op.largura, Font.systemFont(op.fonte), CORES.secundario);
+  const nums = s.addStack();
+  nums.layoutVertically();
+  direita(nums, i.value != null ? a.fmtNum(i.value) : '—', Font.boldSystemFont(op.fonte), CORES.texto);
+  direita(nums, a.fmtNum(i.rap), Font.semiboldSystemFont(op.fonte - 1), CORES.rap);
 }
 
 function rotuloPeriodo(c, agora) {
@@ -209,36 +219,38 @@ function cabecalho(pilha, r, tamanho) {
   texto(s, 'atualizado ' + hora(r.agora), Font.systemFont(10), CORES.apagado);
 }
 
+function rodapeContagem(r) {
+  const n = r.riscos.length;
+  return r.totais.qtd + ' itens · ' + n + (n === 1 ? ' alerta' : ' alertas');
+}
+
 // ---------- Grande ----------
 function grande(w, r, cfg) {
   const c = r.comparacoes.dia;
   cabecalho(w, r, 15);
   w.addSpacer(8);
 
-  const tot = w.addStack();
-  tot.layoutHorizontally();
-  bloco(tot, 'Value', a.fmtNum(r.totais.value), c.var && c.var.value, 19);
-  tot.addSpacer();
-  bloco(tot, 'RAP', a.fmtNum(r.totais.rap), c.var && c.var.rap, 19, CORES.secundario);
-  tot.addSpacer();
-  bloco(tot, 'Itens', String(r.totais.qtd), null, 19, CORES.secundario);
+  // Faixa azul com os totais.
+  const tot = cartao(w, 10, CORES.azul);
+  const totLinha = tot.addStack();
+  totLinha.layoutHorizontally();
+  bloco(totLinha, 'Value', a.fmtNum(r.totais.value), c.var && c.var.value, 22, CORES.branco, CORES.brancoSuave);
+  totLinha.addSpacer();
+  bloco(totLinha, 'RAP', a.fmtNum(r.totais.rap), c.var && c.var.rap, 17, CORES.branco, CORES.brancoSuave);
 
-  w.addSpacer(8);
-  divisoria(w);
-  w.addSpacer(6);
+  w.addSpacer(9);
 
   const cab = w.addStack();
   cab.layoutHorizontally();
-  rotulo(cab, 'Item');
+  rotulo(cab, 'Item · ' + r.totais.qtd + ' no total');
   cab.addSpacer();
-  celula(cab, 'VALUE', 52, Font.semiboldSystemFont(9), CORES.rotulo);
-  celula(cab, 'RAP', 52, Font.semiboldSystemFont(9), CORES.rotulo);
+  rotulo(cab, 'Value / RAP');
   w.addSpacer(5);
 
   const lista = r.itens.slice(0, cfg.WIDGET_MAX_ITENS_GRANDE);
   lista.forEach((i, k) => {
     if (k) w.addSpacer(6);
-    linhaItem(w, i, r.imagens[String(i.assetId)], { img: 26, fonte: 12, detalhe: true, rap: true, largura: 52, base: c.base });
+    linhaItem(w, i, r.imagens[String(i.assetId)], { img: 26, fonte: 12, detalhe: true, base: c.base });
   });
   if (r.itens.length > lista.length) {
     w.addSpacer(4);
@@ -283,23 +295,22 @@ function medio(w, r) {
   const linha = w.addStack();
   linha.layoutHorizontally();
 
-  // Cartão com os totais, um tom acima do fundo.
-  const esq = cartao(linha, 10);
-  const te = tam(132, 0);
+  // Cartão azul com os totais.
+  const esq = cartao(linha, 11, CORES.azul);
+  const te = tam(136, 0);
   if (te) esq.size = te;
   const topo = esq.addStack();
   topo.layoutHorizontally();
   topo.bottomAlignContent();
-  texto(topo, r.usuario.nome, Font.boldSystemFont(12), CORES.texto);
+  texto(topo, r.usuario.nome, Font.boldSystemFont(12), CORES.branco);
   topo.addSpacer();
-  texto(topo, hora(r.agora), Font.systemFont(9), CORES.apagado);
+  texto(topo, hora(r.agora), Font.systemFont(9), CORES.brancoSuave);
   esq.addSpacer(6);
-  bloco(esq, 'Value', a.fmtNum(r.totais.value), c.var && c.var.value, 17);
+  bloco(esq, 'Value', a.fmtNum(r.totais.value), c.var && c.var.value, 21, CORES.branco, CORES.brancoSuave);
   esq.addSpacer(4);
-  bloco(esq, 'RAP', a.fmtNum(r.totais.rap), c.var && c.var.rap, 14, CORES.secundario);
+  bloco(esq, 'RAP', a.fmtNum(r.totais.rap), c.var && c.var.rap, 15, CORES.branco, CORES.brancoSuave);
   esq.addSpacer(5);
-  const n = r.riscos.length;
-  texto(esq, r.totais.qtd + ' itens · ' + n + (n === 1 ? ' alerta' : ' alertas'), Font.systemFont(10), n ? CORES.warn : CORES.apagado);
+  texto(esq, rodapeContagem(r), Font.systemFont(10), r.riscos.length ? CORES.warn : CORES.brancoSuave);
 
   linha.addSpacer(12);
 
@@ -320,22 +331,21 @@ function medio(w, r) {
   dir.addSpacer();
 }
 
-// ---------- Pequeno ----------
+// ---------- Pequeno (o widget inteiro é o bloco azul) ----------
 function pequeno(w, r) {
   const c = r.comparacoes.dia;
   const topo = w.addStack();
   topo.layoutHorizontally();
-  texto(topo, r.usuario.nome, Font.boldSystemFont(12), CORES.texto);
+  topo.bottomAlignContent();
+  texto(topo, r.usuario.nome, Font.boldSystemFont(12), CORES.branco);
   topo.addSpacer();
-  texto(topo, hora(r.agora), Font.systemFont(9), CORES.apagado);
+  texto(topo, hora(r.agora), Font.systemFont(9), CORES.brancoSuave);
+  w.addSpacer(10);
+  bloco(w, 'Value', a.abreviar(r.totais.value), c.var && c.var.value, 26, CORES.branco, CORES.brancoSuave);
   w.addSpacer(6);
-  const card = cartao(w, 8);
-  bloco(card, 'Value', a.abreviar(r.totais.value), c.var && c.var.value, 20);
-  card.addSpacer(4);
-  bloco(card, 'RAP', a.abreviar(r.totais.rap), c.var && c.var.rap, 14, CORES.secundario);
+  bloco(w, 'RAP', a.abreviar(r.totais.rap), c.var && c.var.rap, 17, CORES.branco, CORES.brancoSuave);
   w.addSpacer();
-  const n = r.riscos.length;
-  texto(w, r.totais.qtd + ' itens · ' + n + (n === 1 ? ' alerta' : ' alertas'), Font.systemFont(9), n ? CORES.warn : CORES.apagado);
+  texto(w, rodapeContagem(r), Font.systemFont(10), r.riscos.length ? CORES.warn : CORES.brancoSuave);
 }
 
 // ---------- Tela bloqueada (o iOS deixa monocromático) ----------
@@ -366,14 +376,16 @@ function montar(r, cfg) {
     return w;
   }
 
-  aplicarFundo(w);
   if (familia === 'small') {
-    w.setPadding(12, 12, 12, 12);
+    w.backgroundColor = CORES.azul;
+    w.setPadding(14, 14, 14, 14);
     pequeno(w, r);
   } else if (familia === 'medium') {
+    aplicarFundo(w);
     w.setPadding(12, 12, 12, 14);
     medio(w, r);
   } else {
+    aplicarFundo(w);
     w.setPadding(16, 16, 14, 16);
     grande(w, r, cfg);
   }
