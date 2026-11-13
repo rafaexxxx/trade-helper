@@ -1,5 +1,5 @@
 {
-  "versao": "1.3.3",
+  "versao": "1.3.4",
   "arquivos": [
     "src/config.js",
     "src/historico.js",

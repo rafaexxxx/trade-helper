@@ -128,7 +128,43 @@ function nomeCurto(i, limite) {
   return i.nome.length > limite && i.sigla ? i.sigla : i.nome;
 }
 
+// Linha do widget médio: [img] Nome ....... value
+//                              RAP x  +y%
+// O nome disputa espaço só com o value (sem coluna fixa), então usa toda a sobra.
+function linhaItemEmpilhada(pilha, i, img, op) {
+  const s = pilha.addStack();
+  s.layoutHorizontally();
+  s.centerAlignContent();
+  if (img) {
+    const wi = s.addImage(img);
+    const t = tam(op.img, op.img);
+    if (t) wi.imageSize = t;
+    wi.cornerRadius = 6;
+    s.addSpacer(8);
+  }
+  const dir = s.addStack();
+  dir.layoutVertically();
+
+  const l1 = dir.addStack();
+  l1.layoutHorizontally();
+  l1.centerAlignContent();
+  const nome = op.limiteNome ? nomeCurto(i, op.limiteNome) : i.nome;
+  texto(l1, nome, Font.mediumSystemFont(op.fonte), CORES.texto, 1);
+  l1.addSpacer(6);
+  l1.addSpacer();
+  texto(l1, i.value != null ? a.fmtNum(i.value) : '—', Font.semiboldSystemFont(op.fonte), CORES.texto, 1);
+
+  const vr = varRap(i, op.base);
+  const l2 = dir.addStack();
+  l2.layoutHorizontally();
+  l2.spacing = 4;
+  l2.addSpacer();
+  texto(l2, 'RAP ' + a.fmtNum(i.rap), Font.systemFont(9), CORES.secundario, 0.8);
+  if (vr != null) texto(l2, a.fmtPctSinal(vr), Font.mediumSystemFont(9), corVar(vr), 0.8);
+}
+
 function linhaItem(pilha, i, img, op) {
+  if (op.empilhado) return linhaItemEmpilhada(pilha, i, img, op);
   const s = pilha.addStack();
   s.layoutHorizontally();
   s.centerAlignContent();
@@ -155,21 +191,6 @@ function linhaItem(pilha, i, img, op) {
   }
   s.addSpacer();
   const valor = i.value != null ? a.fmtNum(i.value) : '—';
-  if (op.empilhado) {
-    // Value em cima (destaque) e "RAP x  +y%" embaixo, alinhados à direita.
-    const col = s.addStack();
-    col.layoutVertically();
-    const t = tam(op.largura, 0);
-    if (t) col.size = t;
-    celula(col, valor, op.largura, Font.semiboldSystemFont(op.fonte), CORES.texto);
-    const l2 = col.addStack();
-    l2.layoutHorizontally();
-    l2.spacing = 4;
-    l2.addSpacer();
-    texto(l2, 'RAP ' + a.fmtNum(i.rap), Font.systemFont(9), CORES.secundario, 0.8);
-    if (vr != null) texto(l2, a.fmtPctSinal(vr), Font.mediumSystemFont(9), corVar(vr), 0.8);
-    return;
-  }
   celula(s, valor, op.largura, Font.semiboldSystemFont(op.fonte), CORES.texto);
   if (op.rap) celula(s, a.fmtNum(i.rap), op.largura, Font.systemFont(op.fonte), CORES.secundario);
 }
@@ -293,7 +314,7 @@ function medio(w, r) {
       dir.addSpacer(5);
     }
     linhaItem(dir, i, r.imagens[String(i.assetId)], {
-      img: 24, fonte: 11, detalhe: false, empilhado: true, largura: 92, base: c.base, limiteNome: 12,
+      img: 24, fonte: 11, empilhado: true, base: c.base, limiteNome: 12,
     });
   });
   dir.addSpacer();
