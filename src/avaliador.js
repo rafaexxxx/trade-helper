@@ -408,8 +408,16 @@ function paginaAvaliador(D, P) {
 
   function montarAlertas(dou, rec, tipo) {
     var L = [];
+    var porChave = {};
+    // Avisos iguais (cópias do mesmo item) aparecem uma vez só, com a contagem.
     function add(i, txt, cor) {
-      L.push({ nome: i ? i.nome : null, txt: txt, cor: cor });
+      var chave = (i ? i.nome : '') + '|' + txt;
+      if (porChave[chave]) {
+        porChave[chave].n++;
+        return;
+      }
+      porChave[chave] = { nome: i ? i.nome : null, txt: txt, cor: cor, n: 1 };
+      L.push(porChave[chave]);
     }
     avisosCarga.forEach(function (t) { add(null, t, 'warn'); });
     rec.forEach(function (i) {
@@ -422,7 +430,6 @@ function paginaAvaliador(D, P) {
       else if (i.dem === 1) add(i, 'demanda baixa', 'warn');
       if (i.tend === 0) add(i, 'tendência de queda', 'warn');
       if (i.hyped) add(i, 'hyped: o preço pode estar inflado pela moda', 'warn');
-      if (i.value == null && !i.projected) add(i, "sem value no Rolimon's, contei pelo RAP", 'warn');
       if (i.rap24 != null && i.rap24 >= P.alertaRap24) add(i, 'RAP subiu ' + fmtPct(i.rap24) + ' em 24h (pode ser manipulação)', 'neg');
       if (i.val24) add(i, 'value mudou ' + fmtPctSinal(i.val24) + ' em 24h', i.val24 > 0 ? 'pos' : 'warn');
     });
@@ -441,7 +448,8 @@ function paginaAvaliador(D, P) {
     $('n-alertas').textContent = L.length;
     $('av-alertas').innerHTML = L.length
       ? L.map(function (x) {
-          return '<li>' + (x.nome ? '<b>' + esc(x.nome) + '</b>: ' : '') + '<span class="' + x.cor + '">' + esc(x.txt) + '</span></li>';
+          return '<li>' + (x.nome ? '<b>' + esc(x.nome) + '</b>' + (x.n > 1 ? ' (' + x.n + ' cópias)' : '') + ': ' : '') +
+            '<span class="' + x.cor + '">' + esc(x.txt) + '</span></li>';
         }).join('')
       : '<li class="sub">Nenhum alerta.</li>';
   }
@@ -512,27 +520,38 @@ function paginaAvaliador(D, P) {
     }
 
     // 3. Alertas fortes viram "Cuidado".
-    var fortes = [];
+    // Cópias do mesmo item geram um aviso só: "Nome (2 cópias) ...".
+    var listaFortes = [];
+    var fortesPorChave = {};
+    function addForte(i, resto) {
+      var chave = i.nome + '|' + resto;
+      if (fortesPorChave[chave]) {
+        fortesPorChave[chave].n++;
+        return;
+      }
+      fortesPorChave[chave] = { nome: i.nome, resto: resto, n: 1 };
+      listaFortes.push(fortesPorChave[chave]);
+    }
     rec.forEach(function (i) {
       if (i.projected) {
-        fortes.push(i.nome + ' é projected' + (i.value == null
+        addForte(i, ' é projected' + (i.value == null
           ? ' e não tem value: o RAP está inflado, então o ganho pode não ser real.'
           : ': o RAP está inflado, confie só no value.'));
       }
-      if (i.dem === 0) fortes.push(i.nome + ' tem demanda terrível: pode ser muito difícil revender.');
+      if (i.dem === 0) addForte(i, ' tem demanda terrível: pode ser muito difícil revender.');
       if (i.rap24 != null && i.rap24 >= P.alertaRap24) {
-        fortes.push('O RAP de ' + i.nome + ' subiu ' + fmtPct(i.rap24) + ' em 24h: pode ser manipulação.');
+        addForte(i, ' teve o RAP subindo ' + fmtPct(i.rap24) + ' em 24h: pode ser manipulação.');
       }
     });
     dou.forEach(function (i) {
-      if (i.hold) fortes.push(i.nome + ' está em hold e não pode ser trocado agora.');
+      if (i.hold) addForte(i, ' está em hold e não pode ser trocado agora.');
+    });
+    var fortes = listaFortes.map(function (f) {
+      return f.nome + (f.n > 1 ? ' (' + f.n + ' cópias)' : '') + f.resto;
     });
 
     // 4. Motivo extra (o mais importante que sobrar).
     var extras = [];
-    rec.forEach(function (i) {
-      if (i.value == null && !i.projected) extras.push(i.nome + " não tem value no Rolimon's; contei pelo RAP com desconto.");
-    });
     if (tipo === 'upgrade') extras.push('É um upgrade (menos itens, porém maiores): costuma exigir pagar um pouco a mais.');
     if (tipo === 'downgrade') extras.push('É um downgrade (mais itens, porém menores): costuma valer receber um pouco a mais.');
     if (proposta.robuxRecebo) extras.push('Os Robux recebidos já contam com o desconto de ' + Math.round(P.taxaRobux * 100) + '% do Roblox.');
