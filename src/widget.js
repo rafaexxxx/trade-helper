@@ -135,7 +135,18 @@ function linhaItem(pilha, i, img, op) {
     texto(meio, d.t, Font.systemFont(10), d.cor, 0.8);
   }
   s.addSpacer();
-  celula(s, i.value != null ? a.fmtNum(i.value) : '—', op.largura, Font.semiboldSystemFont(op.fonte), CORES.texto);
+  const valor = i.value != null ? a.fmtNum(i.value) : '—';
+  if (op.empilhado) {
+    // Value em cima (destaque) e "RAP x" embaixo, alinhados à direita.
+    const col = s.addStack();
+    col.layoutVertically();
+    const t = tam(op.largura, 0);
+    if (t) col.size = t;
+    celula(col, valor, op.largura, Font.semiboldSystemFont(op.fonte), CORES.texto);
+    celula(col, 'RAP ' + a.fmtNum(i.rap), op.largura, Font.systemFont(9), CORES.secundario);
+    return;
+  }
+  celula(s, valor, op.largura, Font.semiboldSystemFont(op.fonte), CORES.texto);
   if (op.rap) celula(s, a.fmtNum(i.rap), op.largura, Font.systemFont(op.fonte), CORES.secundario);
 }
 
@@ -257,7 +268,7 @@ function medio(w, r) {
       divisoria(dir);
       dir.addSpacer(5);
     }
-    linhaItem(dir, i, r.imagens[String(i.assetId)], { img: 24, fonte: 11, detalhe: false, rap: false, largura: 46 });
+    linhaItem(dir, i, r.imagens[String(i.assetId)], { img: 24, fonte: 11, detalhe: false, empilhado: true, largura: 58 });
   });
   dir.addSpacer();
 }
