@@ -45,6 +45,13 @@ module.exports = {
 
   // Diferença (%) do value ajustado considerada "justa" (amarelo).
   FAIXA_JUSTA_PCT: 3,
+  // Veredito: a partir desta diferença (%) vira "Vale muito a pena" / "Não vale de jeito nenhum".
+  VEREDITO_FORTE_PCT: 10,
+  // Diferença de demanda média entre os lados (escala 0 terrível .. 4 incrível):
+  // a partir de MOTIVO vira uma frase no veredito; a partir de REBAIXA (contra você)
+  // o veredito cai um nível.
+  DEMANDA_DIF_MOTIVO: 0.75,
+  DEMANDA_DIF_REBAIXA: 1.5,
   // Alerta quando o RAP de um item recebido sobe mais que isto (%) em 24h.
   ALERTA_RAP_24H_PCT: 15,
   // Taxa do Roblox sobre Robux recebidos numa trade (quem recebe fica com 70%).

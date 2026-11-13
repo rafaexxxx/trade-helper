@@ -51,6 +51,9 @@ function parametros(cfg) {
     semValue: cfg.PESO_SEM_VALUE,
     projetadoSemValue: cfg.PESO_PROJECTED_SEM_VALUE,
     faixa: cfg.FAIXA_JUSTA_PCT,
+    forte: cfg.VEREDITO_FORTE_PCT,
+    demMotivo: cfg.DEMANDA_DIF_MOTIVO,
+    demRebaixa: cfg.DEMANDA_DIF_REBAIXA,
     alertaRap24: cfg.ALERTA_RAP_24H_PCT,
     taxaRobux: cfg.TAXA_ROBUX,
     maxItens: cfg.MAX_ITENS_POR_LADO,
@@ -128,6 +131,11 @@ function secao(cfg, baseData, erro) {
     '<p class="aviso oculto" id="av-aviso"></p>' +
     bloco('dou', 'Dou') +
     bloco('recebo', 'Recebo') +
+    '<div id="av-veredito" class="veredito oculto">' +
+    '<b id="av-ver-titulo"></b>' +
+    '<ul id="av-ver-motivos"></ul>' +
+    '<p class="ver-nota">Segunda opinião automática, com pesos estimados (config.js). A decisão é sua.</p>' +
+    '</div>' +
     '<h2>Resumo</h2>' +
     '<p class="vazio" id="av-vazio">Monte a proposta acima para ver a comparação.</p>' +
     '<div id="av-resumo-bloco" class="oculto">' +
@@ -193,6 +201,17 @@ function css() {
 .fb-val{font-weight:600;white-space:nowrap}
 .folha .remover{color:var(--neg)}
 .diag-ponte{margin:8px 0 0}
+.veredito{margin:24px 0 0;padding:12px 14px;background:var(--cab);border-radius:10px;border-left:4px solid var(--sub)}
+.veredito[data-cor=pos]{border-left-color:var(--pos)}
+.veredito[data-cor=warn]{border-left-color:var(--warn)}
+.veredito[data-cor=neg]{border-left-color:var(--neg)}
+.veredito b{display:block;font-size:17px;font-weight:700;letter-spacing:-.01em;color:var(--fg)}
+.veredito[data-cor=pos] b{color:var(--pos)}
+.veredito[data-cor=warn] b{color:var(--warn)}
+.veredito[data-cor=neg] b{color:var(--neg)}
+.veredito ul{margin:6px 0 0;padding:0 0 0 18px;font-size:14px;color:var(--fg)}
+.veredito li{margin:4px 0}
+.ver-nota{margin:8px 0 0;font-size:11px;color:var(--sub)}
 `;
 }
 
@@ -427,6 +446,119 @@ function paginaAvaliador(D, P) {
       : '<li class="sub">Nenhum alerta.</li>';
   }
 
+  // ---------- Veredito (mensagem "vale ou não a pena") ----------
+  var NIVEIS = [
+    { titulo: 'Não vale de jeito nenhum', cor: 'neg' },
+    { titulo: 'Não vale a pena', cor: 'neg' },
+    { titulo: 'Troca justa', cor: 'warn' },
+    { titulo: 'Vale a pena', cor: 'pos' },
+    { titulo: 'Vale muito a pena', cor: 'pos' },
+  ];
+  // Demanda média de um lado, ponderada pelo valor de cada item (ignora itens sem dado).
+  function demandaMedia(itens) {
+    var soma = 0;
+    var peso = 0;
+    itens.forEach(function (i) {
+      if (i.dem >= 0) {
+        var w = Math.max(valorEfetivo(i), 1);
+        soma += i.dem * w;
+        peso += w;
+      }
+    });
+    return peso ? soma / peso : null;
+  }
+  function nomeDemanda(m) {
+    return String(P.demandaCurta[Math.round(m)] || '?').toLowerCase();
+  }
+  function veredito(dou, rec, td, tr, tipo) {
+    var temDou = td.qtd || td.robux;
+    var temRec = tr.qtd || tr.robux;
+    if (!temDou && !temRec) return null;
+    if (!temDou || !temRec) {
+      return { titulo: 'Proposta incompleta', cor: 'sub', motivos: ['Adicione itens (ou Robux) nos dois lados para avaliar.'] };
+    }
+
+    // 1. Nível pela diferença do value ajustado (Robux já com a taxa).
+    var dif = tr.ajustado - td.ajustado;
+    var temBase = td.ajustado > 0;
+    var pct = temBase ? (dif / td.ajustado) * 100 : dif > 0 ? 100 : 0;
+    var n = pct >= P.forte ? 4 : pct >= P.faixa ? 3 : pct > -P.faixa ? 2 : pct > -P.forte ? 1 : 0;
+    var difTxt = (dif > 0 ? '+' : '') + fmtNum(dif);
+    var valorTxt;
+    if (n >= 3) valorTxt = 'Você ganha cerca de ' + (temBase ? fmtPctSinal(pct) + ' ' : '') + 'em value ajustado (' + difTxt + ').';
+    else if (n === 2) valorTxt = 'Os dois lados valem quase o mesmo em value ajustado (' + difTxt + (temBase ? ', ' + fmtPctSinal(pct) : '') + ').';
+    else valorTxt = 'Você perde cerca de ' + (temBase ? fmtPct(-pct) + ' ' : '') + 'em value ajustado (' + difTxt + ').';
+
+    // 2. Demanda média dos dois lados.
+    var mD = demandaMedia(dou);
+    var mR = demandaMedia(rec);
+    var motivoDem = null;
+    if (mD != null && mR != null) {
+      var dd = mR - mD;
+      var rebaixou = false;
+      if (dd <= -P.demRebaixa && n > 0) {
+        n--;
+        rebaixou = true;
+      }
+      if (Math.abs(dd) >= P.demMotivo) {
+        var nR = nomeDemanda(mR);
+        var nD = nomeDemanda(mD);
+        var comp = nR !== nD ? ' (' + nR + ' contra ' + nD + ')' : '';
+        motivoDem = dd > 0
+          ? 'O que você recebe tem demanda maior que o que você dá' + comp + ': fica mais fácil revender.'
+          : 'O que você recebe tem demanda menor que o que você dá' + comp + ': vai ser mais difícil revender' +
+            (rebaixou ? ', por isso o veredito caiu um nível.' : '.');
+      }
+    }
+
+    // 3. Alertas fortes viram "Cuidado".
+    var fortes = [];
+    rec.forEach(function (i) {
+      if (i.projected) {
+        fortes.push(i.nome + ' é projected' + (i.value == null
+          ? ' e não tem value: o RAP está inflado, então o ganho pode não ser real.'
+          : ': o RAP está inflado, confie só no value.'));
+      }
+      if (i.dem === 0) fortes.push(i.nome + ' tem demanda terrível: pode ser muito difícil revender.');
+      if (i.rap24 != null && i.rap24 >= P.alertaRap24) {
+        fortes.push('O RAP de ' + i.nome + ' subiu ' + fmtPct(i.rap24) + ' em 24h: pode ser manipulação.');
+      }
+    });
+    dou.forEach(function (i) {
+      if (i.hold) fortes.push(i.nome + ' está em hold e não pode ser trocado agora.');
+    });
+
+    // 4. Motivo extra (o mais importante que sobrar).
+    var extras = [];
+    rec.forEach(function (i) {
+      if (i.value == null && !i.projected) extras.push(i.nome + " não tem value no Rolimon's; contei pelo RAP com desconto.");
+    });
+    if (tipo === 'upgrade') extras.push('É um upgrade (menos itens, porém maiores): costuma exigir pagar um pouco a mais.');
+    if (tipo === 'downgrade') extras.push('É um downgrade (mais itens, porém menores): costuma valer receber um pouco a mais.');
+    if (proposta.robuxRecebo) extras.push('Os Robux recebidos já contam com o desconto de ' + Math.round(P.taxaRobux * 100) + '% do Roblox.');
+    if (dou.some(function (i) { return !i.doInventario; })) extras.push('Proposta simulada: há item no lado Dou que não está no seu inventário.');
+
+    var motivos;
+    if (fortes.length) {
+      motivos = [fortes[0], valorTxt + ' Sem esse alerta, o veredito seria "' + NIVEIS[n].titulo + '".'];
+      if (fortes[1]) motivos.push(fortes[1]);
+      else if (motivoDem) motivos.push(motivoDem);
+      return { titulo: 'Cuidado', cor: 'neg', motivos: motivos };
+    }
+    motivos = [valorTxt];
+    if (motivoDem) motivos.push(motivoDem);
+    for (var k = 0; k < extras.length && motivos.length < 3; k++) motivos.push(extras[k]);
+    return { titulo: NIVEIS[n].titulo, cor: NIVEIS[n].cor, motivos: motivos };
+  }
+  function desenharVeredito(v) {
+    var el = $('av-veredito');
+    el.classList.toggle('oculto', !v);
+    if (!v) return;
+    el.setAttribute('data-cor', v.cor);
+    $('av-ver-titulo').textContent = v.titulo;
+    $('av-ver-motivos').innerHTML = v.motivos.map(function (m) { return '<li>' + esc(m) + '</li>'; }).join('');
+  }
+
   function atualizar() {
     var dou = proposta.dou.map(resolver);
     var rec = proposta.recebo.map(resolver);
@@ -435,6 +567,7 @@ function paginaAvaliador(D, P) {
     var td = somar(dou, proposta.robuxDou, false);
     var tr = somar(rec, proposta.robuxRecebo, true);
     var tipo = tipoTroca(td, tr);
+    desenharVeredito(veredito(dou, rec, td, tr, tipo));
     desenharResumo(td, tr, tipo);
     desenharAlertas(montarAlertas(dou, rec, tipo));
     salvar();

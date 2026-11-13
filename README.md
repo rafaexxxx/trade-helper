@@ -41,7 +41,7 @@ Pronto! Das próximas vezes é só abrir o script. Ele confere sozinho se há ve
 1. No painel, toque em **Avaliar trade** no topo.
 2. Em **Dou**, toque em **+ Adicionar item**: escolha no **Meu inventário** ou busque no **Catálogo** (para simular). Em **Recebo**, busque pelo nome ou sigla.
 3. Se houver Robux, digite nos campos **Robux** de cada lado (no máximo 4 itens por lado, como no Roblox).
-4. Veja o **Resumo** (Dou | Recebo | Diferença) e os **Alertas**. Tocar num item da proposta permite removê-lo ou abri-lo no Rolimon's.
+4. Leia o **veredito** (cartão acima do Resumo) e confira o **Resumo** (Dou | Recebo | Diferença) e os **Alertas**. Tocar num item da proposta permite removê-lo ou abri-lo no Rolimon's.
 
 Como a conta é feita:
 
@@ -51,6 +51,20 @@ Como a conta é feita:
 - **Cores da diferença**: verde = ganho; amarelo = faixa justa (±3%); vermelho = perda.
 - **24h**: variação do RAP desde ~24h atrás. Para isso, painel e widget guardam 1 retrato compacto do catálogo por hora (por 30h). Aparece depois de umas 24h de uso.
 - A última proposta fica salva no iPhone. O botão **Limpar proposta** pede dois toques.
+
+### Veredito
+
+| Diferença do value ajustado | Mensagem |
+|---|---|
+| ≥ +10% | **Vale muito a pena** |
+| +3% a +10% | **Vale a pena** |
+| −3% a +3% | **Troca justa** |
+| −10% a −3% | **Não vale a pena** |
+| ≤ −10% | **Não vale de jeito nenhum** |
+
+- **Demanda**: compara a demanda média dos dois lados, ponderada pelo valor dos itens. Uma diferença de 0,75 nível vira motivo; se o que você recebe tiver demanda pelo menos 1,5 nível **menor**, o veredito cai um nível.
+- **Cuidado** substitui o veredito quando um item recebido é projected, tem demanda terrível ou teve o RAP disparando em 24h, ou quando um item seu está em hold. O cartão também diz qual seria o veredito sem o alerta.
+- O cartão mostra até 3 motivos. É uma segunda opinião automática: a decisão é sua.
 
 > Os pesos são estimativas para ajudar a decidir, não uma regra do mercado. Ajuste-os em `src/config.js`.
 
@@ -73,6 +87,9 @@ Ficam em [`src/config.js`](src/config.js):
 | `PESO_SEM_VALUE` | 0,95 | Multiplicador do RAP quando o item não tem value |
 | `PESO_PROJECTED_SEM_VALUE` | 0,5 | Fração do RAP usada para item projected sem value |
 | `FAIXA_JUSTA_PCT` | 3 | Diferença (%) considerada justa (amarelo) |
+| `VEREDITO_FORTE_PCT` | 10 | A partir daqui: "Vale muito a pena" / "Não vale de jeito nenhum" |
+| `DEMANDA_DIF_MOTIVO` | 0,75 | Diferença de demanda média que vira motivo no veredito |
+| `DEMANDA_DIF_REBAIXA` | 1,5 | Diferença de demanda (contra você) que rebaixa o veredito um nível |
 | `ALERTA_RAP_24H_PCT` | 15 | Alerta se o RAP de um item recebido subir mais que isso em 24h |
 | `TAXA_ROBUX` | 0,3 | Taxa do Roblox sobre Robux recebidos |
 | `MAX_ITENS_POR_LADO` | 4 | Itens por lado na proposta |
