@@ -89,8 +89,8 @@ O que entra na lista:
 | **Any** (tag) | Ele aceita qualquer item | Uma combinação com o **mesmo número de itens**, diferença de **±3%** |
 
 - Sempre ficam de fora anúncios que oferecem item **projected**, com **demanda terrível** ou com o **RAP subindo mais de 15% em 24h**, além de itens fora do catálogo do Rolimon's.
-- As contas usam o **value base** (a mesma regra do avaliador: value, ou RAP para item sem value), e os Robux oferecidos entram com a taxa de 30%. Cada tabela tem a linha **Total** (value e RAP), e o rodapé mostra o veredito e "Value recebo × dou (+%) · RAP +%".
-- Quando a maior parte do que você recebe é de itens sem dados de demanda, o cartão mostra um aviso em amarelo e o veredito cai um nível.
+- As contas usam o **value base** (a mesma regra do avaliador: value, ou RAP para item sem value), e os Robux oferecidos entram com a taxa de 30%. Cartão minimalista: Recebo e Dou separados por uma divisória, uma coluna **Valor** com a fonte ao lado ("value" ou "RAP"), só a demanda embaixo do nome, linha **Total** e, no rodapé, só a **%** em destaque, na cor do veredito. O veredito por extenso aparece ao tocar no cartão.
+- Quando a maior parte do que você recebe é de itens sem dados de demanda, o veredito cai um nível (a cor da % muda).
 - As outras tags (demand, rap, adds...) não geram sugestões. A contagem de tags vistas fica no **Diagnóstico**.
 - Os anúncios só são buscados com o painel aberto: o widget não muda.
 

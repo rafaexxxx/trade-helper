@@ -212,19 +212,17 @@ function css() {
 .an-topo b{font-weight:600;overflow-wrap:anywhere}
 .an-topo .sub{font-size:12px;white-space:nowrap}
 .an-rotulo{margin:2px 0 0;font-size:11px;font-weight:600;color:var(--rotulo);text-transform:uppercase;letter-spacing:.04em}
-.an-t{margin:8px 0 0}
+.an-t{margin:12px 0 0}
 .an-t th{position:static;background:none;padding:3px 4px}
-.an-t td{padding:5px 4px}
+.an-t td{padding:6px 4px}
+.an-t tfoot td{padding:8px 4px 2px}
 .an-t .thumb{width:26px;height:26px}
-.an-ver{display:flex;justify-content:space-between;align-items:baseline;gap:4px 10px;flex-wrap:wrap;margin:10px 0 0}
-.an-ver b{font-size:15px;font-weight:700}
-.an-ver[data-cor=pos] b{color:var(--pos)}
-.an-ver[data-cor=warn] b{color:var(--warn)}
-.an-ver[data-cor=neg] b{color:var(--neg)}
-.an-ver span{font-size:12px;color:var(--sub)}
-.an-nota{margin:4px 0 0;font-size:12px;color:var(--sub)}
-.an-nota.warn{color:var(--warn)}
-.an-t tfoot td{padding:6px 4px}
+.an-fonte{display:inline-block;width:34px;margin-left:5px;text-align:left;font-size:11px;font-weight:500;color:var(--sub)}
+.an-div{height:3px;margin:16px -12px 4px;background:var(--av-divisor,var(--linha))}
+.an-pct{margin:14px 0 0;padding:10px 0 0;border-top:1px solid var(--linha);text-align:center;font-size:30px;font-weight:700;letter-spacing:-.02em;color:var(--fg)}
+.an-pct[data-cor=pos]{color:var(--pos)}
+.an-pct[data-cor=warn]{color:var(--warn)}
+.an-pct[data-cor=neg]{color:var(--neg)}
 .an-mais{margin:10px 0 0;font-size:12px;color:var(--sub)}
 #diag-anuncios{white-space:pre-wrap;overflow-wrap:anywhere}
 `;
@@ -451,57 +449,51 @@ function paginaAnuncios(D, P, PA) {
   function corDem(d) {
     return d === 0 ? 'neg' : d === 1 ? 'warn' : d >= 3 ? 'pos' : '';
   }
-  function corTend(t) {
-    return t === 0 ? 'neg' : t === 3 ? 'pos' : t === 1 || t === 4 ? 'warn' : '';
-  }
   function miniatura(id) {
     return THUMBS[id] ? '<img class="thumb" src="' + esc(THUMBS[id]) + '" alt="">' : '<span class="thumb"></span>';
   }
+  // Embaixo do nome: só a demanda.
   function detalhes(i) {
-    var d = [];
-    if (i.serial) d.push('#' + esc(i.serial));
-    d.push('<span class="' + corDem(i.dem) + '">' + esc(P.demandaCurta[i.dem] || '?') + '</span>');
-    if (i.tend >= 0) d.push('<span class="' + corTend(i.tend) + '">' + esc(P.tendenciaCurta[i.tend]) + '</span>');
-    if (i.hyped) d.push('hyped');
-    if (i.rare) d.push('rare');
-    if (i.value == null) d.push('sem value');
-    return d.join(' · ');
+    if (!(i.dem >= 0)) return '<span class="sub">Sem dados</span>';
+    return '<span class="' + corDem(i.dem) + '">' + esc(P.demandaCurta[i.dem]) + '</span>';
+  }
+  // Valor com a fonte ao lado ("value" ou "RAP"); a fonte tem largura fixa
+  // para os números ficarem alinhados.
+  function celValor(n, fonte) {
+    return '<td class="num">' + fmtNum(n) + '<span class="an-fonte">' + fonte + '</span></td>';
   }
   function linhaItem(i) {
     return (
       '<tr><td class="item"><div class="cel">' + miniatura(i.id) + '<div><span class="nome">' + esc(i.nome) + '</span>' +
       '<span class="det">' + detalhes(i) + '</span></div></div></td>' +
-      '<td class="num">' + (i.value != null ? fmtNum(i.value) : '<span class="sub">—</span>') + '</td>' +
-      '<td class="num">' + fmtNum(i.rap) + '</td></tr>'
+      celValor(valorEfetivo(i), i.value != null ? 'value' : 'RAP') + '</tr>'
     );
   }
-  // Tabela de um lado com a linha Total (value base e RAP, Robux já incluídos).
+  // Um lado (Recebo ou Dou) com a linha Total (value base, Robux já incluídos).
   function tabelaLado(rotulo, itens, robux, recebe, t) {
-    var h = '<table class="an-t"><thead><tr><th>' + rotulo + '</th><th class="num">Value</th><th class="num">RAP</th></tr></thead><tbody>';
+    var h = '<table class="an-t"><thead><tr><th>' + rotulo + '</th><th class="num">Valor</th></tr></thead><tbody>';
     h += itens.map(linhaItem).join('');
     if (robux) {
-      h += '<tr><td class="item" colspan="3">+ ' + fmtNum(robux) + ' Robux' +
-        (recebe ? ' <span class="sub">(' + fmtNum(Math.floor(robux * (1 - P.taxaRobux))) + ' para você)</span>' : '') + '</td></tr>';
+      var liquido = recebe ? Math.floor(robux * (1 - P.taxaRobux)) : robux;
+      h += '<tr><td class="item">+ ' + fmtNum(robux) + ' Robux</td>' + celValor(liquido, recebe ? 'líq.' : '') + '</tr>';
     }
-    h += '</tbody><tfoot><tr><td>Total</td><td class="num">' + fmtNum(t.value) + '</td><td class="num">' + fmtNum(t.rap) + '</td></tr></tfoot>';
+    h += '</tbody><tfoot><tr><td>Total</td>' + celValor(t.value, '') + '</tr></tfoot>';
     return h + '</table>';
   }
+  // Cartão minimalista: topo, Recebo, divisória, Dou e só a % (na cor do veredito).
   function cartao(r, k) {
     var ad = r.ad;
     var rotulo = r.modo === 'itens'
       ? 'Pede seus itens' + (r.tipo ? ' · ' + r.tipo + ' para você' : '')
       : 'Pede ' + r.tag;
-    var pctRap = r.td.rap > 0 ? ((r.tr.rap - r.td.rap) / r.td.rap) * 100 : null;
     return (
       '<div class="an-card" data-k="' + k + '" data-cor="' + r.v.cor + '">' +
       '<div class="an-topo"><b>' + esc(ad[3] || 'Jogador ' + ad[2]) + '</b><span class="sub">' + haQuanto(ad[1]) + '</span></div>' +
       '<p class="an-rotulo">' + esc(rotulo) + '</p>' +
       tabelaLado('Recebo', r.rec, ad[5], true, r.tr) +
+      '<div class="an-div"></div>' +
       tabelaLado(r.modo === 'tag' ? 'Dou (sugestão)' : 'Dou', r.dou, 0, false, r.td) +
-      '<div class="an-ver" data-cor="' + r.v.cor + '"><b>' + esc(r.v.titulo) + '</b>' +
-      '<span>Value ' + fmtNum(r.tr.value) + ' × ' + fmtNum(r.td.value) + ' (' + pctTxt(r.pct) + ') · RAP ' + pctTxt(pctRap) + '</span></div>' +
-      (r.v.semDemanda ? '<p class="an-nota warn">Você recebe itens sem dados de demanda: podem ser difíceis de revender (o veredito caiu um nível).</p>' : '') +
-      (r.nota ? '<p class="an-nota">' + esc(r.nota) + '</p>' : '') +
+      '<div class="an-pct" data-cor="' + r.v.cor + '">' + pctTxt(r.pct) + '</div>' +
       '</div>'
     );
   }
