@@ -125,7 +125,7 @@ function capitulo1(cfg) {
     <li><b>Roblox Plus:</b> desde 2026, os <b>dois</b> jogadores precisam de Roblox Plus (ou do Premium antigo) e da verificação de idade para fazer trade.</li>
     <li><b>Só itens feitos pelo Roblox:</b> Limited e Limited U criados pelo próprio Roblox entram na trade. Os <b>UGC</b> (feitos por criadores da comunidade) só podem ser <b>revendidos</b> no Marketplace, não trocados.</li>
     <li><b>Até ${cfg.MAX_ITENS_POR_LADO} itens por lado</b>, mais Robux (no máximo metade do valor dos itens oferecidos).</li>
-    <li><b>Hold:</b> o item que você recebe numa trade fica travado por cerca de 2 dias; um item comprado de outro jogador, por até uns 7 dias.</li>
+    <li><b>Hold:</b> o item que você recebe numa <b>trade</b> fica travado por <b>2 dias</b>; um item que você <b>compra no catálogo do Roblox</b> fica travado por <b>7 dias</b>.</li>
     <li><b>Validade:</b> uma proposta enviada expira em cerca de 4 dias se ninguém responder.</li>
   </ul>
   <div class="aj-dica"><b>Filtro de qualidade.</b> Nas configurações do Roblox (Privacidade → Trading) dá para esconder automaticamente as propostas muito desiguais. Lowball "quase justo" ainda passa, então confira sempre.</div>
@@ -330,7 +330,7 @@ function capitulo3(cfg) {
     <div><dt><span class="tag neg">Projected</span></dt><dd>O RAP foi inflado de propósito (gente vendendo caro entre si). Nunca aceite pelo RAP. Anúncios que oferecem item projected nem aparecem.</dd></div>
     <div><dt><span class="tag warn">Hyped</span></dt><dd>Subida passageira por moda. O preço pode cair quando a moda passar.</dd></div>
     <div><dt><span class="tag neg">RAP disparando</span></dt><dd>RAP subindo mais de ${pct(cfg.ALERTA_RAP_24H_PCT)} em 24h pode ser manipulação. No Avaliar, vira "Cuidado".</dd></div>
-    <div><dt><span class="tag warn">Hold</span></dt><dd>Item recém-recebido fica travado por alguns dias e não pode ser trocado. Seus itens em hold não entram nas sugestões dos Anúncios.</dd></div>
+    <div><dt><span class="tag warn">Hold</span></dt><dd>Item recém-chegado fica travado e não pode ser trocado: 2 dias depois de uma trade, 7 dias depois de comprar no catálogo do Roblox. Seus itens em hold não entram nas sugestões dos Anúncios.</dd></div>
     <div><dt><span class="tag sub">Sem value</span></dt><dd>O app usa o RAP no lugar, que é uma conta menos segura.</dd></div>
     <div><dt><span class="tag sub">Rare</span></dt><dd>Para o Rolimon's, item com até 100 cópias existentes. Raridade sozinha não garante valor: sem procura, um item raro também fica parado.</dd></div>
   </dl>
@@ -462,7 +462,7 @@ function glossario() {
     ['Any', 'Tag de anúncio: o dono aceita qualquer coisa.'],
     ['Demanda', 'O quanto as pessoas procuram o item, de Terrível a Incrível.'],
     ['Downgrade', 'Você dá 1 item grande e recebe vários menores. O outro costuma pagar a mais.'],
-    ['Hold', 'Item recém-recebido, travado por alguns dias. Não pode ser trocado.'],
+    ['Hold', 'Item travado, que não pode ser trocado: 2 dias depois de uma trade, 7 dias depois de comprar no catálogo do Roblox.'],
     ['Hyped', 'Item na moda: o preço pode cair quando a moda passar.'],
     ['Limited', 'Item que saiu da loja do Roblox e só passa de mão em mão.'],
     ['Overpay (OP)', 'O extra que um lado paga, em value.'],
@@ -521,7 +521,7 @@ function perguntas(cfg) {
     ['O anúncio diz "downgrade", mas o app mostra "seu upgrade". Está errado?', 'Não. A tag é do dono do anúncio; o app mostra a trade do seu lado.', 'aj-tags', 'Ver a explicação'],
     ['Por que o app ignora o RAP no veredito?', 'Porque o RAP chega atrasado e pode ser manipulado. Ele aparece como informação; quem decide é o value.', 'aj-cap1', 'Ver no capítulo 1'],
     ['Recebi 1.000 Robux, mas a conta mostra ' + num(Math.floor(1000 * (1 - cfg.TAXA_ROBUX))) + '. Por quê?', 'O Roblox fica com ' + taxa + '% dos Robux de quem recebe. O app já mostra o que sobra.', 'aj-robux', 'Ver no capítulo 1'],
-    ['Por que não consigo colocar um item meu na trade?', 'Ele deve estar em hold (item recém-recebido fica travado por alguns dias) ou é um UGC, que só pode ser revendido, não trocado.', 'aj-regras', 'Ver as regras'],
+    ['Por que não consigo colocar um item meu na trade?', 'Ele deve estar em hold (2 dias depois de uma trade, 7 dias depois de comprar no catálogo) ou é um UGC, que só pode ser revendido, não trocado.', 'aj-regras', 'Ver as regras'],
     ['O que quer dizer "W or L?"', 'É "essa trade é boa?". W = ganhou, F = justa, L = perdeu. O app mostra a letra ao lado do veredito.', 'aj-girias', 'Ver as gírias'],
     ['Pediram para eu mandar primeiro ou entrar num site para "verificar". E agora?', 'Não faça. Isso é golpe. Trade só pela janela oficial do Roblox, e login só no roblox.com.', 'aj-cap5', 'Ver os golpes comuns'],
     ['Item raro sempre vale a pena?', 'Não. Raridade sem procura também trava. Olhe a demanda e se as pessoas trocam esse item.', 'aj-liquidez', 'Ver o que gira e o que trava'],
