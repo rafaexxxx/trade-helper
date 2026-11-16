@@ -428,7 +428,7 @@ function capitulo4(cfg) {
   <p>Menu ⋯ &gt; Temas. O toque aplica na hora e fica salvo neste iPhone. Sem tema escolhido, o painel segue o claro ou escuro do iPhone.</p>
 
   <h3 id="aj-widget">Widget</h3>
-  <p>Há os tamanhos pequeno, médio e grande, com o value total e os seus maiores itens. O widget pede para atualizar a cada ${cfg.WIDGET_ATUALIZAR_MIN} min, mas quem decide a hora é o iOS. Ele usa sempre o tema OLED (fundo preto), seja qual for o tema do painel.</p>
+  <p>Há os tamanhos pequeno, médio e grande, com o value total e os seus maiores itens. O widget pede para atualizar a cada ${cfg.WIDGET_ATUALIZAR_MIN} min, mas quem decide a hora é o iOS. Ele usa sempre o tema OLED (fundo preto), seja qual for o tema do painel. Item em hold aparece com a etiqueta amarela <b>HOLD</b>, e a contagem mostra quantos estão travados (ex.: "3 hold"). O widget não sabe quando o hold acaba, só se o item está travado.</p>
 
   <h3 id="aj-diag">Diagnóstico</h3>
   <p>No fim do painel. Se algo der errado, abra, copie o texto e mande para quem cuida do app.</p>

@@ -166,6 +166,8 @@ function linhaItemEmpilhada(pilha, i, img, op) {
   const l2 = dir.addStack();
   l2.layoutHorizontally();
   l2.spacing = 4;
+  // v6.2.3: item em hold ganha a etiqueta amarela embaixo do nome.
+  if (i.hold) texto(l2, 'HOLD', Font.boldSystemFont(9), CORES.warn, 0.8);
   l2.addSpacer();
   texto(l2, 'RAP ' + a.fmtNum(i.rap), Font.mediumSystemFont(9), CORES.rap, 0.8);
   if (vr != null) texto(l2, a.fmtPctSinal(vr), Font.semiboldSystemFont(9), corVar(vr), 0.8);
@@ -196,6 +198,8 @@ function linhaItem(pilha, i, img, op) {
     const linhaDet = meio.addStack();
     linhaDet.layoutHorizontally();
     linhaDet.spacing = 4;
+    // v6.2.3: item em hold ganha a etiqueta amarela antes dos detalhes.
+    if (i.hold) texto(linhaDet, 'HOLD', Font.boldSystemFont(10), CORES.warn, 0.8);
     texto(linhaDet, d.t, Font.systemFont(10), d.cor, 0.8);
     if (vr != null) texto(linhaDet, 'RAP ' + a.fmtPctSinal(vr), Font.semiboldSystemFont(10), corVar(vr), 0.8);
   }
@@ -220,9 +224,16 @@ function cabecalho(pilha, r, tamanho) {
   texto(s, 'atualizado ' + hora(r.agora), Font.systemFont(10), CORES.apagado);
 }
 
+// v6.2.3: quantas cópias estão em hold (não podem ser trocadas agora).
+function qtdHold(r) {
+  return r.itens.filter((i) => i.hold).length;
+}
+
+// "12 itens · 3 hold · 1 alerta". O hold só aparece quando há algum.
 function rodapeContagem(r) {
   const n = r.riscos.length;
-  return r.totais.qtd + ' itens · ' + n + (n === 1 ? ' alerta' : ' alertas');
+  const h = qtdHold(r);
+  return r.totais.qtd + ' itens · ' + (h ? h + ' hold · ' : '') + n + (n === 1 ? ' alerta' : ' alertas');
 }
 
 // ---------- Grande ----------
@@ -243,7 +254,8 @@ function grande(w, r, cfg) {
 
   const cab = w.addStack();
   cab.layoutHorizontally();
-  rotulo(cab, 'Item · ' + r.totais.qtd + ' no total');
+  const h = qtdHold(r);
+  rotulo(cab, 'Item · ' + r.totais.qtd + ' no total' + (h ? ' · ' + h + ' em hold' : ''));
   cab.addSpacer();
   rotulo(cab, 'Value / RAP');
   w.addSpacer(5);
@@ -364,7 +376,7 @@ function bloqueio(w, r, familia) {
   }
   texto(w, 'Value ' + a.fmtNum(r.totais.value) + pv, Font.semiboldSystemFont(14), Color.white());
   texto(w, 'RAP ' + a.fmtNum(r.totais.rap) + pr, Font.systemFont(12), Color.white());
-  texto(w, r.totais.qtd + ' itens · ' + r.riscos.length + ' alertas · ' + hora(r.agora), Font.systemFont(11), Color.white());
+  texto(w, rodapeContagem(r) + ' · ' + hora(r.agora), Font.systemFont(11), Color.white());
 }
 
 function montar(r, cfg) {
