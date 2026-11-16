@@ -38,11 +38,29 @@ function pct(antes, depois) {
   return antes ? ((depois - antes) / antes) * 100 : null;
 }
 
+// Período real da comparação (a base é o retrato mais perto de 24h atrás):
+// "em 24h" quase sempre; "em 6h" no começo do histórico; "desde 13/11 14:05"
+// quando o painel ficou dias sem ser aberto.
+function periodoReal(base, agora) {
+  if (!base) return null;
+  const h = (agora - base.data) / 3600000;
+  if (h >= 20 && h <= 30) return { curto: 'em 24h', longo: 'Em 24 horas' };
+  if (h < 20) {
+    const n = Math.max(1, Math.round(h));
+    return { curto: 'em ' + n + 'h', longo: 'Em ' + n + (n === 1 ? ' hora' : ' horas') };
+  }
+  const q = quando(base.data, agora);
+  return { curto: 'desde ' + q, longo: 'Desde ' + q };
+}
+
 // Alertas de encontrarRiscos por uaid, do mais grave para o mais leve.
-function alertasPorUaid(riscos) {
+// As quedas de value/RAP ganham o período ("value caiu 6,3% em 24h").
+function alertasPorUaid(riscos, per) {
   const m = {};
   for (const r of riscos) {
-    m[r.item.uaid] = r.motivos.slice().sort((x, y) => PESO_GRAVIDADE[y.grav] - PESO_GRAVIDADE[x.grav]);
+    m[r.item.uaid] = r.motivos
+      .map((x) => Object.assign({}, x, { texto: x.texto + (x.queda && per ? ' ' + per.curto : '') }))
+      .sort((x, y) => PESO_GRAVIDADE[y.grav] - PESO_GRAVIDADE[x.grav]);
   }
   return m;
 }
@@ -55,7 +73,7 @@ function etiqueta(motivos) {
   return '<span class="tag ' + COR_GRAVIDADE[pior.grav] + '">' + esc(maiuscula(pior.texto)) + mais + '</span>';
 }
 
-// Variação % do value e do RAP do item contra o retrato base do período.
+// Variação % do value e do RAP do item contra o retrato base (24h).
 function variacaoItem(i, base) {
   const p = base && base.itens ? base.itens[i.uaid] : null;
   if (!p) return null;
@@ -83,16 +101,15 @@ function detalhes(i) {
   return d.join(' · ');
 }
 
-// Uma linha da lista. "motivos" são os alertas do item; "varU"/"varD" as variações
-// contra a última consulta e contra 24h (as setas seguem o seletor de período).
-function linhaItem(i, miniatura, motivos, varU, varD, lim) {
+// Uma linha da lista. "motivos" são os alertas do item; "vari" a variação em 24h.
+function linhaItem(i, miniatura, motivos, vari, lim) {
   const det = detalhes(i);
   const tag = etiqueta(motivos);
   const img = miniatura
     ? '<img class="thumb" src="' + esc(miniatura) + '" alt="">'
     : '<span class="thumb"></span>';
-  const setaV = i.value != null ? porPeriodo(seta(varU && varU.v, lim), seta(varD && varD.v, lim)) : '';
-  const setaR = porPeriodo(seta(varU && varU.r, lim), seta(varD && varD.r, lim));
+  const setaV = i.value != null ? seta(vari && vari.v, lim) : '';
+  const setaR = seta(vari && vari.r, lim);
   return (
     '<div class="item" data-uaid="' + esc(i.uaid) + '" data-asset="' + esc(i.assetId) + '" data-titulo="' + esc(i.nome) +
     '" data-nome="' + esc((i.nome + ' ' + i.sigla).toLowerCase()) +
@@ -108,28 +125,26 @@ function linhaItem(i, miniatura, motivos, varU, varD, lim) {
   );
 }
 
-// Dados do menu de cada item: alertas [texto, cor] e mudanças por período [texto, cor].
-function dadosDoMenu(alertas, comparacoes) {
+// Texto de uma mudança no menu: "Value subiu 6,8% (25.749 → 27.500)".
+function textoMudanca(y) {
+  if (y.campo === 'value' || y.campo === 'rap') {
+    return (y.campo === 'value' ? 'Value ' : 'RAP ') + (y.pct > 0 ? 'subiu ' : 'caiu ') + a.fmtPct(Math.abs(y.pct)) +
+      ' (' + a.fmtNum(y.antes) + ' → ' + a.fmtNum(y.depois) + ')';
+  }
+  return y.texto;
+}
+
+// Dados do menu de cada item: a = alertas [texto, cor]; m = mudanças em 24h [texto, cor].
+function dadosDoMenu(alertas, c) {
   const m = {};
-  const pegar = (uaid) => (m[uaid] = m[uaid] || { a: [], u: [], d: [] });
+  const pegar = (uaid) => (m[uaid] = m[uaid] || { a: [], m: [] });
   for (const uaid of Object.keys(alertas)) {
     pegar(uaid).a = alertas[uaid].map((x) => [maiuscula(x.texto), COR_GRAVIDADE[x.grav]]);
   }
-  const porPer = { u: comparacoes.ultima, d: comparacoes.dia };
-  for (const k of Object.keys(porPer)) {
-    for (const x of porPer[k].mudancas || []) {
-      pegar(x.item.uaid)[k] = x.mudancas.map((y) => [y.texto, COR_DIRECAO[y.dir]]);
-    }
+  for (const x of c.mudancas || []) {
+    pegar(x.item.uaid).m = x.mudancas.map((y) => [textoMudanca(y), COR_DIRECAO[y.dir]]);
   }
   return m;
-}
-
-// Bloco que só aparece quando o período correspondente está selecionado.
-function porPeriodo(conteudoUltima, conteudoDia) {
-  return (
-    '<span data-periodo="ultima">' + conteudoUltima + '</span>' +
-    '<span data-periodo="dia" class="oculto">' + conteudoDia + '</span>'
-  );
 }
 
 // Hora curta ("13:35"); com a data na frente quando não for o mesmo dia.
@@ -140,11 +155,11 @@ function quando(ms, agora) {
   return mesmoDia ? a.fmtData(ms).slice(6) : a.fmtData(ms);
 }
 
-// Variação de um total na faixa: "▲ 2,1%" (o "desde" fica no topo da página).
-function varTotal(v, semBase) {
-  if (!v || v.pct == null) return '<span class="f-var vazio">' + semBase + '</span>';
+// Variação de um total na faixa: "▲ 2,1% em 24h".
+function varTotal(v, per) {
+  if (!per || !v || v.pct == null) return '<span class="f-var vazio">—</span>';
   const s = v.pct > 0 ? '▲ ' : v.pct < 0 ? '▼ ' : '';
-  return '<span class="f-var">' + s + a.fmtPct(Math.abs(v.pct)) + '</span>';
+  return '<span class="f-var">' + s + a.fmtPct(Math.abs(v.pct)) + ' ' + esc(per.curto) + '</span>';
 }
 
 // Paleta v4 (aprovada no protótipo L). Os nomes antigos (--cab, --linha, --link,
@@ -214,9 +229,6 @@ h1{margin:0;font-size:30px;font-weight:700;line-height:1.1;letter-spacing:-.02em
 .f-var{font-size:13px;font-weight:600;opacity:.92}
 .f-var.vazio{font-weight:500;opacity:.7}
 .f-pe{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding-top:10px;border-top:1px solid rgba(255,255,255,.2)}
-.seg.claro{background:rgba(255,255,255,.14);padding:2px;border-radius:10px}
-.seg.claro button{flex:none;padding:5px 12px;font-size:13px;color:rgba(255,255,255,.85);border-radius:8px}
-.seg.claro button.on{background:#fff;color:#173b82;box-shadow:none}
 .f-dir{display:flex;align-items:center;gap:8px}
 .f-info{font-size:13px;opacity:.85}
 .f-alerta{flex:none;width:18px;height:18px;padding:0;border:0;border-radius:50%;background:rgba(255,255,255,.16);color:#f5c98a;font-size:11px;font-weight:700;line-height:18px;text-align:center}
@@ -295,12 +307,10 @@ footer{color:var(--sub);font-size:13px;text-align:center}
 
 function gerar(r, cfg) {
   const t = r.totais;
-  const u = r.comparacoes.ultima;
+  // v5.1: o Inventário compara sempre com 24h atrás (sem seletor de período).
   const d = r.comparacoes.dia;
-  // Topo compacto: "Atualizado 13:35 · desde 12:10" (o "desde" segue o seletor de período).
-  const desde = (c, sem) => (c.base ? 'desde ' + quando(c.base.data, r.agora) : sem);
-  const meta = 'Atualizado ' + quando(r.agora, r.agora) + ' · ' +
-    porPeriodo(desde(u, 'primeira consulta'), desde(d, '24h em formação'));
+  const per = periodoReal(d.base, r.agora);
+  const meta = 'Atualizado ' + quando(r.agora, r.agora);
 
   // Avisos gerais (cache, fonte que não respondeu...): "!" discreto na faixa; o toque mostra o texto.
   const temAvisos = r.avisos.length > 0;
@@ -310,13 +320,13 @@ function gerar(r, cfg) {
   const pe = t.qtd + (t.qtd === 1 ? ' item' : ' itens') + (emHold ? ' · ' + emHold + ' em hold' : '');
 
   const lim = cfg.LIMITE_MUDANCA_PCT;
-  const alertas = alertasPorUaid(r.riscos);
+  const alertas = alertasPorUaid(r.riscos, per);
   const comAlerta = Object.keys(alertas).length;
   const linhas = r.itens
-    .map((i) => linhaItem(i, r.miniaturas[String(i.assetId)], alertas[i.uaid], variacaoItem(i, u.base), variacaoItem(i, d.base), lim))
+    .map((i) => linhaItem(i, r.miniaturas[String(i.assetId)], alertas[i.uaid], variacaoItem(i, d.base), lim))
     .join('');
-  const menu = dadosDoMenu(alertas, r.comparacoes);
-  const bases = { ultima: u.base ? quando(u.base.data, r.agora) : null, dia: d.base ? quando(d.base.data, r.agora) : null };
+  const menu = dadosDoMenu(alertas, d);
+  const tituloMud = per ? per.longo : 'Mudanças';
 
   return `<!doctype html>
 <html lang="pt-BR"><head>
@@ -347,14 +357,11 @@ ${anuncios.css()}
 <div id="aba-inv" class="aba">
 <div class="faixa">
   <div class="f-tot">
-    <div class="f-col"><span class="f-rot">Value</span><span class="f-num">${a.fmtNum(t.value)}</span>${porPeriodo(varTotal(u.var && u.var.value, 'primeira consulta'), varTotal(d.var && d.var.value, '24h em formação'))}</div>
-    <div class="f-col"><span class="f-rot">RAP</span><span class="f-num">${a.fmtNum(t.rap)}</span>${porPeriodo(varTotal(u.var && u.var.rap, 'primeira consulta'), varTotal(d.var && d.var.rap, '24h em formação'))}</div>
+    <div class="f-col"><span class="f-rot">Value</span><span class="f-num">${a.fmtNum(t.value)}</span>${varTotal(d.var && d.var.value, per)}</div>
+    <div class="f-col"><span class="f-rot">RAP</span><span class="f-num">${a.fmtNum(t.rap)}</span>${varTotal(d.var && d.var.rap, per)}</div>
   </div>
   <div class="f-pe">
-    <div class="seg claro" id="seg-periodo">
-      <button data-p="ultima" class="on">Última consulta</button>
-      <button data-p="dia">24h</button>
-    </div>
+    <span class="f-info">${per ? 'Variação ' + esc(per.curto) : 'Histórico de 24h em formação'}</span>
     <span class="f-dir"><span class="f-info">${pe}</span>${temAvisos ? '<button class="f-alerta" id="f-alerta" aria-expanded="false" aria-controls="f-aviso" aria-label="Ver avisos">!</button>' : ''}</span>
   </div>
   ${temAvisos ? '<div class="f-aviso oculto" id="f-aviso">' + avisos + '</div>' : ''}
@@ -409,10 +416,9 @@ ${av.erro ? '' : avaliador.folhas() + anuncios.folha()}
   var chips = document.querySelectorAll('#ordem .chip[data-campo]');
   var busca = document.getElementById('busca');
   var estado = { campo: 'value', dir: 'desc' };
-  // Menu de cada item (por uaid): a = alertas, u/d = mudanças desde a última consulta / 24h.
+  // Menu de cada item (por uaid): a = alertas, m = mudanças em 24h.
   var INV = ${avaliador.serializar(menu)};
-  var BASES = ${avaliador.serializar(bases)};
-  var periodoAtual = 'ultima';
+  var TITULO_MUD = ${avaliador.serializar(tituloMud)};
   var soAlerta = false;
   var ROTULOS = { value: 'Value', rap: 'RAP', dem: 'Demanda', tend: 'Tendência', nome: 'Nome' };
 
@@ -453,25 +459,6 @@ ${av.erro ? '' : avaliador.folhas() + anuncios.folha()}
       });
     })(recolhiveis[k]);
   }
-
-  // Seletor de período (última consulta / 24h): muda a faixa, o "desde" do topo e as setas dos itens.
-  function periodo(p){
-    periodoAtual = p;
-    var blocos = document.querySelectorAll('[data-periodo]');
-    for (var k = 0; k < blocos.length; k++) {
-      blocos[k].classList.toggle('oculto', blocos[k].getAttribute('data-periodo') !== p);
-    }
-    var botoes = document.querySelectorAll('#seg-periodo button');
-    for (var k = 0; k < botoes.length; k++) {
-      botoes[k].classList.toggle('on', botoes[k].getAttribute('data-p') === p);
-    }
-    try { localStorage.setItem('periodo', p); } catch (e) {}
-  }
-  var botoesSeg = document.querySelectorAll('#seg-periodo button');
-  for (var k = 0; k < botoesSeg.length; k++) {
-    botoesSeg[k].addEventListener('click', function(){ periodo(this.getAttribute('data-p')); });
-  }
-  try { var salvo = localStorage.getItem('periodo'); if (salvo === 'dia') periodo('dia'); } catch (e) {}
 
   // Ordenação pelos chips (toque de novo inverte)
   function marcarChips(){
@@ -549,10 +536,9 @@ ${av.erro ? '' : avaliador.folhas() + anuncios.folha()}
     var it = ev.target.closest('.item');
     if (!it) return;
     var id = it.getAttribute('data-asset');
-    var info = INV[it.getAttribute('data-uaid')] || { a: [], u: [], d: [] };
-    var base = BASES[periodoAtual];
+    var info = INV[it.getAttribute('data-uaid')] || { a: [], m: [] };
     blocoMenu('folha-alertas', 'Alertas', info.a, function(){ return '!'; });
-    blocoMenu('folha-mud', base ? 'Mudanças desde ' + base : 'Mudanças', periodoAtual === 'dia' ? info.d : info.u, function(c){
+    blocoMenu('folha-mud', TITULO_MUD, info.m, function(c){
       return c === 'pos' ? '▲' : c === 'neg' ? '▼' : '•';
     });
     document.getElementById('folha-nome').textContent = it.getAttribute('data-titulo');

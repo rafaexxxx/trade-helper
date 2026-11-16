@@ -169,11 +169,11 @@ function encontrarRiscos(itens, anterior, cfg) {
     if (p) {
       const dv = pct(p.valorEfetivo, i.valorEfetivo);
       if (dv != null && dv <= -cfg.LIMITE_MUDANCA_PCT) {
-        motivos.push({ texto: 'value caiu ' + fmtPct(-dv), grav: 'media' });
+        motivos.push({ texto: 'value caiu ' + fmtPct(-dv), grav: 'media', queda: true });
       }
       const dr = pct(p.rap, i.rap);
       if (dr != null && dr <= -cfg.LIMITE_MUDANCA_PCT) {
-        motivos.push({ texto: 'RAP caiu ' + fmtPct(-dr), grav: 'media' });
+        motivos.push({ texto: 'RAP caiu ' + fmtPct(-dr), grav: 'media', queda: true });
       }
     }
 
@@ -199,11 +199,13 @@ function encontrarMudancas(itens, anterior, cfg) {
     const m = [];
     const dv = pct(p.valorEfetivo, i.valorEfetivo);
     if (dv != null && Math.abs(dv) >= lim) {
-      m.push({ texto: 'Value ' + fmtNum(p.valorEfetivo) + ' → ' + fmtNum(i.valorEfetivo) + ' (' + fmtPctSinal(dv) + ')', dir: dv > 0 ? 'sobe' : 'desce' });
+      m.push({ texto: 'Value ' + fmtNum(p.valorEfetivo) + ' → ' + fmtNum(i.valorEfetivo) + ' (' + fmtPctSinal(dv) + ')', dir: dv > 0 ? 'sobe' : 'desce',
+        campo: 'value', antes: p.valorEfetivo, depois: i.valorEfetivo, pct: dv });
     }
     const dr = pct(p.rap, i.rap);
     if (dr != null && Math.abs(dr) >= lim) {
-      m.push({ texto: 'RAP ' + fmtNum(p.rap) + ' → ' + fmtNum(i.rap) + ' (' + fmtPctSinal(dr) + ')', dir: dr > 0 ? 'sobe' : 'desce' });
+      m.push({ texto: 'RAP ' + fmtNum(p.rap) + ' → ' + fmtNum(i.rap) + ' (' + fmtPctSinal(dr) + ')', dir: dr > 0 ? 'sobe' : 'desce',
+        campo: 'rap', antes: p.rap, depois: i.rap, pct: dr });
     }
     if (p.demanda !== undefined && p.demanda !== i.demanda) {
       m.push({ texto: 'Demanda: ' + rotuloDemanda(p.demanda) + ' → ' + rotuloDemanda(i.demanda), dir: i.demanda > p.demanda ? 'sobe' : 'desce' });

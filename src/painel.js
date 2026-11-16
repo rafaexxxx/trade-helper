@@ -103,7 +103,8 @@ async function executar(ctx) {
     itens,
     fonte,
     totais,
-    riscos: analise.encontrarRiscos(itens, ultima.base, cfg),
+    // v5.1: as quedas de value/RAP dos alertas contam em 24h (igual às setas da lista).
+    riscos: analise.encontrarRiscos(itens, dia.base, cfg),
     comparacoes: { ultima, dia },
     miniaturas,
     imagens: {},
