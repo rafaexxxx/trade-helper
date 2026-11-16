@@ -96,4 +96,20 @@ module.exports = {
   ANUNCIO_COMBINACAO_MAX_ITENS: 25,
   // Quantos cartões cada bloco da aba mostra.
   ANUNCIOS_MAX_NA_LISTA: 40,
+
+  // ===== Notificações (v6.2) =====
+  // Quando o widget atualiza, manda UMA notificação-resumo (só a conta principal):
+  // anúncio novo "Vale muito a pena" para você e item seu que virou projected ou
+  // ficou com demanda terrível. O mesmo aviso nunca se repete.
+  NOTIFICACOES_LIGADAS: true,
+  // Silêncio: das X h até as Y h nada é avisado (0 e 8 = da meia-noite às 8h).
+  // Anúncios desse horário são descartados; alertas de risco esperam o silêncio
+  // acabar. Dois números iguais = sem silêncio.
+  SILENCIO_INICIO_H: 0,
+  SILENCIO_FIM_H: 8,
+  // Só avisa de anúncios criados há no máximo X min (os mais velhos já devem ter fechado).
+  NOTIF_ANUNCIO_IDADE_MAX_MIN: 60,
+  // Tempo máximo (segundos) da análise dentro do widget. Passou disso, os
+  // anúncios que faltaram ficam para a próxima atualização.
+  NOTIF_TEMPO_MAX_S: 8,
 };

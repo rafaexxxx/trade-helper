@@ -4,6 +4,13 @@
 const a = require('analise');
 const ajuda = require('ajuda');
 
+// v6.2: as funções compartilhadas abaixo também rodam no Scriptable (notificações
+// do widget). Na página elas usam as cópias injetadas de fmtNum/fmtPct/fmtPctSinal;
+// aqui, estes apelidos (o texto das funções, usado no toString, não muda).
+const fmtNum = a.fmtNum;
+const fmtPct = a.fmtPct;
+const fmtPctSinal = a.fmtPctSinal;
+
 // Endereço falso usado pela página para pedir miniaturas ao Scriptable
 // (interceptado em painel.js; nunca sai do iPhone).
 const PONTE = 'https://trade-helper.invalid/';
@@ -1011,6 +1018,9 @@ function script(json, cfg) {
 
 module.exports = {
   PONTE,
+  parametros,
+  // v6.2: para a análise dos anúncios fora da página (notificações do widget).
+  compartilhadas: { valorEfetivo, itemDoCatalogo, somarLado, tipoTrocaLados, calcularVeredito },
   prepararDados,
   inventarioCompacto,
   serializar,

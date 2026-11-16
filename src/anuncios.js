@@ -5,6 +5,13 @@
 const api = require('api');
 const avaliador = require('avaliador');
 const ajuda = require('ajuda');
+const analise = require('analise');
+
+// v6.2: criarAnalisador também roda no Scriptable (notificações do widget).
+// Na página ele usa as funções injetadas pelo avaliador; aqui, estes apelidos.
+const fmtPct = analise.fmtPct;
+const fmtPctSinal = analise.fmtPctSinal;
+const { valorEfetivo, itemDoCatalogo, somarLado, tipoTrocaLados, calcularVeredito } = avaliador.compartilhadas;
 
 // Tags numéricas do pedido, na ordem do formulário do Rolimon's
 // (fonte de terceiros; a contagem aparece no Diagnóstico para conferir).
@@ -294,73 +301,23 @@ a.an-i:active{background:var(--card2)}
 `;
 }
 
-// ---------- Código que roda DENTRO da página ----------
-// D = dados do avaliador (TH_D), P = parâmetros do avaliador (TH_P),
-// PA = parâmetros desta aba. Usa as funções injetadas pelo avaliador.
-function paginaAnuncios(D, P, PA) {
+// ---------- Regras dos anúncios (página E Scriptable) ----------
+// v6.2: a análise saiu de dentro de paginaAnuncios para rodar também no widget
+// (notificações). Sem nada de tela. ATENÇÃO: é injetada na página por toString,
+// então só pode usar as funções compartilhadas do avaliador e fmtPct/fmtPctSinal.
+// D = { catalogo, inventario } (avaliador.prepararDados), P = parâmetros do
+// avaliador, PA = parâmetros desta aba. Depois de criar, chame montarMeus(inv).
+function criarAnalisador(D, P, PA) {
   var C = D.catalogo;
-  var THUMBS = D.miniaturas || {};
-  var ORDENS = { ganho: 1, recentes: 1, value: 1 };
+  // meuId = dono do inventário (os anúncios dele ficam de fora).
+  var A = { meus: [], porAsset: {}, emHold: {}, meusOrdenados: [], meuId: PA.meuId };
+  var memoCombinacao = {};
 
-  function lerSalvo(k, padrao) {
-    try {
-      var v = localStorage.getItem(k);
-      return v == null ? padrao : v;
-    } catch (e) {
-      return padrao;
-    }
-  }
-  function gravarSalvo(k, v) {
-    try { localStorage.setItem(k, v); } catch (e) {}
-  }
-
-  var estado = {
-    carregando: false, carregou: false, manual: false, res: null, timer: null,
-    lista: [], mostrados: [], diag: null, pedidos: {},
-    item: lerSalvo('an-filtro-item', ''), ordem: lerSalvo('an-ordem', 'ganho'), aberto: null,
-  };
-  if (!ORDENS[estado.ordem]) estado.ordem = 'ganho';
-
-  function $(id) {
-    return document.getElementById(id);
-  }
-  function esc(s) {
-    var mapa = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
-    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
-      return mapa[c];
-    });
-  }
-  function dois(n) {
-    return (n < 10 ? '0' : '') + n;
-  }
-  function hora(ms) {
-    var d = new Date(ms);
-    return dois(d.getHours()) + ':' + dois(d.getMinutes());
-  }
-  function haQuanto(ms) {
-    var m = Math.max(0, Math.round((Date.now() - ms) / 60000));
-    if (m < 1) return 'agora';
-    if (m < 60) return 'há ' + m + ' min';
-    return 'há ' + Math.floor(m / 60) + 'h' + (m % 60 ? dois(m % 60) : '');
-  }
-  function pctTxt(p) {
-    return p == null ? '—' : fmtPctSinal(p);
-  }
-
-  // ---------- Seus itens disponíveis (sem hold e com dados no Rolimon's) ----------
-  // v5.2: o inventário pode ser trocado pelo da conta 2 (window.thAnunciosConta).
-  // meuId = dono do inventário (os anúncios dele ficam de fora); chave = sufixo
-  // do filtro "Um item seu" guardado no iPhone ('' na sua conta, '-c2' na outra).
-  var meus = [];
-  var porAsset = {};
-  var emHold = {};
-  var meusOrdenados = [];
-  var meuId = PA.meuId;
-  var chaveConta = '';
-  function montarMeus(inv) {
-    meus = [];
-    porAsset = {};
-    emHold = {};
+  // Seus itens disponíveis (sem hold e com dados no Rolimon's).
+  A.montarMeus = function (inv) {
+    var meus = [];
+    var porAsset = {};
+    var emHold = {};
     inv.forEach(function (x) {
       if (x[3]) {
         emHold[x[1]] = (emHold[x[1]] || 0) + 1;
@@ -376,11 +333,13 @@ function paginaAnuncios(D, P, PA) {
       meus.push(i);
       (porAsset[i.id] = porAsset[i.id] || []).push(i);
     });
-    meusOrdenados = meus.slice().sort(function (x, y) { return y.vb - x.vb; });
-    // O item salvo no filtro pode ter saído do inventário (ou entrado em hold).
-    if (estado.item && !porAsset[estado.item]) estado.item = '';
-  }
-  montarMeus(D.inventario);
+    A.meus = meus;
+    A.porAsset = porAsset;
+    A.emHold = emHold;
+    A.meusOrdenados = meus.slice().sort(function (x, y) { return y.vb - x.vb; });
+    // As combinações guardadas valiam para o inventário anterior.
+    memoCombinacao = {};
+  };
 
   // Ganho em % (value base) de quem dá td e recebe tr; mesma conta do veredito.
   function ganho(td, tr) {
@@ -408,7 +367,6 @@ function paginaAnuncios(D, P, PA) {
   // combinação com algum deles só vale se o ganho não for negativo (#4).
   // fixo = assetId que entra sempre (filtro "Um item seu").
   // Resultados guardados (ofertas repetidas são comuns).
-  var memoCombinacao = {};
   function melhorCombinacao(T, minQ, maxQ, lo, hi, alvo, proibidos, fixo) {
     var chave = [Math.round(T), minQ, maxQ, lo, hi, alvo, lo < 0 ? Object.keys(proibidos).sort().join(',') : '', fixo || ''].join('|');
     if (!(chave in memoCombinacao)) memoCombinacao[chave] = calcularCombinacao(T, minQ, maxQ, lo, hi, alvo, proibidos, fixo);
@@ -424,14 +382,15 @@ function paginaAnuncios(D, P, PA) {
     var soma0 = 0;
     var f = null;
     if (fixo) {
-      f = (porAsset[fixo] || [])[0];
+      f = (A.porAsset[fixo] || [])[0];
       if (!f || !(f.vb > 0) || f.vb > sMax) return null;
       escolha.push(f);
       soma0 = f.vb;
     }
     var pool = [];
-    for (var k = 0; k < meusOrdenados.length && pool.length < PA.pool; k++) {
-      var x = meusOrdenados[k];
+    var ordenados = A.meusOrdenados;
+    for (var k = 0; k < ordenados.length && pool.length < PA.pool; k++) {
+      var x = ordenados[k];
       if (x === f) continue;
       if (x.vb > 0 && soma0 + x.vb <= sMax) pool.push(x);
     }
@@ -467,7 +426,10 @@ function paginaAnuncios(D, P, PA) {
   // ---------- Análise de um anúncio ----------
   // ad = [id, criadoMs, userId, username, oferta[], robux, pedido[], tags[]]
   // fixo = assetId do filtro "Um item seu" ('' = sem filtro).
-  function analisar(ad, fixo) {
+  A.analisar = function (ad, fixo) {
+    var meuId = A.meuId;
+    var porAsset = A.porAsset;
+    var emHold = A.emHold;
     if (meuId && ad[2] === meuId) return { descarte: 'anúncio seu' };
     var rec = [];
     var k;
@@ -568,7 +530,77 @@ function paginaAnuncios(D, P, PA) {
       nota = 'Ele aceita qualquer item: combinação com o mesmo número de itens (' + fmtPctSinal(p) + ').';
     }
     return { modo: 'tag', tag: melhor.tag, ad: ad, dou: dou2, rec: rec, td: td, tr: tr, tipo: tipo, v: v, pct: p, mesmo: repetidos(dou2, rec), nota: nota };
+  };
+
+  return A;
+}
+
+// ---------- Código que roda DENTRO da página ----------
+// D = dados do avaliador (TH_D), P = parâmetros do avaliador (TH_P),
+// PA = parâmetros desta aba. Usa as funções injetadas pelo avaliador
+// e criarAnalisador (injetado antes, no mesmo <script>).
+function paginaAnuncios(D, P, PA) {
+  var THUMBS = D.miniaturas || {};
+  var ORDENS = { ganho: 1, recentes: 1, value: 1 };
+
+  function lerSalvo(k, padrao) {
+    try {
+      var v = localStorage.getItem(k);
+      return v == null ? padrao : v;
+    } catch (e) {
+      return padrao;
+    }
   }
+  function gravarSalvo(k, v) {
+    try { localStorage.setItem(k, v); } catch (e) {}
+  }
+
+  var estado = {
+    carregando: false, carregou: false, manual: false, res: null, timer: null,
+    lista: [], mostrados: [], diag: null, pedidos: {},
+    item: lerSalvo('an-filtro-item', ''), ordem: lerSalvo('an-ordem', 'ganho'), aberto: null,
+  };
+  if (!ORDENS[estado.ordem]) estado.ordem = 'ganho';
+
+  function $(id) {
+    return document.getElementById(id);
+  }
+  function esc(s) {
+    var mapa = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return mapa[c];
+    });
+  }
+  function dois(n) {
+    return (n < 10 ? '0' : '') + n;
+  }
+  function hora(ms) {
+    var d = new Date(ms);
+    return dois(d.getHours()) + ':' + dois(d.getMinutes());
+  }
+  function haQuanto(ms) {
+    var m = Math.max(0, Math.round((Date.now() - ms) / 60000));
+    if (m < 1) return 'agora';
+    if (m < 60) return 'há ' + m + ' min';
+    return 'há ' + Math.floor(m / 60) + 'h' + (m % 60 ? dois(m % 60) : '');
+  }
+  function pctTxt(p) {
+    return p == null ? '—' : fmtPctSinal(p);
+  }
+
+  // ---------- Seus itens disponíveis (sem hold e com dados no Rolimon's) ----------
+  // v5.2: o inventário pode ser trocado pelo da conta 2 (window.thAnunciosConta).
+  // v6.2: as regras (itens, combinações e análise) ficam em criarAnalisador (AN).
+  // AN.meuId = dono do inventário (os anúncios dele ficam de fora); chave = sufixo
+  // do filtro "Um item seu" guardado no iPhone ('' na sua conta, '-c2' na outra).
+  var AN = criarAnalisador(D, P, PA);
+  var chaveConta = '';
+  function montarMeus(inv) {
+    AN.montarMeus(inv);
+    // O item salvo no filtro pode ter saído do inventário (ou entrado em hold).
+    if (estado.item && !AN.porAsset[estado.item]) estado.item = '';
+  }
+  montarMeus(D.inventario);
 
   function ordenar(lista) {
     var o = estado.ordem;
@@ -591,10 +623,10 @@ function paginaAnuncios(D, P, PA) {
     lista.forEach(function (ad) {
       (ad[7] || []).forEach(function (t) { contTags[t] = (contTags[t] || 0) + 1; });
       // Quantos anúncios pedem cada item seu (para a folha do filtro).
-      if (!(meuId && ad[2] === meuId)) {
+      if (!(AN.meuId && ad[2] === AN.meuId)) {
         var vistos = {};
         (ad[6] || []).forEach(function (id) {
-          if (porAsset[id] && !vistos[id]) {
+          if (AN.porAsset[id] && !vistos[id]) {
             vistos[id] = true;
             pedidos[id] = (pedidos[id] || 0) + 1;
           }
@@ -602,7 +634,7 @@ function paginaAnuncios(D, P, PA) {
       }
       var r;
       try {
-        r = analisar(ad, estado.item);
+        r = AN.analisar(ad, estado.item);
       } catch (e) {
         r = { descarte: 'erro na análise: ' + (e && e.message) };
       }
@@ -721,13 +753,13 @@ function paginaAnuncios(D, P, PA) {
     );
   }
   function nomeDoItem(id) {
-    var l = porAsset[id];
+    var l = AN.porAsset[id];
     return l && l[0] ? l[0].nome : '';
   }
   function desenharFiltro() {
     var b = $('an-filtro');
-    if (estado.item && porAsset[estado.item]) {
-      var i = porAsset[estado.item][0];
+    if (estado.item && AN.porAsset[estado.item]) {
+      var i = AN.porAsset[estado.item][0];
       b.className = 'an-fbtn on';
       b.innerHTML = miniatura(i.id) + '<span class="an-ftxt"><small>Só anúncios com</small><b>' + esc(i.nome) + '</b></span>' +
         '<span class="an-fx" data-limpar="1" aria-label="Tirar filtro">✕</span>';
@@ -801,7 +833,7 @@ function paginaAnuncios(D, P, PA) {
       L.push('Tags vistas: ' + (tg.length ? tg.map(function (t) { return t + ' ' + dg.contTags[t]; }).join(' · ') : 'nenhuma'));
       L.push('Análise: ' + estado.lista.length + ' na lista (' + dg.nItens + ' pedem seus itens, ' + dg.nTags + ' por tag)' +
         (estado.item ? ' · filtro ' + nomeDoItem(estado.item) + ' (' + dg.foraDoFiltro + ' não pedem o item)' : '') +
-        ', em ' + dg.ms + ' ms · ordem ' + estado.ordem + ' · seus itens livres: ' + meus.length);
+        ', em ' + dg.ms + ' ms · ordem ' + estado.ordem + ' · seus itens livres: ' + AN.meus.length);
       var ds = Object.keys(dg.descartes).sort(function (x, y) { return dg.descartes[y] - dg.descartes[x]; });
       if (ds.length) L.push('Fora da lista: ' + ds.map(function (d) { return d + ' ' + dg.descartes[d]; }).join(' · '));
     }
@@ -863,10 +895,10 @@ function paginaAnuncios(D, P, PA) {
     if (nova === chaveConta && (!dados || dados.inventario === estado.invConta)) return;
     chaveConta = nova;
     estado.invConta = dados ? dados.inventario : null;
-    meuId = dados ? Number(dados.meuId) || 0 : PA.meuId;
+    AN.meuId = dados ? Number(dados.meuId) || 0 : PA.meuId;
     estado.item = lerSalvo('an-filtro-item' + chaveConta, '');
     estado.aberto = null;
-    memoCombinacao = {};
+    // (montarMeus também limpa as combinações guardadas)
     montarMeus(dados ? dados.inventario || [] : D.inventario);
     var el = $('an-conta');
     if (el) {
@@ -888,10 +920,10 @@ function paginaAnuncios(D, P, PA) {
     var h = '<button type="button" class="an-fl-op' + (estado.item ? '' : ' on') + '" data-id="">' +
       '<span class="thumb an-ftodos">☰</span><span class="an-fl-txt"><b>Todos os seus itens</b><span>Sem filtro</span></span></button>';
     var vistos = {};
-    meusOrdenados.forEach(function (i) {
+    AN.meusOrdenados.forEach(function (i) {
       if (vistos[i.id]) return;
       vistos[i.id] = true;
-      var copias = porAsset[i.id].length;
+      var copias = AN.porAsset[i.id].length;
       var ped = estado.pedidos[i.id] || 0;
       var sub = fmtNum(i.vb) + ' ' + (i.value != null ? 'value' : 'RAP') +
         (copias > 1 ? ' · ' + copias + ' cópias' : '') +
@@ -906,7 +938,7 @@ function paginaAnuncios(D, P, PA) {
     $('an-fundo').classList.remove('oculto');
     $('an-folha').classList.remove('oculto');
     var ids = [];
-    meusOrdenados.forEach(function (i) { ids.push(i.id); });
+    AN.meusOrdenados.forEach(function (i) { ids.push(i.id); });
     pedirMiniaturas(ids);
   }
   function fecharFolha() {
@@ -914,7 +946,7 @@ function paginaAnuncios(D, P, PA) {
     $('an-folha').classList.add('oculto');
   }
   function escolherItem(id) {
-    estado.item = id && porAsset[id] ? id : '';
+    estado.item = id && AN.porAsset[id] ? id : '';
     gravarSalvo('an-filtro-item' + chaveConta, estado.item);
     estado.aberto = null;
     if (estado.carregou) processar();
@@ -965,13 +997,15 @@ function paginaAnuncios(D, P, PA) {
 }
 
 // <script> da aba. Vem depois do script do avaliador (usa TH_D, TH_P e as funções dele).
+// v6.2: criarAnalisador vai junto (é o mesmo código que o widget usa nas notificações).
 function script(cfg, meuId) {
   return (
     '<script>\n' +
+    criarAnalisador.toString() + '\n' +
     'if (typeof TH_D !== "undefined") (' + paginaAnuncios.toString() + ')(TH_D, TH_P, ' +
     avaliador.serializar(parametros(cfg, meuId)) + ');\n' +
     '</script>'
   );
 }
 
-module.exports = { TAGS, lerAnuncio, carregar, secao, folha, css, script };
+module.exports = { TAGS, lerAnuncio, carregar, parametros, criarAnalisador, secao, folha, css, script };

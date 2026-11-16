@@ -8,6 +8,23 @@ const widget = require('widget');
 const avaliador = require('avaliador');
 const anuncios = require('anuncios');
 const diario = require('diario');
+const notificacoes = require('notificacoes');
+
+// v6.2: aba pedida ao abrir pelo toque na notificação (?aba=anuncios no
+// scriptable:///run/..., ou o userInfo da notificação). args é global do
+// Scriptable (como o Safari): se não existir, abre como sempre.
+function abaPedida() {
+  try {
+    if (typeof args === 'undefined' || !args) return null;
+    const q = args.queryParameters || {};
+    if (q.aba) return String(q.aba);
+    const n = args.notification;
+    if (n && n.userInfo && n.userInfo.aba) return String(n.userInfo.aba);
+  } catch (e) {
+    // abre como sempre
+  }
+  return null;
+}
 
 async function pedirUsername(atual) {
   const al = new Alert();
@@ -197,7 +214,29 @@ async function executar(ctx) {
   if (noWidget) {
     resultado.imagens = await imagensParaWidget(ctx.dirDados, itens, miniaturas, cfg.WIDGET_MAX_ITENS_GRANDE);
     Script.setWidget(widget.montar(resultado, cfg));
+    // v6.2: notificação-resumo (anúncios "Vale muito a pena" e riscos dos seus
+    // itens). Depois do widget pronto; se algo falhar, o widget segue igual.
+    try {
+      await notificacoes.verificar({ store, cfg, dados, itens, dirDados: ctx.dirDados, agora });
+    } catch (e) {
+      // só fica sem a notificação desta vez (o erro aparece no Diagnóstico)
+      try {
+        notificacoes.registrarErro(store, e, agora);
+      } catch (e2) {
+        // nada
+      }
+    }
     return;
+  }
+
+  // v6.2: aberto pelo toque na notificação -> começa na aba pedida; e o
+  // Diagnóstico mostra o que o widget fez na última verificação.
+  resultado.abaInicial = abaPedida();
+  try {
+    resultado.diag.notificacoes = notificacoes.ultimaVerificacao(store) +
+      (resultado.abaInicial ? ' · aberto pela notificação (' + resultado.abaInicial + ')' : '');
+  } catch (e) {
+    resultado.diag.notificacoes = 'erro: ' + (e.message || String(e));
   }
 
   // Só o painel grava o retrato da "última consulta".

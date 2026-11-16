@@ -830,7 +830,10 @@ ${ajuda.secao(cfg)}
   for (var k = 0; k < botoesAba.length; k++) {
     botoesAba[k].addEventListener('click', function(){ aba(this.getAttribute('data-aba')); window.scrollTo(0, 0); });
   }
-  try { var abaSalva = localStorage.getItem('aba'); if (abaSalva && abaSalva !== 'inv' && TITULOS[abaSalva]) aba(abaSalva); } catch (e) {}
+  // v6.2: aberto pelo toque na notificação -> começa na aba pedida (vale mais que a lembrada).
+  var abaInicial = ${avaliador.serializar(r.abaInicial || null)};
+  if (abaInicial && TITULOS[abaInicial]) aba(abaInicial);
+  else try { var abaSalva = localStorage.getItem('aba'); if (abaSalva && abaSalva !== 'inv' && TITULOS[abaSalva]) aba(abaSalva); } catch (e) {}
 
   // Blocos recolhíveis (Avaliar trade e Anúncios): lembram se você os abriu ou fechou.
   // (No Inventário, alertas e mudanças ficam na linha de cada item.)
