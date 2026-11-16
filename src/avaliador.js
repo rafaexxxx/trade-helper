@@ -447,8 +447,6 @@ function css() {
 .fb-num{display:flex;flex-direction:column;align-items:flex-end;gap:3px;min-width:58px;font-weight:700;white-space:nowrap}
 .fb-rot{font-size:12px;font-weight:500;color:var(--sub)}
 .folha .remover{color:var(--neg)}
-.fb-item.na{opacity:.55}
-.fb-item.na .ok{color:var(--pos);font-weight:700}
 `;
 }
 
@@ -737,8 +735,7 @@ function paginaAvaliador(D, P) {
   }
 
   // ---------- Busca (folha) ----------
-  // ext = busca aberta por outra tela (v6.0: Lista de desejos), ou null.
-  var busca = { lado: 'dou', fonte: 'inv', ordem: 'value', timer: null, resultados: [], ext: null };
+  var busca = { lado: 'dou', fonte: 'inv', ordem: 'value', timer: null, resultados: [] };
   try {
     if (localStorage.getItem('ordemBusca') === 'rap') busca.ordem = 'rap';
   } catch (e) {}
@@ -802,11 +799,8 @@ function paginaAvaliador(D, P) {
     $('fb-info').textContent = info;
     $('fb-lista').innerHTML = res.map(function (r, k) {
       var i = r.i;
-      // Busca de outra tela: item já escolhido lá aparece apagado, com a marca.
-      var marcado = busca.ext && busca.ext.marcados && busca.ext.marcados[i.id];
-      return '<button class="fb-item' + (marcado ? ' na' : '') + '" data-k="' + k + '">' + miniatura(i.id) +
-        '<span class="fb-txt"><span class="nome">' + esc(i.nome) + '</span><span class="det">' +
-        (marcado ? '<span class="ok">' + esc(busca.ext.marca || '✓') + '</span>' : esc(detalheBusca(i))) + '</span></span>' +
+      return '<button class="fb-item" data-k="' + k + '">' + miniatura(i.id) +
+        '<span class="fb-txt"><span class="nome">' + esc(i.nome) + '</span><span class="det">' + esc(detalheBusca(i)) + '</span></span>' +
         '<span class="fb-num"><span class="fb-rot">Value</span>' + (i.value != null ? fmtNum(i.value) : '—') + '</span>' +
         '<span class="fb-num"><span class="fb-rot">RAP</span>' + fmtNum(i.rap) + '</span></button>';
     }).join('');
@@ -822,7 +816,6 @@ function paginaAvaliador(D, P) {
   function abrirBusca(lado) {
     if (proposta[lado].length >= P.maxItens) return;
     busca.lado = lado;
-    busca.ext = null;
     $('fb-titulo').textContent = 'Adicionar em ' + NOMES_LADO[lado];
     $('fb-seg').classList.toggle('oculto', lado !== 'dou');
     $('fb-q').value = '';
@@ -836,18 +829,6 @@ function paginaAvaliador(D, P) {
     $('fb-fundo').classList.add('oculto');
     $('fb-folha').classList.add('oculto');
   }
-  // v6.0: a mesma busca, só no catálogo, aberta por outra tela (Lista de desejos).
-  // opts = { titulo, marcados: { assetId: true }, marca, aoEscolher(assetId) }.
-  window.thAbrirBuscaCatalogo = function (opts) {
-    busca.ext = opts || {};
-    $('fb-titulo').textContent = busca.ext.titulo || 'Adicionar';
-    $('fb-seg').classList.add('oculto');
-    $('fb-q').value = '';
-    $('fb-fundo').classList.remove('oculto');
-    $('fb-folha').classList.remove('oculto');
-    fonteBusca('cat');
-    $('fb-q').focus();
-  };
 
   // ---------- Menu do item da proposta ----------
   var selecionado = null;
@@ -913,10 +894,6 @@ function paginaAvaliador(D, P) {
       if (window.thAjudaMiniaturas) {
         try { window.thAjudaMiniaturas(); } catch (e) {}
       }
-      // v6.0: e a tela da Lista de desejos.
-      if (window.thDesejosMiniaturas) {
-        try { window.thDesejosMiniaturas(); } catch (e) {}
-      }
     }
   };
   // A aba Anúncios pede miniaturas pela mesma ponte.
@@ -964,17 +941,6 @@ function paginaAvaliador(D, P) {
     var b = ev.target.closest('.fb-item');
     if (!b) return;
     var r = busca.resultados[Number(b.getAttribute('data-k'))];
-    if (busca.ext) {
-      // Busca da outra tela: item já marcado não faz nada; os outros vão para ela.
-      if (!r || (busca.ext.marcados && busca.ext.marcados[r.i.id])) return;
-      var ext = busca.ext;
-      fecharBusca();
-      busca.ext = null;
-      if (ext.aoEscolher) {
-        try { ext.aoEscolher(r.i.id); } catch (e) {}
-      }
-      return;
-    }
     if (r && proposta[busca.lado].length < P.maxItens) proposta[busca.lado].push(r.e);
     fecharBusca();
     atualizar();

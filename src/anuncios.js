@@ -181,8 +181,6 @@ function secao(cfg, erro) {
     '<p class="meta oculto" id="an-conta"></p>' +
     '<div class="an-filtros">' +
     '<button type="button" class="an-fbtn" id="an-filtro"></button>' +
-    // v6.0: filtro da Lista de desejos (só na conta principal e com a lista preenchida).
-    '<div class="chips oculto" id="an-chips"><button type="button" class="chip" id="an-desejos">Lista de desejos</button></div>' +
     '<div class="seg peq" id="an-ordem">' +
     '<button type="button" data-o="ganho">Maior ganho</button>' +
     '<button type="button" data-o="recentes">Recentes</button>' +
@@ -234,9 +232,6 @@ function css() {
 .an-tempo{flex:none;font-size:12px;color:var(--sub)}
 .an-etq{flex:none;padding:2px 7px;border-radius:6px;font-size:11px;font-weight:700;letter-spacing:.02em;background:var(--card2);color:var(--sub)}
 .an-etq.seus{background:var(--dou-bg);color:var(--acc-t)}
-.an-etq.desejo{background:var(--acc-fundo);color:var(--on-acc)}
-.an-grp .thumb.quer{box-shadow:0 0 0 2px var(--acc-t)}
-.an-quer{padding:1px 6px;border-radius:6px;font-size:11px;font-weight:700;background:var(--acc-fundo);color:var(--on-acc)}
 .an-l2{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .an-grp{display:flex;align-items:center;gap:3px;padding:3px;border-radius:9px}
 .an-grp.rec{background:var(--rec-bg)}
@@ -323,8 +318,6 @@ function paginaAnuncios(D, P, PA) {
     carregando: false, carregou: false, manual: false, res: null, timer: null,
     lista: [], mostrados: [], diag: null, pedidos: {},
     item: lerSalvo('an-filtro-item', ''), ordem: lerSalvo('an-ordem', 'ganho'), aberto: null,
-    // v6.0: filtro "Lista de desejos" ligado.
-    soDesejos: lerSalvo('an-desejos', '') === '1',
   };
   if (!ORDENS[estado.ordem]) estado.ordem = 'ganho';
 
@@ -388,16 +381,6 @@ function paginaAnuncios(D, P, PA) {
     if (estado.item && !porAsset[estado.item]) estado.item = '';
   }
   montarMeus(D.inventario);
-
-  // v6.0: Lista de desejos ({ assetId: true }), só na conta principal.
-  function desejos() {
-    if (chaveConta !== '' || !window.thDesejosIds) return {};
-    try {
-      return window.thDesejosIds() || {};
-    } catch (e) {
-      return {};
-    }
-  }
 
   // Ganho em % (value base) de quem dá td e recebe tr; mesma conta do veredito.
   function ganho(td, tr) {
@@ -484,10 +467,7 @@ function paginaAnuncios(D, P, PA) {
   // ---------- Análise de um anúncio ----------
   // ad = [id, criadoMs, userId, username, oferta[], robux, pedido[], tags[]]
   // fixo = assetId do filtro "Um item seu" ('' = sem filtro).
-  // DS = Lista de desejos ({ assetId: true }): anúncio que oferece um item dela
-  // ganha "desejo" (ids) e, quando pede itens, entra a partir de "Troca justa".
-  function analisar(ad, fixo, DS) {
-    DS = DS || {};
+  function analisar(ad, fixo) {
     if (meuId && ad[2] === meuId) return { descarte: 'anúncio seu' };
     var rec = [];
     var k;
@@ -504,10 +484,6 @@ function paginaAnuncios(D, P, PA) {
     }
     var tr = somarLado(rec, ad[5], true, P);
     var tags = ad[7] || [];
-    var desejo = [];
-    rec.forEach(function (i) {
-      if (DS[i.id] && desejo.indexOf(i.id) < 0) desejo.push(i.id);
-    });
     var td;
     var tipo;
     var v;
@@ -535,10 +511,9 @@ function paginaAnuncios(D, P, PA) {
       if (mesmo.length && p != null && p < 0) return { descarte: 'mesmo item dos dois lados com ganho negativo' };
       tipo = tipoTrocaLados(td, tr);
       v = calcularVeredito(dou, rec, td, tr, tipo, ad[5], P);
-      // Mínimo: "Vale a pena" (nível 3); com item da Lista de desejos, "Troca justa" (2).
-      if (!v || v.nivel == null || v.nivel < (desejo.length ? 2 : 3)) return { descarte: 'pede seus itens, mas não vale a pena' };
+      if (!v || v.nivel == null || v.nivel < 3) return { descarte: 'pede seus itens, mas não vale a pena' };
       return {
-        modo: 'itens', ad: ad, dou: dou, rec: rec, td: td, tr: tr, tipo: tipo, v: v, pct: p, mesmo: mesmo, desejo: desejo,
+        modo: 'itens', ad: ad, dou: dou, rec: rec, td: td, tr: tr, tipo: tipo, v: v, pct: p, mesmo: mesmo,
         nota: 'Ele pede itens que você tem' + (tipo ? ' (' + tipo + ' para você)' : '') + '.' +
           (tags.length ? ' Também pede: ' + tags.join(', ') + '.' : ''),
       };
@@ -592,7 +567,7 @@ function paginaAnuncios(D, P, PA) {
     } else {
       nota = 'Ele aceita qualquer item: combinação com o mesmo número de itens (' + fmtPctSinal(p) + ').';
     }
-    return { modo: 'tag', tag: melhor.tag, ad: ad, dou: dou2, rec: rec, td: td, tr: tr, tipo: tipo, v: v, pct: p, mesmo: repetidos(dou2, rec), nota: nota, desejo: desejo };
+    return { modo: 'tag', tag: melhor.tag, ad: ad, dou: dou2, rec: rec, td: td, tr: tr, tipo: tipo, v: v, pct: p, mesmo: repetidos(dou2, rec), nota: nota };
   }
 
   function ordenar(lista) {
@@ -613,20 +588,10 @@ function paginaAnuncios(D, P, PA) {
     var pedidos = {};
     var foraDoFiltro = 0;
     var nItens = 0;
-    // v6.0: Lista de desejos. porItem[id] = { ofe: anúncios que oferecem o item,
-    // fecha: desses, os que dá para fechar (sem o filtro "Um item seu") }.
-    var DS = desejos();
-    var temDS = Object.keys(DS).length > 0;
-    var soDesejos = estado.soDesejos && temDS;
-    var porItem = {};
-    Object.keys(DS).forEach(function (id) { porItem[id] = { ofe: 0, fecha: 0 }; });
-    var nDesejo = 0;
-    var foraDesejos = 0;
     lista.forEach(function (ad) {
       (ad[7] || []).forEach(function (t) { contTags[t] = (contTags[t] || 0) + 1; });
-      var deOutro = !(meuId && ad[2] === meuId);
       // Quantos anúncios pedem cada item seu (para a folha do filtro).
-      if (deOutro) {
+      if (!(meuId && ad[2] === meuId)) {
         var vistos = {};
         (ad[6] || []).forEach(function (id) {
           if (porAsset[id] && !vistos[id]) {
@@ -635,41 +600,15 @@ function paginaAnuncios(D, P, PA) {
           }
         });
       }
-      // Itens da Lista de desejos que este anúncio oferece.
-      var oferece = [];
-      if (deOutro && temDS) {
-        (ad[4] || []).forEach(function (id) {
-          if (DS[id] && oferece.indexOf(id) < 0) oferece.push(id);
-        });
-        oferece.forEach(function (id) { porItem[id].ofe++; });
-      }
       var r;
       try {
-        r = analisar(ad, estado.item, DS);
+        r = analisar(ad, estado.item);
       } catch (e) {
         r = { descarte: 'erro na análise: ' + (e && e.message) };
-      }
-      // "Dá para fechar" no contador da lista não depende do filtro "Um item seu".
-      if (oferece.length) {
-        var r0 = r;
-        if (estado.item) {
-          try {
-            r0 = analisar(ad, '', DS);
-          } catch (e) {
-            r0 = { descarte: 'erro' };
-          }
-        }
-        if (!r0.descarte) (r0.desejo || []).forEach(function (id) { porItem[id].fecha++; });
       }
       if (r.descarte) {
         if (r.filtro) foraDoFiltro++;
         else descartes[r.descarte] = (descartes[r.descarte] || 0) + 1;
-        return;
-      }
-      var ehDesejo = !!(r.desejo && r.desejo.length);
-      if (ehDesejo) nDesejo++;
-      if (soDesejos && !ehDesejo) {
-        foraDesejos++;
         return;
       }
       if (r.modo === 'itens') nItens++;
@@ -681,31 +620,16 @@ function paginaAnuncios(D, P, PA) {
     estado.diag = {
       descartes: descartes, contTags: contTags, ms: Date.now() - t0, analisados: lista.length,
       nItens: nItens, nTags: saida.length - nItens, foraDoFiltro: foraDoFiltro,
-      nDesejo: nDesejo, foraDesejos: foraDesejos, desejos: Object.keys(DS).length,
     };
     desenhar();
-    enviarContagem(porItem);
-  }
-
-  // Manda a contagem para a tela da Lista de desejos (na conta 2, nada).
-  function enviarContagem(porItem) {
-    if (!window.thDesejosContagem) return;
-    var res = estado.res || {};
-    try {
-      window.thDesejosContagem(chaveConta === '' ? porItem : null, {
-        conta2: chaveConta !== '', buscadoEm: res.buscadoEm || 0, erro: res.erro || null,
-      });
-    } catch (e) {}
   }
 
   // ---------- Desenho ----------
   function corDem(d) {
     return d === 0 ? 'neg' : d === 1 ? 'warn' : d >= 3 ? 'pos' : '';
   }
-  // extra = classe a mais (v6.0: "quer" = item da Lista de desejos, com contorno).
-  function miniatura(id, extra) {
-    var cls = 'thumb' + (extra ? ' ' + extra : '');
-    return THUMBS[id] ? '<img class="' + cls + '" src="' + esc(THUMBS[id]) + '" alt="">' : '<span class="' + cls + '"></span>';
+  function miniatura(id) {
+    return THUMBS[id] ? '<img class="thumb" src="' + esc(THUMBS[id]) + '" alt="">' : '<span class="thumb"></span>';
   }
   // Embaixo do nome: só a demanda.
   function detalhes(i) {
@@ -719,21 +643,19 @@ function paginaAnuncios(D, P, PA) {
   }
   // Item do cartão aberto: o toque abre a página do item no Rolimon's
   // (o painel.js manda o link para o Safari).
-  // quer = ids da Lista de desejos neste anúncio (só no lado Recebo).
-  function linhaItem(i, quer) {
-    var naLista = quer && quer.indexOf(i.id) >= 0;
+  function linhaItem(i) {
     return (
       '<a class="an-i" href="https://www.rolimons.com/item/' + esc(i.id) + '">' + miniatura(i.id) +
       '<span class="item-txt"><span class="nome">' + esc(i.nome) + '</span>' +
-      '<span class="det">' + detalhes(i) + (naLista ? '<span class="an-quer">na sua lista</span>' : '') + '</span></span>' +
+      '<span class="det">' + detalhes(i) + '</span></span>' +
       valor(valorEfetivo(i), i.value != null ? 'value' : 'RAP') +
       '<span class="an-seta" aria-hidden="true">↗</span></a>'
     );
   }
   // Um lado (Recebo ou Dou) com a linha Total (value base, Robux já incluídos).
-  function blocoLado(classe, rotulo, itens, robux, recebe, t, quer) {
+  function blocoLado(classe, rotulo, itens, robux, recebe, t) {
     var h = '<div class="an-lado ' + classe + '"><div class="an-lcab"><span>' + rotulo + '</span><span>Valor</span></div>';
-    h += itens.map(function (i) { return linhaItem(i, quer); }).join('');
+    h += itens.map(linhaItem).join('');
     if (robux) {
       var liquido = recebe ? Math.floor(robux * (1 - P.taxaRobux)) : robux;
       h += '<div class="an-i"><span class="item-txt"><span class="nome">+ ' + fmtNum(robux) + ' Robux</span>' +
@@ -744,10 +666,10 @@ function paginaAnuncios(D, P, PA) {
     return h + '</div>';
   }
   // Miniaturas pequenas de um lado, na linha fechada.
-  function grupo(itens, robux, classe, quer) {
+  function grupo(itens, robux, classe) {
     return (
       '<span class="an-grp ' + classe + '">' +
-      itens.map(function (i) { return miniatura(i.id, quer && quer.indexOf(i.id) >= 0 ? 'quer' : ''); }).join('') +
+      itens.map(function (i) { return miniatura(i.id); }).join('') +
       (robux ? '<span class="an-rbx">R$</span>' : '') + '</span>'
     );
   }
@@ -760,7 +682,7 @@ function paginaAnuncios(D, P, PA) {
     if (r.mesmo && r.mesmo.length) {
       h += '<p class="an-aviso">Tem <b>' + esc(r.mesmo.join(', ')) + '</b> dos dois lados. Continua na lista porque o ganho não é negativo.</p>';
     }
-    h += blocoLado('rec', 'Recebo', r.rec, ad[5], true, r.tr, r.desejo);
+    h += blocoLado('rec', 'Recebo', r.rec, ad[5], true, r.tr);
     h += blocoLado('dou', r.modo === 'tag' ? 'Dou (sugestão)' : 'Dou', r.dou, 0, false, r.td);
     var dif = r.tr.value - r.td.value;
     h += '<div class="an-pe" data-cor="' + corVeredito(r.v) + '"><span class="selo">' + esc(r.v ? r.v.titulo : '') + '</span>' +
@@ -789,10 +711,9 @@ function paginaAnuncios(D, P, PA) {
       '<div class="an-it' + (aberto ? ' aberto' : '') + '">' +
       '<button type="button" class="an-linha" data-k="' + k + '" aria-expanded="' + aberto + '">' +
       '<span class="an-main"><span class="an-l1"><b>' + esc(ad[3] || 'Jogador ' + ad[2]) + '</b>' +
-      (r.desejo && r.desejo.length ? '<span class="an-etq desejo">Desejo</span>' : '') +
       '<span class="an-etq' + (sug ? '' : ' seus') + '">' + esc(etiqueta(r)) + '</span>' +
       '<span class="an-tempo">' + haQuanto(ad[1]) + '</span></span>' +
-      '<span class="an-l2">' + grupo(r.rec, ad[5], 'rec', r.desejo) + '<span class="an-tr">⇄</span>' +
+      '<span class="an-l2">' + grupo(r.rec, ad[5], 'rec') + '<span class="an-tr">⇄</span>' +
       grupo(r.dou, 0, 'dou' + (sug ? ' sug' : '')) + '</span></span>' +
       '<span class="an-pct" data-cor="' + cor + '"><b>' + pctTxt(r.pct) + '</b><small>' + esc(r.v ? r.v.titulo : '') + '</small></span>' +
       '<span class="an-chev">›</span></button>' +
@@ -817,12 +738,6 @@ function paginaAnuncios(D, P, PA) {
     }
     var bs = document.querySelectorAll('#an-ordem button');
     for (var k = 0; k < bs.length; k++) bs[k].classList.toggle('on', bs[k].getAttribute('data-o') === estado.ordem);
-    // v6.0: chip da Lista de desejos (só na conta principal e com a lista preenchida).
-    var temDS = Object.keys(desejos()).length > 0;
-    $('an-chips').classList.toggle('oculto', !temDS);
-    var cd = $('an-desejos');
-    cd.classList.toggle('on', temDS && estado.soDesejos);
-    cd.textContent = 'Lista de desejos' + (estado.carregou && estado.diag ? ' · ' + estado.diag.nDesejo : '');
   }
   function desenharLista() {
     var lista = estado.lista;
@@ -834,10 +749,7 @@ function paginaAnuncios(D, P, PA) {
       return;
     }
     if (!lista.length) {
-      var soDS = estado.soDesejos && estado.diag && estado.diag.desejos > 0;
-      $('an-lista').innerHTML = '<p class="vazio">' + (soDS
-        ? 'Nenhum anúncio de item da sua lista dá para fechar' + (estado.item ? ' com ' + esc(nomeDoItem(estado.item)) : '') + ' agora.'
-        : estado.item
+      $('an-lista').innerHTML = '<p class="vazio">' + (estado.item
         ? 'Nenhum anúncio serve para ' + esc(nomeDoItem(estado.item)) + ' agora.'
         : 'Nenhum anúncio com vantagem para você agora.') + '</p>';
       return;
@@ -890,8 +802,6 @@ function paginaAnuncios(D, P, PA) {
       L.push('Análise: ' + estado.lista.length + ' na lista (' + dg.nItens + ' pedem seus itens, ' + dg.nTags + ' por tag)' +
         (estado.item ? ' · filtro ' + nomeDoItem(estado.item) + ' (' + dg.foraDoFiltro + ' não pedem o item)' : '') +
         ', em ' + dg.ms + ' ms · ordem ' + estado.ordem + ' · seus itens livres: ' + meus.length);
-      L.push('Lista de desejos: ' + (chaveConta === '' ? dg.desejos + ' itens · ' + dg.nDesejo + ' anúncios de desejo' +
-        (estado.soDesejos && dg.desejos ? ' · filtro ligado (' + dg.foraDesejos + ' fora)' : '') : 'não usada na conta 2'));
       var ds = Object.keys(dg.descartes).sort(function (x, y) { return dg.descartes[y] - dg.descartes[x]; });
       if (ds.length) L.push('Fora da lista: ' + ds.map(function (d) { return d + ' ' + dg.descartes[d]; }).join(' · '));
     }
@@ -933,10 +843,6 @@ function paginaAnuncios(D, P, PA) {
       estado.res = estado.res || { lista: [], origem: 'falhou' };
       estado.res.erro = 'sem resposta do Scriptable';
       desenhar();
-      // A tela da Lista de desejos para de mostrar "Buscando anúncios...".
-      if (window.thDesejosContagem) {
-        try { window.thDesejosContagem(null, { erro: estado.res.erro, buscadoEm: 0, conta2: chaveConta !== '' }); } catch (e) {}
-      }
     }, 120000);
   }
   window.receberAnuncios = function (res) {
@@ -968,20 +874,6 @@ function paginaAnuncios(D, P, PA) {
       el.classList.toggle('oculto', !dados);
     }
     fecharFolha();
-    if (estado.carregou) processar();
-    else desenhar();
-  };
-  // v6.0: a Lista de desejos mudou (item adicionado ou removido): refaz a análise.
-  window.thAnunciosDesejos = function () {
-    estado.aberto = null;
-    if (estado.carregou) processar();
-    else desenharFiltro();
-  };
-  // v6.0: o contador da tela da lista liga o filtro "Lista de desejos".
-  window.thAnunciosFiltrarDesejos = function () {
-    estado.soDesejos = true;
-    gravarSalvo('an-desejos', '1');
-    estado.aberto = null;
     if (estado.carregou) processar();
     else desenhar();
   };
@@ -1045,13 +937,6 @@ function paginaAnuncios(D, P, PA) {
   });
   $('an-fundo').addEventListener('click', fecharFolha);
   $('an-fechar').addEventListener('click', fecharFolha);
-  $('an-desejos').addEventListener('click', function () {
-    estado.soDesejos = !estado.soDesejos;
-    gravarSalvo('an-desejos', estado.soDesejos ? '1' : '');
-    estado.aberto = null;
-    if (estado.carregou) processar();
-    else desenhar();
-  });
   $('an-ordem').addEventListener('click', function (ev) {
     var b = ev.target.closest('button[data-o]');
     if (!b) return;
