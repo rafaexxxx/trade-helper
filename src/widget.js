@@ -3,24 +3,27 @@
 // só alimenta o histórico por hora.
 const a = require('analise');
 
-// Paleta v4.1: sempre grafite (independe do modo claro/escuro do iPhone), com o
-// bloco dos totais no azul #173b82 do painel. RAP em azul claro, como no painel.
+// Paleta v5.4.1: sempre OLED (fundo preto puro, independe do tema do painel e do
+// modo claro/escuro do iPhone). Os totais ficam num cartão quase preto com borda
+// fina, igual ao cartão do value no tema OLED do painel.
 const P = {
-  fundoTopo: '#1f2633',
-  fundoBase: '#15181d',
-  azul: '#173b82',
-  linha: '#363c48',
-  rotulo: '#a3abb9',
-  texto: '#eef1f6',
-  rap: '#8fa8ff',
-  apagado: '#8b93a3',
-  pos: '#8fe0b8',
-  neg: '#ff9db0',
+  fundo: '#000000',
+  cartao: '#0e0e10',
+  cartaoBorda: '#2a2a2e',
+  linha: '#232327',
+  rotulo: '#8e8e93',
+  texto: '#f5f5f7',
+  rap: '#9fb0ff',
+  apagado: '#8e8e93',
+  pos: '#7ee0ae',
+  neg: '#ff8fa3',
   warn: '#f5c98a',
 };
 
 const CORES = {
-  azul: new Color(P.azul),
+  fundo: new Color(P.fundo),
+  cartao: new Color(P.cartao),
+  cartaoBorda: new Color(P.cartaoBorda),
   linha: new Color(P.linha),
   rotulo: new Color(P.rotulo),
   texto: new Color(P.texto),
@@ -30,23 +33,18 @@ const CORES = {
   neg: new Color(P.neg),
   warn: new Color(P.warn),
   branco: new Color('#ffffff'),
-  // Textos secundários dentro do bloco azul.
+  // Textos secundários dentro do cartão dos totais.
   brancoSuave: new Color('#ffffff', 0.78),
 };
 
-// Size/LinearGradient podem não existir em algum contexto; sem eles, seguimos sem.
+// Size pode não existir em algum contexto; sem ele, seguimos sem.
 function tam(w, h) {
   return typeof Size !== 'undefined' ? new Size(w, h) : null;
 }
 
+// Fundo preto puro, sem degradê.
 function aplicarFundo(w) {
-  w.backgroundColor = new Color(P.fundoBase);
-  if (typeof LinearGradient !== 'undefined') {
-    const g = new LinearGradient();
-    g.colors = [new Color(P.fundoTopo), new Color(P.fundoBase)];
-    g.locations = [0, 1];
-    w.backgroundGradient = g;
-  }
+  w.backgroundColor = CORES.fundo;
 }
 
 function hora(ms) {
@@ -90,10 +88,13 @@ function bloco(pilha, nome, valor, v, tamanho, corValor, corRotulo) {
   if (v && v.pct != null) texto(l, textoVar(v.pct), Font.semiboldSystemFont(10), corVar(v.pct));
 }
 
-function cartao(pilha, padding, cor) {
+// Cartão dos totais: quase preto com borda fina (tema OLED).
+function cartao(pilha, padding) {
   const c = pilha.addStack();
   c.layoutVertically();
-  c.backgroundColor = cor;
+  c.backgroundColor = CORES.cartao;
+  c.borderColor = CORES.cartaoBorda;
+  c.borderWidth = 1;
   c.cornerRadius = 14;
   c.setPadding(padding, padding, padding, padding);
   return c;
@@ -230,8 +231,8 @@ function grande(w, r, cfg) {
   cabecalho(w, r, 15);
   w.addSpacer(8);
 
-  // Faixa azul com os totais.
-  const tot = cartao(w, 10, CORES.azul);
+  // Faixa (cartão OLED) com os totais.
+  const tot = cartao(w, 10);
   const totLinha = tot.addStack();
   totLinha.layoutHorizontally();
   bloco(totLinha, 'Value', a.fmtNum(r.totais.value), c.var && c.var.value, 22, CORES.branco, CORES.brancoSuave);
@@ -295,8 +296,8 @@ function medio(w, r) {
   const linha = w.addStack();
   linha.layoutHorizontally();
 
-  // Cartão azul com os totais.
-  const esq = cartao(linha, 11, CORES.azul);
+  // Cartão OLED com os totais.
+  const esq = cartao(linha, 11);
   const te = tam(136, 0);
   if (te) esq.size = te;
   const topo = esq.addStack();
@@ -331,7 +332,7 @@ function medio(w, r) {
   dir.addSpacer();
 }
 
-// ---------- Pequeno (o widget inteiro é o bloco azul) ----------
+// ---------- Pequeno (o widget inteiro é o bloco dos totais, no preto) ----------
 function pequeno(w, r) {
   const c = r.comparacoes.dia;
   const topo = w.addStack();
@@ -377,7 +378,7 @@ function montar(r, cfg) {
   }
 
   if (familia === 'small') {
-    w.backgroundColor = CORES.azul;
+    aplicarFundo(w);
     w.setPadding(14, 14, 14, 14);
     pequeno(w, r);
   } else if (familia === 'medium') {
