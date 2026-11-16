@@ -381,7 +381,8 @@ function folhas() {
 
 function css() {
   return `
-.av-proposta{display:flex;flex-direction:column;border-radius:20px;background:var(--card);box-shadow:var(--sombra);overflow:hidden}
+.av-proposta{display:flex;flex-direction:column;border-radius:20px;background:var(--card);border:1px solid var(--card-borda);box-shadow:var(--sombra);overflow:hidden}
+.av-proposta,.veredito,.av-resumo{-webkit-backdrop-filter:var(--vidro);backdrop-filter:var(--vidro)}
 .av-lado{display:flex;flex-direction:column;gap:12px;padding:16px}
 .av-dou{background:var(--dou-bg)}
 .av-recebo{background:var(--rec-bg)}

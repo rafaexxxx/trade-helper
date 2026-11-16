@@ -218,7 +218,8 @@ function css() {
 .an-fx{flex:none;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--card2);color:var(--sub);font-size:15px;line-height:1}
 .an-fseta{flex:none;color:var(--sub);font-size:13px}
 
-.an-grupo{display:flex;flex-direction:column;border-radius:18px;background:var(--card);box-shadow:var(--sombra);overflow:hidden}
+.an-grupo{display:flex;flex-direction:column;border-radius:18px;background:var(--card);border:1px solid var(--card-borda);box-shadow:var(--sombra);overflow:hidden}
+.an-grupo,.an-fbtn{-webkit-backdrop-filter:var(--vidro);backdrop-filter:var(--vidro)}
 .an-it+.an-it{border-top:1px solid var(--borda)}
 .an-linha{display:flex;align-items:center;gap:10px;width:100%;padding:12px 14px;border:0;background:none;text-align:left;-webkit-tap-highlight-color:transparent}
 .an-linha:active,.an-it.aberto>.an-linha{background:var(--card2)}
