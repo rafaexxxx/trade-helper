@@ -311,11 +311,13 @@ footer{color:var(--sub);font-size:13px;text-align:center}
 .cab{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
 .mais{flex:none;width:38px;height:38px;padding:0;border:0;border-radius:50%;background:var(--card);box-shadow:var(--sombra);color:var(--sub);font-size:20px;font-weight:700;line-height:1;-webkit-tap-highlight-color:transparent}
 .mais:active{background:var(--card2)}
-.contas{display:flex;gap:3px;padding:3px;border-radius:14px;background:var(--card2)}
-.contas button{flex:1;min-width:0;display:flex;align-items:center;justify-content:center;gap:8px;padding:8px 6px;border:0;border-radius:11px;background:none;color:var(--sub);font-size:14px;font-weight:600;-webkit-tap-highlight-color:transparent}
-.contas button .n{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.contas button.on{background:var(--card);color:var(--fg);box-shadow:0 1px 3px rgba(0,0,0,.12)}
-.contas button.add{border:1.5px dashed var(--borda);color:var(--c2-t)}
+.cab .meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.chip-conta{display:inline-flex;align-items:center;gap:6px;max-width:100%;padding:3px 10px 3px 3px;border:1px solid var(--borda);border-radius:999px;background:var(--card);color:var(--fg);font-size:13px;font-weight:600;-webkit-tap-highlight-color:transparent}
+.chip-conta:active{background:var(--card2)}
+.chip-conta .n{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chip-conta .av{width:20px;height:20px;font-size:10px}
+.chip-conta .tr{color:var(--sub);font-size:12px}
+.faixa-conta .voltar{margin-left:auto;padding:0;border:0;background:none;color:var(--c2-t);font-size:13px;font-weight:700;text-decoration:underline}
 .av{flex:none;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:700;color:#fff;background:#173b82}
 .av.c2{background:#7a2a66}
 .faixa-conta{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:12px;background:var(--c2-bg);color:var(--c2-t);font-size:13px;font-weight:600}
@@ -397,21 +399,21 @@ function inventario(r, cfg) {
   return { html, menu: dadosDoMenu(alertas, d), titulo: per ? per.longo : 'Mudanças' };
 }
 
-// Botões do alternador de conta. c2 = { nome } ou null.
-function botoesConta(principal, c2) {
-  const inicial = (s) => esc(String(s || '?').charAt(0).toUpperCase());
+// Linha embaixo do título. v5.2.1: com conta 2, um chip pequeno com a conta
+// ATUAL e ⇄ (um toque troca) + a hora; sem conta 2, só "Atualizado HH:MM".
+// A conta 2 é adicionada pelo menu ⋯.
+function linhaMeta(principal, c2, hora) {
+  const ini = esc(String(principal || '?').charAt(0).toUpperCase());
   return (
-    '<nav class="contas" id="contas" aria-label="Conta">' +
-    '<button type="button" data-conta="1" class="on"><span class="av">' + inicial(principal) + '</span><span class="n">' + esc(principal) + '</span></button>' +
-    '<button type="button" data-conta="2" id="c2-botao"' + (c2 ? '' : ' class="oculto"') + '><span class="av c2" id="c2-ini">' + inicial(c2 && c2.nome) +
-    '</span><span class="n" id="c2-nome">' + esc(c2 ? c2.nome : '') + '</span></button>' +
-    '<button type="button" class="add' + (c2 ? ' oculto' : '') + '" id="c2-add">+ Conta 2</button>' +
-    '</nav>'
+    '<p class="meta">' +
+    '<button type="button" class="chip-conta' + (c2 ? '' : ' oculto') + '" id="conta-chip" aria-label="Trocar de conta">' +
+    '<span class="av" id="chip-ini">' + ini + '</span><span class="n" id="chip-nome">' + esc(principal) + '</span><span class="tr">⇄</span></button>' +
+    '<span id="meta-hora" data-hora="' + esc(hora) + '">' + (c2 ? '· ' : 'Atualizado ') + esc(hora) + '</span></p>'
   );
 }
 
 function gerar(r, cfg) {
-  const meta = 'Atualizado ' + quando(r.agora, r.agora);
+  const hora = quando(r.agora, r.agora);
   const av = r.avaliador || { erro: 'dados não preparados' };
   const inv = inventario(r, cfg);
   const menu = inv.menu;
@@ -433,11 +435,9 @@ ${anuncios.css()}
 <div class="app">
 
 <div class="cab">
-  <div><h1 id="titulo">Inventário</h1><p class="meta">${meta}</p></div>
+  <div><h1 id="titulo">Inventário</h1>${linhaMeta(r.usuario.nome, r.conta2, hora)}</div>
   <button type="button" class="mais" id="mais" aria-label="Mais opções">⋯</button>
 </div>
-
-${botoesConta(r.usuario.nome, r.conta2)}
 
 <nav class="seg abas" id="abas">
   <button data-aba="inv" class="on">Inventário</button>
@@ -445,7 +445,7 @@ ${botoesConta(r.usuario.nome, r.conta2)}
   <button data-aba="anuncios">Anúncios</button>
 </nav>
 
-<div class="faixa-conta oculto" id="faixa-conta"><span class="av c2" id="fc-ini"></span><span id="fc-txt"></span></div>
+<div class="faixa-conta oculto" id="faixa-conta"><span class="av c2" id="fc-ini"></span><span id="fc-txt"></span><button type="button" class="voltar" id="fc-voltar">Voltar</button></div>
 <div class="c2-estado oculto" id="c2-estado"></div>
 
 <div id="aba-inv" class="aba">
@@ -665,13 +665,15 @@ ${av.erro ? '' : avaliador.folhas() + anuncios.folha()}
 
   // ---------- Alternador de conta (v5.2) ----------
   function inicial(s){ return String(s || '?').charAt(0).toUpperCase(); }
+  var PRINCIPAL = ${avaliador.serializar(r.usuario.nome)};
+  // Chip sob o título: mostra a conta ATUAL; some se não houver conta 2.
   function mostrarBotoesConta(){
-    $('c2-botao').classList.toggle('oculto', !c2.nome);
-    $('c2-add').classList.toggle('oculto', !!c2.nome);
-    $('c2-nome').textContent = c2.nome || '';
-    $('c2-ini').textContent = inicial(c2.nome);
-    $('c2-botao').classList.toggle('on', conta === 2);
-    document.querySelector('#contas [data-conta="1"]').classList.toggle('on', conta === 1);
+    var nomeAtual = conta === 2 ? c2.nome : PRINCIPAL;
+    $('conta-chip').classList.toggle('oculto', !c2.nome);
+    $('chip-nome').textContent = nomeAtual || '';
+    $('chip-ini').textContent = inicial(nomeAtual);
+    $('chip-ini').classList.toggle('c2', conta === 2);
+    $('meta-hora').textContent = (c2.nome ? '· ' : 'Atualizado ') + $('meta-hora').getAttribute('data-hora');
     $('m-trocar').textContent = c2.nome ? 'Trocar conta 2 (' + c2.nome + ')' : 'Adicionar conta 2';
     $('m-remover').classList.toggle('oculto', !c2.nome);
   }
@@ -766,13 +768,14 @@ ${av.erro ? '' : avaliador.folhas() + anuncios.folha()}
     else mostrarBotoesConta();
   };
 
-  // Toques no alternador.
-  $('contas').addEventListener('click', function(ev){
-    var b = ev.target.closest('button');
-    if (!b) return;
-    if (b.id === 'c2-add') { abrirForm(); return; }
-    var k = Number(b.getAttribute('data-conta'));
-    if (k && k !== conta) { mostrarConta(k); window.scrollTo(0, 0); }
+  // Toque no chip: troca para a outra conta. "Voltar" na faixa vinho: volta para a sua.
+  $('conta-chip').addEventListener('click', function(){
+    mostrarConta(conta === 1 ? 2 : 1);
+    window.scrollTo(0, 0);
+  });
+  $('fc-voltar').addEventListener('click', function(){
+    mostrarConta(1);
+    window.scrollTo(0, 0);
   });
 
   // ---------- Menu ⋯ e formulário da conta 2 ----------
