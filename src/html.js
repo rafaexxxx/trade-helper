@@ -1,5 +1,7 @@
 // Página do painel (v4): visual profissional, tema claro/escuro seguindo o iPhone.
 // Três abas: Inventário, Avaliar trade (módulo avaliador) e Anúncios (módulo anuncios).
+// v5.1: no Inventário a lista vem logo depois de uma faixa compacta de totais;
+// alertas e mudanças aparecem na linha de cada item (etiqueta e setas) e no menu do item.
 const a = require('analise');
 const avaliador = require('avaliador');
 const anuncios = require('anuncios');
@@ -24,15 +26,55 @@ function corTendencia(t) {
 }
 
 const COR_GRAVIDADE = { alta: 'neg', media: 'warn', baixa: 'sub' };
+const PESO_GRAVIDADE = { alta: 3, media: 2, baixa: 1 };
 const COR_DIRECAO = { sobe: 'pos', desce: 'neg', neutro: 'sub' };
 
+function maiuscula(s) {
+  s = String(s || '');
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function pct(antes, depois) {
+  return antes ? ((depois - antes) / antes) * 100 : null;
+}
+
+// Alertas de encontrarRiscos por uaid, do mais grave para o mais leve.
+function alertasPorUaid(riscos) {
+  const m = {};
+  for (const r of riscos) {
+    m[r.item.uaid] = r.motivos.slice().sort((x, y) => PESO_GRAVIDADE[y.grav] - PESO_GRAVIDADE[x.grav]);
+  }
+  return m;
+}
+
+// Etiqueta da linha: o pior alerta e "+N" para os outros (todos aparecem no menu do item).
+function etiqueta(motivos) {
+  if (!motivos || !motivos.length) return '';
+  const pior = motivos[0];
+  const mais = motivos.length > 1 ? ' +' + (motivos.length - 1) : '';
+  return '<span class="tag ' + COR_GRAVIDADE[pior.grav] + '">' + esc(maiuscula(pior.texto)) + mais + '</span>';
+}
+
+// Variação % do value e do RAP do item contra o retrato base do período.
+function variacaoItem(i, base) {
+  const p = base && base.itens ? base.itens[i.uaid] : null;
+  if (!p) return null;
+  return { v: pct(p.valorEfetivo, i.valorEfetivo), r: pct(p.rap, i.rap) };
+}
+
+// Seta pequena ao lado do número ("▲ 6,2%"), só a partir do limite de mudança.
+function seta(p, lim) {
+  if (p == null || Math.abs(p) < lim) return '';
+  return '<small class="seta ' + (p > 0 ? 'pos' : 'neg') + '">' + (p > 0 ? '▲ ' : '▼ ') + a.fmtPct(Math.abs(p)) + '</small>';
+}
+
 // Linha pequena embaixo do nome: demanda · tendência · detalhes.
+// "projected" não entra aqui: ele sempre vira a etiqueta vermelha da linha.
 function detalhes(i) {
   const d = [];
   if (i.demanda >= 0) d.push('<span class="' + corDemanda(i.demanda) + '">' + esc(a.demandaCurta(i.demanda)) + '</span>');
   if (i.tendencia >= 0) d.push('<span class="' + corTendencia(i.tendencia) + '">' + esc(a.tendenciaCurta(i.tendencia)) + '</span>');
   if (i.serial) d.push('#' + esc(i.serial));
-  if (i.projected) d.push('<span class="neg">projected</span>');
   if (i.hyped) d.push('hyped');
   if (i.rare) d.push('rare');
   if (i.hold) d.push('<span class="warn">hold</span>');
@@ -41,68 +83,45 @@ function detalhes(i) {
   return d.join(' · ');
 }
 
-function linhaItem(i, miniatura) {
+// Uma linha da lista. "motivos" são os alertas do item; "varU"/"varD" as variações
+// contra a última consulta e contra 24h (as setas seguem o seletor de período).
+function linhaItem(i, miniatura, motivos, varU, varD, lim) {
   const det = detalhes(i);
+  const tag = etiqueta(motivos);
   const img = miniatura
     ? '<img class="thumb" src="' + esc(miniatura) + '" alt="">'
     : '<span class="thumb"></span>';
+  const setaV = i.value != null ? porPeriodo(seta(varU && varU.v, lim), seta(varD && varD.v, lim)) : '';
+  const setaR = porPeriodo(seta(varU && varU.r, lim), seta(varD && varD.r, lim));
   return (
-    '<div class="item" data-asset="' + esc(i.assetId) + '" data-titulo="' + esc(i.nome) +
+    '<div class="item" data-uaid="' + esc(i.uaid) + '" data-asset="' + esc(i.assetId) + '" data-titulo="' + esc(i.nome) +
     '" data-nome="' + esc((i.nome + ' ' + i.sigla).toLowerCase()) +
     '" data-value="' + i.valorEfetivo + '" data-rap="' + i.rap +
-    '" data-dem="' + i.demanda + '" data-tend="' + i.tendencia + '">' +
+    '" data-dem="' + i.demanda + '" data-tend="' + i.tendencia +
+    '" data-alerta="' + (tag ? '1' : '0') + '">' +
     img +
     '<div class="item-txt"><span class="nome">' + esc(i.nome) + '</span>' +
-    (det ? '<span class="det">' + det + '</span>' : '') + '</div>' +
-    '<div class="item-num"><span class="v">' + (i.value != null ? a.fmtNum(i.value) : '<span class="sub">—</span>') + '</span>' +
-    '<span class="r"><small>RAP</small>' + a.fmtNum(i.rap) + '</span></div>' +
+    (tag || det ? '<span class="det">' + tag + (det ? '<span>' + det + '</span>' : '') + '</span>' : '') + '</div>' +
+    '<div class="item-num"><span class="v">' + (i.value != null ? setaV + a.fmtNum(i.value) : '<span class="sub">—</span>') + '</span>' +
+    '<span class="r">' + setaR + '<small>RAP</small>' + a.fmtNum(i.rap) + '</span></div>' +
     '</div>'
   );
 }
 
-// Marca redonda à esquerda da linha: "!" para alertas, ▲/▼ para mudanças.
-function marca(cor, simbolo) {
-  return '<span class="marca ' + cor + '">' + simbolo + '</span>';
-}
-
-function listaRiscos(riscos) {
-  if (!riscos.length) return '<p class="vazio">Nenhum item em risco.</p>';
-  return (
-    '<ul class="grupo">' +
-    riscos
-      .map((r) => {
-        const pior = r.motivos.some((m) => m.grav === 'alta') ? 'neg' : r.motivos.some((m) => m.grav === 'media') ? 'warn' : 'sub';
-        return (
-          '<li>' + marca(pior, '!') + '<span class="txt"><b>' + esc(r.item.nome) + '</b>: ' +
-          r.motivos.map((m) => '<span class="' + COR_GRAVIDADE[m.grav] + '">' + esc(m.texto) + '</span>').join(', ') +
-          '</span></li>'
-        );
-      })
-      .join('') +
-    '</ul>'
-  );
-}
-
-function listaMudancas(c, cfg, semBase) {
-  if (c.mudancas == null) return '<p class="vazio">' + semBase + '</p>';
-  if (!c.mudancas.length) {
-    return '<p class="vazio">Nada acima de ' + cfg.LIMITE_MUDANCA_PCT + '% desde ' + a.fmtData(c.base.data) + '.</p>';
+// Dados do menu de cada item: alertas [texto, cor] e mudanças por período [texto, cor].
+function dadosDoMenu(alertas, comparacoes) {
+  const m = {};
+  const pegar = (uaid) => (m[uaid] = m[uaid] || { a: [], u: [], d: [] });
+  for (const uaid of Object.keys(alertas)) {
+    pegar(uaid).a = alertas[uaid].map((x) => [maiuscula(x.texto), COR_GRAVIDADE[x.grav]]);
   }
-  return (
-    '<ul class="grupo">' +
-    c.mudancas
-      .map((m) => {
-        const dir = m.mudancas[0] ? m.mudancas[0].dir : 'neutro';
-        const simbolo = dir === 'sobe' ? '▲' : dir === 'desce' ? '▼' : '•';
-        return (
-          '<li>' + marca(COR_DIRECAO[dir], simbolo) + '<span class="txt"><b>' + esc(m.item.nome) + '</b>: ' +
-          m.mudancas.map((x) => '<span class="' + COR_DIRECAO[x.dir] + '">' + esc(x.texto) + '</span>').join('; ') +
-          '</span></li>'
-        );
-      })
-      .join('') +
-    '</ul>'
-  );
+  const porPer = { u: comparacoes.ultima, d: comparacoes.dia };
+  for (const k of Object.keys(porPer)) {
+    for (const x of porPer[k].mudancas || []) {
+      pegar(x.item.uaid)[k] = x.mudancas.map((y) => [y.texto, COR_DIRECAO[y.dir]]);
+    }
+  }
+  return m;
 }
 
 // Bloco que só aparece quando o período correspondente está selecionado.
@@ -121,23 +140,11 @@ function quando(ms, agora) {
   return mesmoDia ? a.fmtData(ms).slice(6) : a.fmtData(ms);
 }
 
-// Pílula do cartão de destaque: "▲ 2,1% desde 12:10".
-function pilula(v, c, agora, semBase) {
-  if (!c.base || !v || v.pct == null) return '<span class="pilula"><span>' + semBase + '</span></span>';
-  const seta = v.pct > 0 ? '▲ ' : v.pct < 0 ? '▼ ' : '';
-  return '<span class="pilula">' + seta + a.fmtPct(Math.abs(v.pct)) + ' <span>desde ' + quando(c.base.data, agora) + '</span></span>';
-}
-
-// Cor do contador de alertas: vermelho se houver grave, amarelo se houver médio.
-function corContagemRiscos(riscos) {
-  let cor = 'sub';
-  for (const r of riscos) {
-    for (const m of r.motivos) {
-      if (m.grav === 'alta') return 'neg';
-      if (m.grav === 'media') cor = 'warn';
-    }
-  }
-  return cor;
+// Variação de um total na faixa: "▲ 2,1%" (o "desde" fica no topo da página).
+function varTotal(v, semBase) {
+  if (!v || v.pct == null) return '<span class="f-var vazio">' + semBase + '</span>';
+  const s = v.pct > 0 ? '▲ ' : v.pct < 0 ? '▼ ' : '';
+  return '<span class="f-var">' + s + a.fmtPct(Math.abs(v.pct)) + '</span>';
 }
 
 // Paleta v4 (aprovada no protótipo L). Os nomes antigos (--cab, --linha, --link,
@@ -192,19 +199,30 @@ h1{margin:0;font-size:30px;font-weight:700;line-height:1.1;letter-spacing:-.02em
 .chips{display:flex;flex-wrap:wrap;gap:6px}
 .chip{padding:7px 13px;border:1px solid var(--borda);border-radius:999px;background:var(--card);color:var(--fg);font-size:14px;font-weight:500;-webkit-user-select:none;user-select:none}
 .chip.on{color:#fff;background:var(--acc);border-color:var(--acc)}
+.chip.filtro{border-style:dashed}
+.chip.filtro.on{border-style:solid;background:var(--neg-bg);border-color:var(--neg);color:var(--neg)}
 .btn{padding:11px 16px;border-radius:12px;border:0;background:var(--acc);color:#fff;font-size:15px;font-weight:600}
 .btn.sec{background:var(--card);color:var(--acc-t);border:1px solid var(--borda)}
 .btn:active,.chip:active{background:var(--acc-press);color:#fff}
 .btn:disabled{opacity:.45}
 
-.heroi{padding:22px 20px 20px;border-radius:20px;background:var(--heroi);color:#fff;box-shadow:var(--sombra)}
-.h-rot{font-size:14px;font-weight:600;opacity:.82}
-.h-num{margin:6px 0 10px;font-size:44px;font-weight:700;line-height:1;letter-spacing:-.02em}
-.h-num.media{font-size:34px}
-.pilula{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;background:rgba(255,255,255,.18);font-size:14px;font-weight:600}
-.pilula span{font-weight:500;opacity:.85}
-.h-linha{height:1px;margin:18px 0;background:rgba(255,255,255,.22)}
-.h-pe{margin-top:18px;font-size:14px;opacity:.85}
+.faixa{padding:14px 16px 12px;border-radius:18px;background:var(--heroi);color:#fff;box-shadow:var(--sombra);display:flex;flex-direction:column;gap:12px}
+.f-tot{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.f-col{display:flex;flex-direction:column;gap:3px;min-width:0}
+.f-rot{font-size:12px;font-weight:600;opacity:.8;text-transform:uppercase;letter-spacing:.06em}
+.f-num{font-size:24px;font-weight:700;line-height:1.1;letter-spacing:-.01em}
+.f-var{font-size:13px;font-weight:600;opacity:.92}
+.f-var.vazio{font-weight:500;opacity:.7}
+.f-pe{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding-top:10px;border-top:1px solid rgba(255,255,255,.2)}
+.seg.claro{background:rgba(255,255,255,.14);padding:2px;border-radius:10px}
+.seg.claro button{flex:none;padding:5px 12px;font-size:13px;color:rgba(255,255,255,.85);border-radius:8px}
+.seg.claro button.on{background:#fff;color:#173b82;box-shadow:none}
+.f-dir{display:flex;align-items:center;gap:8px}
+.f-info{font-size:13px;opacity:.85}
+.f-alerta{flex:none;width:18px;height:18px;padding:0;border:0;border-radius:50%;background:rgba(255,255,255,.16);color:#f5c98a;font-size:11px;font-weight:700;line-height:18px;text-align:center}
+.f-aviso{display:flex;flex-direction:column;gap:6px;padding:8px 10px;border-radius:10px;background:rgba(255,255,255,.12);font-size:13px;line-height:1.35}
+.f-aviso p{margin:0}
+.ferramentas{display:flex;flex-direction:column;gap:10px}
 
 .secao{display:flex;flex-direction:column;gap:10px}
 .secao>h2,details.bloco>summary{display:flex;align-items:center;gap:8px;margin:0;font-size:20px;font-weight:700;line-height:1.2;letter-spacing:-.01em}
@@ -236,7 +254,14 @@ input[type=search]::placeholder{color:var(--sub)}
 .thumb{flex:none;width:46px;height:46px;border-radius:12px;background:var(--card2);object-fit:cover;display:block}
 .item-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
 .nome{font-size:16px;font-weight:600;line-height:1.25;overflow-wrap:anywhere}
-.det{font-size:13px;color:var(--sub)}
+.det{font-size:13px;color:var(--sub);display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px}
+.tag{display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:700;line-height:1.35;white-space:nowrap}
+.tag.neg{background:var(--neg-bg);color:var(--neg)}
+.tag.warn{background:var(--warn-bg);color:var(--warn)}
+.tag.sub{background:var(--card2);color:var(--sub)}
+.item-num small.seta{font-weight:700}
+.item-num small.seta.pos{color:var(--pos)}
+.item-num small.seta.neg{color:var(--neg)}
 .item-num{flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:5px;text-align:right;white-space:nowrap}
 .item-num .v{font-size:18px;font-weight:700;line-height:1}
 .item-num .r{font-size:16px;font-weight:600;line-height:1;color:var(--rap)}
@@ -262,6 +287,10 @@ footer{color:var(--sub);font-size:13px;text-align:center}
 .folha p{margin:0;padding:14px 16px;text-align:center;font-size:14px;color:var(--sub);border-bottom:1px solid var(--borda)}
 .folha a,.folha button{display:block;width:100%;padding:16px;text-align:center;font:inherit;font-size:17px;font-weight:500;color:var(--acc-t);text-decoration:none;background:none;border:0;border-bottom:1px solid var(--borda)}
 .folha .cancelar{font-weight:700;border-bottom:0}
+.folha{max-height:85vh;overflow-y:auto}
+.folha-bloco{padding:12px 16px;border-bottom:1px solid var(--borda);display:flex;flex-direction:column;gap:8px;text-align:left}
+.folha-bloco h3{margin:0;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--sub)}
+.motivo{display:flex;gap:10px;align-items:center;font-size:15px}
 `;
 
 function gerar(r, cfg) {
@@ -273,14 +302,21 @@ function gerar(r, cfg) {
   const meta = 'Atualizado ' + quando(r.agora, r.agora) + ' · ' +
     porPeriodo(desde(u, 'primeira consulta'), desde(d, '24h em formação'));
 
-  const SEM_ULTIMA = 'Primeira consulta, sem comparação ainda.';
-  const SEM_DIA = 'Histórico de 24h ainda em formação. Ele cresce a cada uso do painel e do widget.';
-
-  const avisos = r.avisos.map((x) => '<p class="aviso">' + esc(x) + '</p>').join('');
-  const contagem = (c) => (c.mudancas ? '<span class="cont">' + c.mudancas.length + '</span>' : '');
+  // Avisos gerais (cache, fonte que não respondeu...): "!" discreto na faixa; o toque mostra o texto.
+  const temAvisos = r.avisos.length > 0;
+  const avisos = r.avisos.map((x) => '<p>' + esc(x) + '</p>').join('');
   const av = r.avaliador || { erro: 'dados não preparados' };
   const emHold = r.itens.filter((i) => i.hold).length;
   const pe = t.qtd + (t.qtd === 1 ? ' item' : ' itens') + (emHold ? ' · ' + emHold + ' em hold' : '');
+
+  const lim = cfg.LIMITE_MUDANCA_PCT;
+  const alertas = alertasPorUaid(r.riscos);
+  const comAlerta = Object.keys(alertas).length;
+  const linhas = r.itens
+    .map((i) => linhaItem(i, r.miniaturas[String(i.assetId)], alertas[i.uaid], variacaoItem(i, u.base), variacaoItem(i, d.base), lim))
+    .join('');
+  const menu = dadosDoMenu(alertas, r.comparacoes);
+  const bases = { ultima: u.base ? quando(u.base.data, r.agora) : null, dia: d.base ? quando(d.base.data, r.agora) : null };
 
   return `<!doctype html>
 <html lang="pt-BR"><head>
@@ -309,36 +345,22 @@ ${anuncios.css()}
 </nav>
 
 <div id="aba-inv" class="aba">
-<div class="seg peq" id="seg-periodo">
-  <button data-p="ultima" class="on">Última consulta</button>
-  <button data-p="dia">24h</button>
+<div class="faixa">
+  <div class="f-tot">
+    <div class="f-col"><span class="f-rot">Value</span><span class="f-num">${a.fmtNum(t.value)}</span>${porPeriodo(varTotal(u.var && u.var.value, 'primeira consulta'), varTotal(d.var && d.var.value, '24h em formação'))}</div>
+    <div class="f-col"><span class="f-rot">RAP</span><span class="f-num">${a.fmtNum(t.rap)}</span>${porPeriodo(varTotal(u.var && u.var.rap, 'primeira consulta'), varTotal(d.var && d.var.rap, '24h em formação'))}</div>
+  </div>
+  <div class="f-pe">
+    <div class="seg claro" id="seg-periodo">
+      <button data-p="ultima" class="on">Última consulta</button>
+      <button data-p="dia">24h</button>
+    </div>
+    <span class="f-dir"><span class="f-info">${pe}</span>${temAvisos ? '<button class="f-alerta" id="f-alerta" aria-expanded="false" aria-controls="f-aviso" aria-label="Ver avisos">!</button>' : ''}</span>
+  </div>
+  ${temAvisos ? '<div class="f-aviso oculto" id="f-aviso">' + avisos + '</div>' : ''}
 </div>
 
-<div class="heroi">
-  <div class="h-rot">Value total</div>
-  <div class="h-num">${a.fmtNum(t.value)}</div>
-  ${porPeriodo(pilula(u.var && u.var.value, u, r.agora, 'primeira consulta'), pilula(d.var && d.var.value, d, r.agora, '24h em formação'))}
-  <div class="h-linha"></div>
-  <div class="h-rot">RAP total</div>
-  <div class="h-num media">${a.fmtNum(t.rap)}</div>
-  ${porPeriodo(pilula(u.var && u.var.rap, u, r.agora, 'primeira consulta'), pilula(d.var && d.var.rap, d, r.agora, '24h em formação'))}
-  <div class="h-pe">${pe}</div>
-</div>
-${avisos}
-
-<section class="secao">
-  <h2>Alertas<span class="cont ${corContagemRiscos(r.riscos)}">${r.riscos.length}</span></h2>
-  ${listaRiscos(r.riscos)}
-</section>
-
-<section class="secao">
-  <h2>Mudanças${porPeriodo(contagem(u), contagem(d))}</h2>
-  <div data-periodo="ultima">${listaMudancas(u, cfg, SEM_ULTIMA)}</div>
-  <div data-periodo="dia" class="oculto">${listaMudancas(d, cfg, SEM_DIA)}</div>
-</section>
-
-<section class="secao">
-  <h2>Itens<span class="cont">${t.qtd}</span></h2>
+<div class="ferramentas">
   <input id="busca" type="search" placeholder="Buscar item" autocomplete="off">
   <div class="chips" id="ordem">
     <button class="chip on" data-campo="value">Value</button>
@@ -346,13 +368,15 @@ ${avisos}
     <button class="chip" data-campo="dem">Demanda</button>
     <button class="chip" data-campo="tend">Tendência</button>
     <button class="chip" data-campo="nome">Nome</button>
+    ${comAlerta ? '<button class="chip filtro" id="so-alerta">Com alerta · ' + comAlerta + '</button>' : ''}
   </div>
-  <div class="grupo">
-    <div id="itens">${r.itens.map((i) => linhaItem(i, r.miniaturas[String(i.assetId)])).join('')}</div>
-    <p class="vazio oculto" id="itens-vazio">Nada encontrado.</p>
-    <div class="total"><span>Total</span><div class="item-num"><span class="v">${a.fmtNum(t.value)}</span><span class="r"><small>RAP</small>${a.fmtNum(t.rap)}</span></div></div>
-  </div>
-</section>
+</div>
+
+<div class="grupo">
+  <div id="itens">${linhas}</div>
+  <p class="vazio oculto" id="itens-vazio">Nada encontrado.</p>
+  <div class="total"><span>Total</span><div class="item-num"><span class="v">${a.fmtNum(t.value)}</span><span class="r"><small>RAP</small>${a.fmtNum(t.rap)}</span></div></div>
+</div>
 </div>
 
 ${avaliador.secao(cfg, av.base, av.erro)}
@@ -371,6 +395,8 @@ ${anuncios.secao(cfg, av.erro ? 'os dados do avaliador não foram preparados (' 
 <div id="fundo" class="fundo oculto"></div>
 <div id="folha" class="folha oculto">
   <p id="folha-nome"></p>
+  <div id="folha-alertas" class="folha-bloco oculto"></div>
+  <div id="folha-mud" class="folha-bloco oculto"></div>
   <a id="link-rol" href="#">Ver no Rolimon's</a>
   <a id="link-rbx" href="#">Ver no Roblox</a>
   <button id="cancelar" class="cancelar">Cancelar</button>
@@ -380,9 +406,14 @@ ${av.erro ? '' : avaliador.folhas() + anuncios.folha()}
 <script>
 (function(){
   var lista = document.getElementById('itens');
-  var chips = document.querySelectorAll('#ordem .chip');
+  var chips = document.querySelectorAll('#ordem .chip[data-campo]');
   var busca = document.getElementById('busca');
   var estado = { campo: 'value', dir: 'desc' };
+  // Menu de cada item (por uaid): a = alertas, u/d = mudanças desde a última consulta / 24h.
+  var INV = ${avaliador.serializar(menu)};
+  var BASES = ${avaliador.serializar(bases)};
+  var periodoAtual = 'ultima';
+  var soAlerta = false;
   var ROTULOS = { value: 'Value', rap: 'RAP', dem: 'Demanda', tend: 'Tendência', nome: 'Nome' };
 
   // Abas (Inventário / Avaliar trade / Anúncios)
@@ -407,7 +438,7 @@ ${av.erro ? '' : avaliador.folhas() + anuncios.folha()}
   try { var abaSalva = localStorage.getItem('aba'); if (abaSalva && abaSalva !== 'inv' && TITULOS[abaSalva]) aba(abaSalva); } catch (e) {}
 
   // Blocos recolhíveis (Avaliar trade e Anúncios): lembram se você os abriu ou fechou.
-  // Alertas e Mudanças do Inventário ficam sempre abertos.
+  // (No Inventário, alertas e mudanças ficam na linha de cada item.)
   var recolhiveis = document.querySelectorAll('details.bloco[data-chave]');
   for (var k = 0; k < recolhiveis.length; k++) {
     (function(b){
@@ -423,8 +454,9 @@ ${av.erro ? '' : avaliador.folhas() + anuncios.folha()}
     })(recolhiveis[k]);
   }
 
-  // Seletor de período (última consulta / 24h)
+  // Seletor de período (última consulta / 24h): muda a faixa, o "desde" do topo e as setas dos itens.
   function periodo(p){
+    periodoAtual = p;
     var blocos = document.querySelectorAll('[data-periodo]');
     for (var k = 0; k < blocos.length; k++) {
       blocos[k].classList.toggle('oculto', blocos[k].getAttribute('data-periodo') !== p);
@@ -468,13 +500,13 @@ ${av.erro ? '' : avaliador.folhas() + anuncios.folha()}
   }
   marcarChips();
 
-  // Busca (a divisória entre linhas segue a ordem das linhas visíveis)
+  // Busca e filtro "Com alerta" (a divisória entre linhas segue a ordem das linhas visíveis)
   function filtrar(){
     var q = busca.value.trim().toLowerCase();
     var visiveis = 0;
     for (var k = 0; k < lista.children.length; k++) {
       var l = lista.children[k];
-      var mostra = l.getAttribute('data-nome').indexOf(q) >= 0;
+      var mostra = l.getAttribute('data-nome').indexOf(q) >= 0 && (!soAlerta || l.getAttribute('data-alerta') === '1');
       l.style.display = mostra ? '' : 'none';
       l.style.borderTop = mostra && visiveis ? '1px solid var(--borda)' : '0';
       if (mostra) visiveis++;
@@ -482,15 +514,47 @@ ${av.erro ? '' : avaliador.folhas() + anuncios.folha()}
     document.getElementById('itens-vazio').classList.toggle('oculto', visiveis > 0);
   }
   busca.addEventListener('input', filtrar);
+  var chipAlerta = document.getElementById('so-alerta');
+  if (chipAlerta) chipAlerta.addEventListener('click', function(){
+    soAlerta = !soAlerta;
+    chipAlerta.classList.toggle('on', soAlerta);
+    filtrar();
+  });
 
-  // Menu ao tocar no item
+  // Avisos gerais: o "!" da faixa mostra ou esconde o texto.
+  var botaoAviso = document.getElementById('f-alerta');
+  if (botaoAviso) botaoAviso.addEventListener('click', function(){
+    var txt = document.getElementById('f-aviso');
+    var abre = txt.classList.contains('oculto');
+    txt.classList.toggle('oculto', !abre);
+    botaoAviso.setAttribute('aria-expanded', abre ? 'true' : 'false');
+  });
+
+  // Menu ao tocar no item: alertas e mudanças do período em cima, links embaixo.
   var fundo = document.getElementById('fundo');
   var folha = document.getElementById('folha');
   function fechar(){ fundo.classList.add('oculto'); folha.classList.add('oculto'); }
+  function textoSeguro(s){
+    return String(s).replace(/[&<>"']/g, function(c){ return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; });
+  }
+  function blocoMenu(id, titulo, linhas, simbolo){
+    var el = document.getElementById(id);
+    if (!linhas || !linhas.length) { el.classList.add('oculto'); el.innerHTML = ''; return; }
+    el.innerHTML = '<h3>' + textoSeguro(titulo) + '</h3>' + linhas.map(function(x){
+      return '<div class="motivo"><span class="marca ' + x[1] + '">' + simbolo(x[1]) + '</span><span class="' + x[1] + '">' + textoSeguro(x[0]) + '</span></div>';
+    }).join('');
+    el.classList.remove('oculto');
+  }
   lista.addEventListener('click', function(ev){
     var it = ev.target.closest('.item');
     if (!it) return;
     var id = it.getAttribute('data-asset');
+    var info = INV[it.getAttribute('data-uaid')] || { a: [], u: [], d: [] };
+    var base = BASES[periodoAtual];
+    blocoMenu('folha-alertas', 'Alertas', info.a, function(){ return '!'; });
+    blocoMenu('folha-mud', base ? 'Mudanças desde ' + base : 'Mudanças', periodoAtual === 'dia' ? info.d : info.u, function(c){
+      return c === 'pos' ? '▲' : c === 'neg' ? '▼' : '•';
+    });
     document.getElementById('folha-nome').textContent = it.getAttribute('data-titulo');
     document.getElementById('link-rol').href = 'https://www.rolimons.com/item/' + id;
     document.getElementById('link-rbx').href = 'https://www.roblox.com/catalog/' + id;
