@@ -284,9 +284,13 @@ function prepararDados(catalogo, itens, base, miniaturas) {
       b && value > 0 ? pct1(b[1], value) : null,
     ];
   }
-  // [uaid, assetId, serial, hold, nome, rap] (nome e rap servem para itens fora do Rolimon's)
-  const inventario = itens.map((i) => [i.uaid, String(i.assetId), i.serial || null, i.hold ? 1 : 0, i.nome, i.rap]);
-  return { catalogo: C, inventario, miniaturas: miniaturas || {} };
+  return { catalogo: C, inventario: inventarioCompacto(itens), miniaturas: miniaturas || {} };
+}
+
+// [uaid, assetId, serial, hold, nome, rap] (nome e rap servem para itens fora do Rolimon's).
+// Também usado para a conta 2 na aba Anúncios.
+function inventarioCompacto(itens) {
+  return itens.map((i) => [i.uaid, String(i.assetId), i.serial || null, i.hold ? 1 : 0, i.nome, i.rap]);
 }
 
 // JSON seguro para colocar dentro de <script>.
@@ -1000,6 +1004,7 @@ function script(json, cfg) {
 module.exports = {
   PONTE,
   prepararDados,
+  inventarioCompacto,
   serializar,
   secao,
   folhas,

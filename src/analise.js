@@ -235,9 +235,33 @@ function criarSnapshot(itens, totais, fonte) {
   return { data: Date.now(), fonte, totais, itens: mapa };
 }
 
+// v5.2 (conta 2): retrato "de 24h atrás" montado a partir do retrato do catálogo
+// (historico.baseCatalogo24h: { data, itens: { assetId: [rap, value] } }), no
+// mesmo formato de criarSnapshot. Os itens são os de HOJE com os preços de
+// ontem: as setas e as quedas funcionam já no primeiro uso, mas o total não
+// conta itens que entraram ou saíram. Demanda, tendência e projected ficam de
+// fora (não estão no retrato do catálogo).
+function baseDoCatalogo(itens, baseCatalogo, fonte) {
+  if (!baseCatalogo || !baseCatalogo.itens) return null;
+  const mapa = {};
+  const totais = { value: 0, rap: 0, qtd: 0, comValue: 0 };
+  for (const i of itens) {
+    const b = baseCatalogo.itens[String(i.assetId)];
+    const rapAntes = b && num(b[0], -1) >= 0 ? b[0] : null;
+    const valueAntes = b && num(b[1], -1) > 0 ? b[1] : null;
+    const efetivoAntes = i.value != null ? valueAntes : rapAntes;
+    if (b) mapa[i.uaid] = { valorEfetivo: efetivoAntes, rap: rapAntes };
+    totais.value += efetivoAntes != null ? efetivoAntes : i.valorEfetivo;
+    totais.rap += rapAntes != null ? rapAntes : i.rap;
+    totais.qtd++;
+    if (i.value != null) totais.comValue++;
+  }
+  return { data: baseCatalogo.data, fonte, totais, itens: mapa, doCatalogo: true };
+}
+
 module.exports = {
   rotuloDemanda, rotuloTendencia, demandaCurta, tendenciaCurta,
   fmtNum, fmtPct, fmtPctSinal, abreviar, fmtData,
   montarItens, calcularTotais, compararTotais,
-  encontrarRiscos, encontrarMudancas, criarSnapshot,
+  encontrarRiscos, encontrarMudancas, criarSnapshot, baseDoCatalogo,
 };

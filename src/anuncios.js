@@ -177,6 +177,7 @@ function secao(cfg, erro) {
     '<div class="an-status"><p class="meta" id="an-info">Os anúncios são buscados quando você abre esta aba.</p>' +
     '<button class="btn" id="an-atualizar">Atualizar</button></div>' +
     '<p class="aviso oculto" id="an-erro"></p>' +
+    '<p class="meta oculto" id="an-conta"></p>' +
     '<div class="an-filtros">' +
     '<button type="button" class="an-fbtn" id="an-filtro"></button>' +
     '<div class="seg peq" id="an-ordem">' +
@@ -343,27 +344,39 @@ function paginaAnuncios(D, P, PA) {
   }
 
   // ---------- Seus itens disponíveis (sem hold e com dados no Rolimon's) ----------
+  // v5.2: o inventário pode ser trocado pelo da conta 2 (window.thAnunciosConta).
+  // meuId = dono do inventário (os anúncios dele ficam de fora); chave = sufixo
+  // do filtro "Um item seu" guardado no iPhone ('' na sua conta, '-c2' na outra).
   var meus = [];
   var porAsset = {};
   var emHold = {};
-  D.inventario.forEach(function (x) {
-    if (x[3]) {
-      emHold[x[1]] = (emHold[x[1]] || 0) + 1;
-      return;
-    }
-    var i = itemDoCatalogo(C, x[1]);
-    if (!i) return;
-    if (!(C[x[1]][2] >= 0)) i.rap = x[5] || 0;
-    i.uaid = x[0];
-    i.serial = x[2];
-    i.doInventario = true;
-    i.vb = valorEfetivo(i);
-    meus.push(i);
-    (porAsset[i.id] = porAsset[i.id] || []).push(i);
-  });
-  var meusOrdenados = meus.slice().sort(function (x, y) { return y.vb - x.vb; });
-  // O item salvo no filtro pode ter saído do inventário (ou entrado em hold).
-  if (estado.item && !porAsset[estado.item]) estado.item = '';
+  var meusOrdenados = [];
+  var meuId = PA.meuId;
+  var chaveConta = '';
+  function montarMeus(inv) {
+    meus = [];
+    porAsset = {};
+    emHold = {};
+    inv.forEach(function (x) {
+      if (x[3]) {
+        emHold[x[1]] = (emHold[x[1]] || 0) + 1;
+        return;
+      }
+      var i = itemDoCatalogo(C, x[1]);
+      if (!i) return;
+      if (!(C[x[1]][2] >= 0)) i.rap = x[5] || 0;
+      i.uaid = x[0];
+      i.serial = x[2];
+      i.doInventario = true;
+      i.vb = valorEfetivo(i);
+      meus.push(i);
+      (porAsset[i.id] = porAsset[i.id] || []).push(i);
+    });
+    meusOrdenados = meus.slice().sort(function (x, y) { return y.vb - x.vb; });
+    // O item salvo no filtro pode ter saído do inventário (ou entrado em hold).
+    if (estado.item && !porAsset[estado.item]) estado.item = '';
+  }
+  montarMeus(D.inventario);
 
   // Ganho em % (value base) de quem dá td e recebe tr; mesma conta do veredito.
   function ganho(td, tr) {
@@ -451,7 +464,7 @@ function paginaAnuncios(D, P, PA) {
   // ad = [id, criadoMs, userId, username, oferta[], robux, pedido[], tags[]]
   // fixo = assetId do filtro "Um item seu" ('' = sem filtro).
   function analisar(ad, fixo) {
-    if (PA.meuId && ad[2] === PA.meuId) return { descarte: 'anúncio seu' };
+    if (meuId && ad[2] === meuId) return { descarte: 'anúncio seu' };
     var rec = [];
     var k;
     for (k = 0; k < ad[4].length; k++) {
@@ -574,7 +587,7 @@ function paginaAnuncios(D, P, PA) {
     lista.forEach(function (ad) {
       (ad[7] || []).forEach(function (t) { contTags[t] = (contTags[t] || 0) + 1; });
       // Quantos anúncios pedem cada item seu (para a folha do filtro).
-      if (!(PA.meuId && ad[2] === PA.meuId)) {
+      if (!(meuId && ad[2] === meuId)) {
         var vistos = {};
         (ad[6] || []).forEach(function (id) {
           if (porAsset[id] && !vistos[id]) {
@@ -838,6 +851,28 @@ function paginaAnuncios(D, P, PA) {
   window.thAbrirAnuncios = function () {
     if (!estado.carregou && !estado.carregando) pedir(false);
   };
+  // v5.2: troca o inventário cruzado com os anúncios.
+  // dados = { inventario, meuId, chave, nome } da conta 2, ou null para voltar à sua.
+  // A lista de anúncios é a mesma; só a análise é refeita.
+  window.thAnunciosConta = function (dados) {
+    var nova = dados ? dados.chave || '-c2' : '';
+    if (nova === chaveConta && (!dados || dados.inventario === estado.invConta)) return;
+    chaveConta = nova;
+    estado.invConta = dados ? dados.inventario : null;
+    meuId = dados ? Number(dados.meuId) || 0 : PA.meuId;
+    estado.item = lerSalvo('an-filtro-item' + chaveConta, '');
+    estado.aberto = null;
+    memoCombinacao = {};
+    montarMeus(dados ? dados.inventario || [] : D.inventario);
+    var el = $('an-conta');
+    if (el) {
+      el.textContent = dados ? 'Cruzados com os itens de ' + (dados.nome || 'conta 2') + '. O lado Dou mostra os itens dessa conta.' : '';
+      el.classList.toggle('oculto', !dados);
+    }
+    fecharFolha();
+    if (estado.carregou) processar();
+    else desenhar();
+  };
   window.thAoReceberMiniaturas = function () {
     if (estado.carregou) desenhar();
     else desenharFiltro();
@@ -876,7 +911,7 @@ function paginaAnuncios(D, P, PA) {
   }
   function escolherItem(id) {
     estado.item = id && porAsset[id] ? id : '';
-    gravarSalvo('an-filtro-item', estado.item);
+    gravarSalvo('an-filtro-item' + chaveConta, estado.item);
     estado.aberto = null;
     if (estado.carregou) processar();
     else desenhar();

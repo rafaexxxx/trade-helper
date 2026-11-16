@@ -216,16 +216,35 @@ async function buscarAnunciosRecentes() {
   return { lista, resto: JSON.stringify(resto).slice(0, 200) };
 }
 
+// Descobre o id do username (users.roblox.com) só quando o username muda.
+// conta = { username, userId, nomeReal, userIdDe }. Retorna true se mudou algo
+// (quem chama grava os ajustes).
+async function garantirId(conta) {
+  if (conta.userId && conta.userIdDe === conta.username) return false;
+  const u = await buscarUsuario(conta.username);
+  conta.userId = u.id;
+  conta.nomeReal = u.nome;
+  conta.userIdDe = conta.username;
+  return true;
+}
+
+// v5.2: itens da conta 2 (só pelo Rolimon's, sem a conferência do Roblox,
+// para gastar uma chamada a menos). Cache próprio por id.
+async function carregarJogador(store, conta, minutos) {
+  const avisos = [];
+  const nome = conta.nomeReal || conta.username;
+  const j = await comCache(
+    store, 'cache_jogador_' + conta.userId, minutos,
+    () => buscarJogadorRolimons(conta.userId), avisos, 'os itens de ' + nome + " no Rolimon's"
+  );
+  if (j.dados.privado) avisos.push("O Rolimon's marca o inventário de " + nome + ' como privado. A lista pode estar incompleta.');
+  return { usuario: { id: conta.userId, nome }, jogador: j.dados, origem: j.origem, avisos };
+}
+
 async function carregarTudo(store, ajustes) {
   const avisos = [];
 
-  if (!ajustes.userId || ajustes.userIdDe !== ajustes.username) {
-    const u = await buscarUsuario(ajustes.username);
-    ajustes.userId = u.id;
-    ajustes.nomeReal = u.nome;
-    ajustes.userIdDe = ajustes.username;
-    store.gravar('ajustes', ajustes);
-  }
+  if (await garantirId(ajustes)) store.gravar('ajustes', ajustes);
   const usuario = { id: ajustes.userId, nome: ajustes.nomeReal || ajustes.username };
 
   // Fonte principal dos itens: Rolimon's. Conferência: Roblox.
@@ -278,4 +297,4 @@ async function carregarTudo(store, ajustes) {
   };
 }
 
-module.exports = { carregarTudo, buscarMiniaturas, miniaturasEmCache, buscarAnunciosRecentes };
+module.exports = { carregarTudo, garantirId, carregarJogador, buscarMiniaturas, miniaturasEmCache, buscarAnunciosRecentes };

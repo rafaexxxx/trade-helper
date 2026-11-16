@@ -13,6 +13,9 @@ module.exports = {
   // Por quantos minutos reaproveitar os dados já baixados (evita rate limit).
   CACHE_ROLIMONS_MIN: 5,
   CACHE_INVENTARIO_MIN: 1,
+  // Conta 2 (v5.2): itens dela reaproveitados por X min (ela só é buscada ao
+  // tocar no nome dela no alternador; cache maior = menos risco de bloqueio).
+  CACHE_CONTA2_MIN: 10,
 
   // De quanto em quanto tempo o widget PEDE para atualizar (o iOS decide no fim).
   WIDGET_ATUALIZAR_MIN: 30,

@@ -2,6 +2,8 @@
 // Três abas: Inventário, Avaliar trade (módulo avaliador) e Anúncios (módulo anuncios).
 // v5.1: no Inventário a lista vem logo depois de uma faixa compacta de totais;
 // alertas e mudanças aparecem na linha de cada item (etiqueta e setas) e no menu do item.
+// v5.2: alternador de conta no topo (a conta 2 troca Inventário e Anúncios, em vinho)
+// e menu ⋯ (trocar/remover a conta 2; Temas e Ajuda entram aqui depois).
 const a = require('analise');
 const avaliador = require('avaliador');
 const anuncios = require('anuncios');
@@ -262,7 +264,7 @@ input[type=search]::placeholder{color:var(--sub)}
 
 .item{display:flex;align-items:center;gap:12px;padding:12px 16px;-webkit-tap-highlight-color:transparent}
 .item:active{background:var(--card2)}
-#itens .item+.item{border-top:1px solid var(--borda)}
+.inv-lista .item+.item{border-top:1px solid var(--borda)}
 .thumb{flex:none;width:46px;height:46px;border-radius:12px;background:var(--card2);object-fit:cover;display:block}
 .item-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
 .nome{font-size:16px;font-weight:600;line-height:1.25;overflow-wrap:anywhere}
@@ -303,19 +305,56 @@ footer{color:var(--sub);font-size:13px;text-align:center}
 .folha-bloco{padding:12px 16px;border-bottom:1px solid var(--borda);display:flex;flex-direction:column;gap:8px;text-align:left}
 .folha-bloco h3{margin:0;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--sub)}
 .motivo{display:flex;gap:10px;align-items:center;font-size:15px}
+
+/* v5.2: topo com o menu ⋯, alternador de conta e a cor da conta 2 (vinho).
+   A conta 2 só troca os tokens de destaque: todo o resto segue igual. */
+.cab{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.mais{flex:none;width:38px;height:38px;padding:0;border:0;border-radius:50%;background:var(--card);box-shadow:var(--sombra);color:var(--sub);font-size:20px;font-weight:700;line-height:1;-webkit-tap-highlight-color:transparent}
+.mais:active{background:var(--card2)}
+.contas{display:flex;gap:3px;padding:3px;border-radius:14px;background:var(--card2)}
+.contas button{flex:1;min-width:0;display:flex;align-items:center;justify-content:center;gap:8px;padding:8px 6px;border:0;border-radius:11px;background:none;color:var(--sub);font-size:14px;font-weight:600;-webkit-tap-highlight-color:transparent}
+.contas button .n{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.contas button.on{background:var(--card);color:var(--fg);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.contas button.add{border:1.5px dashed var(--borda);color:var(--c2-t)}
+.av{flex:none;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:700;color:#fff;background:#173b82}
+.av.c2{background:#7a2a66}
+.faixa-conta{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:12px;background:var(--c2-bg);color:var(--c2-t);font-size:13px;font-weight:600}
+.c2-estado{display:flex;flex-direction:column;gap:10px}
+.c2-estado .acoes{display:flex;gap:8px;flex-wrap:wrap}
+.esq{height:56px;border-radius:14px;background:var(--card)}
+.esq.alto{height:118px;border-radius:18px;background:var(--heroi);opacity:.35}
+:root{--c2:#7a2a66;--c2-t:#7a2a66;--c2-bg:#f7e9f3}
+@media (prefers-color-scheme: dark){:root{--c2-t:#f0a6dc;--c2-bg:#3a2235}}
+body.c2ativa{--acc:#7a2a66;--acc-press:#5c1f4d;--acc-t:var(--c2-t);--rap:var(--c2-t);--heroi:#7a2a66;--dou-bg:var(--c2-bg)}
+.folha .op{display:block;width:100%;padding:16px;text-align:center;font:inherit;font-size:17px;font-weight:500;color:var(--acc-t);background:none;border:0;border-bottom:1px solid var(--borda)}
+.folha .op.perigo{color:var(--neg)}
+.folha .op:disabled{color:var(--sub)}
+.folha .op small{font-size:13px;font-weight:500}
+.c2-form{display:flex;flex-direction:column;gap:12px;padding:18px 16px 16px;top:max(12px,env(safe-area-inset-top));bottom:auto}
+.c2-form h3{margin:0;font-size:19px;font-weight:700}
+.c2-form label{font-size:14px;color:var(--sub)}
+.c2-form input{width:100%;font:inherit;padding:12px 14px;border:1px solid var(--borda);border-radius:12px;background:var(--bg);color:var(--fg);-webkit-appearance:none}
+.c2-form .acoes{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.c2-form .erro{margin:0;padding:0;border:0;text-align:left;color:var(--neg);font-size:14px}
+.c2-form .acoes .btn{display:block;width:100%;padding:12px 8px;border:0;border-radius:12px;background:var(--acc);color:#fff;font-size:16px;font-weight:600;text-align:center}
+.c2-form .acoes .btn.sec{background:var(--card2);color:var(--acc-t)}
+.c2-form .acoes .btn:disabled{opacity:.45}
+#diag-conta2{white-space:pre-wrap;overflow-wrap:anywhere}
 `;
 
-function gerar(r, cfg) {
+// Bloco do Inventário de uma conta (faixa de totais, busca, chips e lista).
+// v5.2: o mesmo bloco serve para a conta 2, montado no Scriptable e enviado
+// pela ponte. Sem ids: o script da página liga cada bloco pelas classes.
+// r = { itens, totais, riscos, comparacoes: { dia }, miniaturas, avisos, agora }.
+function inventario(r, cfg) {
   const t = r.totais;
   // v5.1: o Inventário compara sempre com 24h atrás (sem seletor de período).
   const d = r.comparacoes.dia;
   const per = periodoReal(d.base, r.agora);
-  const meta = 'Atualizado ' + quando(r.agora, r.agora);
 
   // Avisos gerais (cache, fonte que não respondeu...): "!" discreto na faixa; o toque mostra o texto.
   const temAvisos = r.avisos.length > 0;
   const avisos = r.avisos.map((x) => '<p>' + esc(x) + '</p>').join('');
-  const av = r.avaliador || { erro: 'dados não preparados' };
   const emHold = r.itens.filter((i) => i.hold).length;
   const pe = t.qtd + (t.qtd === 1 ? ' item' : ' itens') + (emHold ? ' · ' + emHold + ' em hold' : '');
 
@@ -325,8 +364,58 @@ function gerar(r, cfg) {
   const linhas = r.itens
     .map((i) => linhaItem(i, r.miniaturas[String(i.assetId)], alertas[i.uaid], variacaoItem(i, d.base), lim))
     .join('');
-  const menu = dadosDoMenu(alertas, d);
-  const tituloMud = per ? per.longo : 'Mudanças';
+
+  const html = `<div class="faixa">
+  <div class="f-tot">
+    <div class="f-col"><span class="f-rot">Value</span><span class="f-num">${a.fmtNum(t.value)}</span>${varTotal(d.var && d.var.value, per)}</div>
+    <div class="f-col"><span class="f-rot">RAP</span><span class="f-num">${a.fmtNum(t.rap)}</span>${varTotal(d.var && d.var.rap, per)}</div>
+  </div>
+  <div class="f-pe">
+    <span class="f-info">${per ? 'Variação ' + esc(per.curto) : 'Histórico de 24h em formação'}</span>
+    <span class="f-dir"><span class="f-info">${pe}</span>${temAvisos ? '<button class="f-alerta" aria-expanded="false" aria-label="Ver avisos">!</button>' : ''}</span>
+  </div>
+  ${temAvisos ? '<div class="f-aviso oculto">' + avisos + '</div>' : ''}
+</div>
+
+<div class="ferramentas">
+  <input class="inv-busca" type="search" placeholder="Buscar item" autocomplete="off" aria-label="Buscar item">
+  <div class="chips inv-ordem">
+    <button class="chip on" data-campo="value">Value</button>
+    <button class="chip" data-campo="rap">RAP</button>
+    <button class="chip" data-campo="dem">Demanda</button>
+    <button class="chip" data-campo="tend">Tendência</button>
+    <button class="chip" data-campo="nome">Nome</button>
+    ${comAlerta ? '<button class="chip filtro inv-so-alerta">Com alerta · ' + comAlerta + '</button>' : ''}
+  </div>
+</div>
+
+<div class="grupo">
+  <div class="inv-lista">${linhas}</div>
+  <p class="vazio oculto inv-vazio">${r.itens.length ? 'Nada encontrado.' : 'Nenhum item.'}</p>
+  <div class="total"><span>Total</span><div class="item-num"><span class="v">${a.fmtNum(t.value)}</span><span class="r"><small>RAP</small>${a.fmtNum(t.rap)}</span></div></div>
+</div>`;
+  return { html, menu: dadosDoMenu(alertas, d), titulo: per ? per.longo : 'Mudanças' };
+}
+
+// Botões do alternador de conta. c2 = { nome } ou null.
+function botoesConta(principal, c2) {
+  const inicial = (s) => esc(String(s || '?').charAt(0).toUpperCase());
+  return (
+    '<nav class="contas" id="contas" aria-label="Conta">' +
+    '<button type="button" data-conta="1" class="on"><span class="av">' + inicial(principal) + '</span><span class="n">' + esc(principal) + '</span></button>' +
+    '<button type="button" data-conta="2" id="c2-botao"' + (c2 ? '' : ' class="oculto"') + '><span class="av c2" id="c2-ini">' + inicial(c2 && c2.nome) +
+    '</span><span class="n" id="c2-nome">' + esc(c2 ? c2.nome : '') + '</span></button>' +
+    '<button type="button" class="add' + (c2 ? ' oculto' : '') + '" id="c2-add">+ Conta 2</button>' +
+    '</nav>'
+  );
+}
+
+function gerar(r, cfg) {
+  const meta = 'Atualizado ' + quando(r.agora, r.agora);
+  const av = r.avaliador || { erro: 'dados não preparados' };
+  const inv = inventario(r, cfg);
+  const menu = inv.menu;
+  const tituloMud = inv.titulo;
 
   return `<!doctype html>
 <html lang="pt-BR"><head>
@@ -343,10 +432,12 @@ ${anuncios.css()}
 </style></head><body>
 <div class="app">
 
-<div>
-  <div class="topo"><h1 id="titulo">Inventário</h1><span class="user">${esc(r.usuario.nome)}</span></div>
-  <p class="meta">${meta}</p>
+<div class="cab">
+  <div><h1 id="titulo">Inventário</h1><p class="meta">${meta}</p></div>
+  <button type="button" class="mais" id="mais" aria-label="Mais opções">⋯</button>
 </div>
+
+${botoesConta(r.usuario.nome, r.conta2)}
 
 <nav class="seg abas" id="abas">
   <button data-aba="inv" class="on">Inventário</button>
@@ -354,36 +445,14 @@ ${anuncios.css()}
   <button data-aba="anuncios">Anúncios</button>
 </nav>
 
+<div class="faixa-conta oculto" id="faixa-conta"><span class="av c2" id="fc-ini"></span><span id="fc-txt"></span></div>
+<div class="c2-estado oculto" id="c2-estado"></div>
+
 <div id="aba-inv" class="aba">
-<div class="faixa">
-  <div class="f-tot">
-    <div class="f-col"><span class="f-rot">Value</span><span class="f-num">${a.fmtNum(t.value)}</span>${varTotal(d.var && d.var.value, per)}</div>
-    <div class="f-col"><span class="f-rot">RAP</span><span class="f-num">${a.fmtNum(t.rap)}</span>${varTotal(d.var && d.var.rap, per)}</div>
-  </div>
-  <div class="f-pe">
-    <span class="f-info">${per ? 'Variação ' + esc(per.curto) : 'Histórico de 24h em formação'}</span>
-    <span class="f-dir"><span class="f-info">${pe}</span>${temAvisos ? '<button class="f-alerta" id="f-alerta" aria-expanded="false" aria-controls="f-aviso" aria-label="Ver avisos">!</button>' : ''}</span>
-  </div>
-  ${temAvisos ? '<div class="f-aviso oculto" id="f-aviso">' + avisos + '</div>' : ''}
+<div class="inv aba" id="inv-1">
+${inv.html}
 </div>
-
-<div class="ferramentas">
-  <input id="busca" type="search" placeholder="Buscar item" autocomplete="off">
-  <div class="chips" id="ordem">
-    <button class="chip on" data-campo="value">Value</button>
-    <button class="chip" data-campo="rap">RAP</button>
-    <button class="chip" data-campo="dem">Demanda</button>
-    <button class="chip" data-campo="tend">Tendência</button>
-    <button class="chip" data-campo="nome">Nome</button>
-    ${comAlerta ? '<button class="chip filtro" id="so-alerta">Com alerta · ' + comAlerta + '</button>' : ''}
-  </div>
-</div>
-
-<div class="grupo">
-  <div id="itens">${linhas}</div>
-  <p class="vazio oculto" id="itens-vazio">Nada encontrado.</p>
-  <div class="total"><span>Total</span><div class="item-num"><span class="v">${a.fmtNum(t.value)}</span><span class="r"><small>RAP</small>${a.fmtNum(t.rap)}</span></div></div>
-</div>
+<div class="inv aba oculto" id="inv-2"></div>
 </div>
 
 ${avaliador.secao(cfg, av.base, av.erro)}
@@ -393,6 +462,7 @@ ${anuncios.secao(cfg, av.erro ? 'os dados do avaliador não foram preparados (' 
   <summary>Diagnóstico</summary>
   <p id="diag-ponte"></p>
   <p id="diag-anuncios"></p>
+  <p id="diag-conta2">Conta 2: ${r.conta2 ? 'salva, ainda não aberta nesta abertura' : 'nenhuma'}</p>
   <textarea readonly>${esc(JSON.stringify(r.diag, null, 2))}</textarea>
 </details>
 
@@ -408,34 +478,63 @@ ${anuncios.secao(cfg, av.erro ? 'os dados do avaliador não foram preparados (' 
   <a id="link-rbx" href="#">Ver no Roblox</a>
   <button id="cancelar" class="cancelar">Cancelar</button>
 </div>
+<div id="m-fundo" class="fundo oculto"></div>
+<div id="m-folha" class="folha oculto">
+  <p>Opções</p>
+  <button type="button" class="op" id="m-trocar">Adicionar conta 2</button>
+  <button type="button" class="op perigo oculto" id="m-remover">Remover conta 2</button>
+  <button type="button" class="op" disabled>Temas <small>(em breve)</small></button>
+  <button type="button" class="op" disabled>Ajuda <small>(em breve)</small></button>
+  <button type="button" class="op cancelar" id="m-cancelar">Cancelar</button>
+</div>
+<div id="f-fundo" class="fundo oculto"></div>
+<form id="f-folha" class="folha c2-form oculto" autocomplete="off">
+  <h3>Conta 2</h3>
+  <label for="c2-campo">Username do Roblox da outra conta. Fica salvo só neste iPhone.</label>
+  <input id="c2-campo" type="text" autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="20" placeholder="username">
+  <p class="erro oculto" id="c2-erro"></p>
+  <div class="acoes"><button type="button" class="btn sec" id="c2-cancelar">Cancelar</button><button type="submit" class="btn" id="c2-salvar">Salvar</button></div>
+</form>
 ${av.erro ? '' : avaliador.folhas() + anuncios.folha()}
 
 <script>
 (function(){
-  var lista = document.getElementById('itens');
-  var chips = document.querySelectorAll('#ordem .chip[data-campo]');
-  var busca = document.getElementById('busca');
-  var estado = { campo: 'value', dir: 'desc' };
-  // Menu de cada item (por uaid): a = alertas, m = mudanças em 24h.
-  var INV = ${avaliador.serializar(menu)};
-  var TITULO_MUD = ${avaliador.serializar(tituloMud)};
-  var soAlerta = false;
+  var PONTE = ${avaliador.serializar(avaliador.PONTE)};
   var ROTULOS = { value: 'Value', rap: 'RAP', dem: 'Demanda', tend: 'Tendência', nome: 'Nome' };
+  function $(id){ return document.getElementById(id); }
+  function textoSeguro(s){
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; });
+  }
 
-  // Abas (Inventário / Avaliar trade / Anúncios)
+  // ---------- Conta (v5.2) ----------
+  // conta 1 = a principal (montada com o painel); conta 2 = buscada pela ponte
+  // só no primeiro toque no nome dela.
+  var conta = 1;
+  var c2 = { nome: ${avaliador.serializar(r.conta2 ? r.conta2.nome : null)}, carregada: false, carregando: false, erro: null, anuncios: null, timer: null };
+  var abaAtual = 'inv';
+
+  // Abas (Inventário / Avaliar trade / Anúncios). Na conta 2 o Avaliar some.
   var TITULOS = { inv: 'Inventário', avaliar: 'Avaliar trade', anuncios: 'Anúncios' };
   function aba(x){
-    if (!TITULOS[x]) x = 'inv';
+    if (!TITULOS[x] || (conta === 2 && x === 'avaliar')) x = 'inv';
+    abaAtual = x;
+    // Na conta 2, enquanto os itens dela não chegam, o lugar da aba mostra o estado.
+    var esperando = conta === 2 && !c2.carregada;
     for (var nome in TITULOS) {
-      var el = document.getElementById('aba-' + nome);
-      if (el) el.classList.toggle('oculto', nome !== x);
+      var el = $('aba-' + nome);
+      if (el) el.classList.toggle('oculto', nome !== x || esperando);
     }
-    document.getElementById('titulo').textContent = TITULOS[x];
+    $('c2-estado').classList.toggle('oculto', !esperando);
+    $('titulo').textContent = TITULOS[x];
     var bs = document.querySelectorAll('#abas button');
-    for (var k = 0; k < bs.length; k++) bs[k].classList.toggle('on', bs[k].getAttribute('data-aba') === x);
+    for (var k = 0; k < bs.length; k++) {
+      var b = bs[k].getAttribute('data-aba');
+      bs[k].classList.toggle('on', b === x);
+      bs[k].classList.toggle('oculto', conta === 2 && b === 'avaliar');
+    }
     try { localStorage.setItem('aba', x); } catch (e) {}
     // A aba Anúncios só busca os anúncios quando é aberta.
-    if (x === 'anuncios' && window.thAbrirAnuncios) window.thAbrirAnuncios();
+    if (x === 'anuncios' && !esperando && window.thAbrirAnuncios) window.thAbrirAnuncios();
   }
   var botoesAba = document.querySelectorAll('#abas button');
   for (var k = 0; k < botoesAba.length; k++) {
@@ -460,101 +559,289 @@ ${av.erro ? '' : avaliador.folhas() + anuncios.folha()}
     })(recolhiveis[k]);
   }
 
-  // Ordenação pelos chips (toque de novo inverte)
-  function marcarChips(){
-    for (var k = 0; k < chips.length; k++) {
-      var c = chips[k].getAttribute('data-campo');
-      var on = c === estado.campo;
-      chips[k].classList.toggle('on', on);
-      chips[k].textContent = ROTULOS[c] + (on ? (estado.dir === 'desc' ? ' ↓' : ' ↑') : '');
-    }
-  }
-  function ordenar(campo){
-    if (estado.campo === campo) estado.dir = estado.dir === 'desc' ? 'asc' : 'desc';
-    else { estado.campo = campo; estado.dir = campo === 'nome' ? 'asc' : 'desc'; }
-    var linhas = Array.prototype.slice.call(lista.children);
-    linhas.sort(function(x, y){
-      var p = x.getAttribute('data-' + campo), q = y.getAttribute('data-' + campo);
-      var c = campo === 'nome' ? p.localeCompare(q) : Number(p) - Number(q);
-      return estado.dir === 'asc' ? c : -c;
-    });
-    linhas.forEach(function(l){ lista.appendChild(l); });
-    marcarChips();
-    filtrar();
-  }
-  for (var k = 0; k < chips.length; k++) {
-    chips[k].addEventListener('click', function(){ ordenar(this.getAttribute('data-campo')); });
-  }
-  marcarChips();
-
-  // Busca e filtro "Com alerta" (a divisória entre linhas segue a ordem das linhas visíveis)
-  function filtrar(){
-    var q = busca.value.trim().toLowerCase();
-    var visiveis = 0;
-    for (var k = 0; k < lista.children.length; k++) {
-      var l = lista.children[k];
-      var mostra = l.getAttribute('data-nome').indexOf(q) >= 0 && (!soAlerta || l.getAttribute('data-alerta') === '1');
-      l.style.display = mostra ? '' : 'none';
-      l.style.borderTop = mostra && visiveis ? '1px solid var(--borda)' : '0';
-      if (mostra) visiveis++;
-    }
-    document.getElementById('itens-vazio').classList.toggle('oculto', visiveis > 0);
-  }
-  busca.addEventListener('input', filtrar);
-  var chipAlerta = document.getElementById('so-alerta');
-  if (chipAlerta) chipAlerta.addEventListener('click', function(){
-    soAlerta = !soAlerta;
-    chipAlerta.classList.toggle('on', soAlerta);
-    filtrar();
-  });
-
-  // Avisos gerais: o "!" da faixa mostra ou esconde o texto.
-  var botaoAviso = document.getElementById('f-alerta');
-  if (botaoAviso) botaoAviso.addEventListener('click', function(){
-    var txt = document.getElementById('f-aviso');
-    var abre = txt.classList.contains('oculto');
-    txt.classList.toggle('oculto', !abre);
-    botaoAviso.setAttribute('aria-expanded', abre ? 'true' : 'false');
-  });
-
-  // Menu ao tocar no item: alertas e mudanças do período em cima, links embaixo.
-  var fundo = document.getElementById('fundo');
-  var folha = document.getElementById('folha');
+  // Menu ao tocar no item (folha única, usada pelas duas contas):
+  // alertas e mudanças do período em cima, links embaixo.
+  var fundo = $('fundo');
+  var folha = $('folha');
   function fechar(){ fundo.classList.add('oculto'); folha.classList.add('oculto'); }
-  function textoSeguro(s){
-    return String(s).replace(/[&<>"']/g, function(c){ return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; });
-  }
   function blocoMenu(id, titulo, linhas, simbolo){
-    var el = document.getElementById(id);
+    var el = $(id);
     if (!linhas || !linhas.length) { el.classList.add('oculto'); el.innerHTML = ''; return; }
     el.innerHTML = '<h3>' + textoSeguro(titulo) + '</h3>' + linhas.map(function(x){
       return '<div class="motivo"><span class="marca ' + x[1] + '">' + simbolo(x[1]) + '</span><span class="' + x[1] + '">' + textoSeguro(x[0]) + '</span></div>';
     }).join('');
     el.classList.remove('oculto');
   }
-  lista.addEventListener('click', function(ev){
-    var it = ev.target.closest('.item');
-    if (!it) return;
-    var id = it.getAttribute('data-asset');
-    var info = INV[it.getAttribute('data-uaid')] || { a: [], m: [] };
-    blocoMenu('folha-alertas', 'Alertas', info.a, function(){ return '!'; });
-    blocoMenu('folha-mud', TITULO_MUD, info.m, function(c){
-      return c === 'pos' ? '▲' : c === 'neg' ? '▼' : '•';
-    });
-    document.getElementById('folha-nome').textContent = it.getAttribute('data-titulo');
-    document.getElementById('link-rol').href = 'https://www.rolimons.com/item/' + id;
-    document.getElementById('link-rbx').href = 'https://www.roblox.com/catalog/' + id;
-    fundo.classList.remove('oculto');
-    folha.classList.remove('oculto');
-  });
   fundo.addEventListener('click', fechar);
-  document.getElementById('cancelar').addEventListener('click', fechar);
-  document.getElementById('link-rol').addEventListener('click', function(){ setTimeout(fechar, 300); });
-  document.getElementById('link-rbx').addEventListener('click', function(){ setTimeout(fechar, 300); });
+  $('cancelar').addEventListener('click', fechar);
+  $('link-rol').addEventListener('click', function(){ setTimeout(fechar, 300); });
+  $('link-rbx').addEventListener('click', function(){ setTimeout(fechar, 300); });
+
+  // Liga um bloco do Inventário (o seu ou o da conta 2).
+  // INV = menu de cada item (por uaid): a = alertas, m = mudanças em 24h.
+  function ligarInventario(raiz, INV, TITULO_MUD){
+    var lista = raiz.querySelector('.inv-lista');
+    var chips = raiz.querySelectorAll('.inv-ordem .chip[data-campo]');
+    var busca = raiz.querySelector('.inv-busca');
+    var vazio = raiz.querySelector('.inv-vazio');
+    var estado = { campo: 'value', dir: 'desc' };
+    var soAlerta = false;
+
+    // Ordenação pelos chips (toque de novo inverte)
+    function marcarChips(){
+      for (var k = 0; k < chips.length; k++) {
+        var c = chips[k].getAttribute('data-campo');
+        var on = c === estado.campo;
+        chips[k].classList.toggle('on', on);
+        chips[k].textContent = ROTULOS[c] + (on ? (estado.dir === 'desc' ? ' ↓' : ' ↑') : '');
+      }
+    }
+    function ordenar(campo){
+      if (estado.campo === campo) estado.dir = estado.dir === 'desc' ? 'asc' : 'desc';
+      else { estado.campo = campo; estado.dir = campo === 'nome' ? 'asc' : 'desc'; }
+      var linhas = Array.prototype.slice.call(lista.children);
+      linhas.sort(function(x, y){
+        var p = x.getAttribute('data-' + campo), q = y.getAttribute('data-' + campo);
+        var c = campo === 'nome' ? p.localeCompare(q) : Number(p) - Number(q);
+        return estado.dir === 'asc' ? c : -c;
+      });
+      linhas.forEach(function(l){ lista.appendChild(l); });
+      marcarChips();
+      filtrar();
+    }
+    for (var k = 0; k < chips.length; k++) {
+      chips[k].addEventListener('click', function(){ ordenar(this.getAttribute('data-campo')); });
+    }
+    marcarChips();
+
+    // Busca e filtro "Com alerta" (a divisória entre linhas segue a ordem das linhas visíveis)
+    function filtrar(){
+      var q = busca.value.trim().toLowerCase();
+      var visiveis = 0;
+      for (var k = 0; k < lista.children.length; k++) {
+        var l = lista.children[k];
+        var mostra = l.getAttribute('data-nome').indexOf(q) >= 0 && (!soAlerta || l.getAttribute('data-alerta') === '1');
+        l.style.display = mostra ? '' : 'none';
+        l.style.borderTop = mostra && visiveis ? '1px solid var(--borda)' : '0';
+        if (mostra) visiveis++;
+      }
+      vazio.classList.toggle('oculto', visiveis > 0);
+    }
+    busca.addEventListener('input', filtrar);
+    var chipAlerta = raiz.querySelector('.inv-so-alerta');
+    if (chipAlerta) chipAlerta.addEventListener('click', function(){
+      soAlerta = !soAlerta;
+      chipAlerta.classList.toggle('on', soAlerta);
+      filtrar();
+    });
+    filtrar();
+
+    // Avisos gerais: o "!" da faixa mostra ou esconde o texto.
+    var botaoAviso = raiz.querySelector('.f-alerta');
+    if (botaoAviso) botaoAviso.addEventListener('click', function(){
+      var txt = raiz.querySelector('.f-aviso');
+      var abre = txt.classList.contains('oculto');
+      txt.classList.toggle('oculto', !abre);
+      botaoAviso.setAttribute('aria-expanded', abre ? 'true' : 'false');
+    });
+
+    lista.addEventListener('click', function(ev){
+      var it = ev.target.closest('.item');
+      if (!it) return;
+      var id = it.getAttribute('data-asset');
+      var info = INV[it.getAttribute('data-uaid')] || { a: [], m: [] };
+      blocoMenu('folha-alertas', 'Alertas', info.a, function(){ return '!'; });
+      blocoMenu('folha-mud', TITULO_MUD, info.m, function(c){
+        return c === 'pos' ? '▲' : c === 'neg' ? '▼' : '•';
+      });
+      $('folha-nome').textContent = it.getAttribute('data-titulo');
+      $('link-rol').href = 'https://www.rolimons.com/item/' + id;
+      $('link-rbx').href = 'https://www.roblox.com/catalog/' + id;
+      fundo.classList.remove('oculto');
+      folha.classList.remove('oculto');
+    });
+  }
+  ligarInventario($('inv-1'), ${avaliador.serializar(menu)}, ${avaliador.serializar(tituloMud)});
+
+  // ---------- Alternador de conta (v5.2) ----------
+  function inicial(s){ return String(s || '?').charAt(0).toUpperCase(); }
+  function mostrarBotoesConta(){
+    $('c2-botao').classList.toggle('oculto', !c2.nome);
+    $('c2-add').classList.toggle('oculto', !!c2.nome);
+    $('c2-nome').textContent = c2.nome || '';
+    $('c2-ini').textContent = inicial(c2.nome);
+    $('c2-botao').classList.toggle('on', conta === 2);
+    document.querySelector('#contas [data-conta="1"]').classList.toggle('on', conta === 1);
+    $('m-trocar').textContent = c2.nome ? 'Trocar conta 2 (' + c2.nome + ')' : 'Adicionar conta 2';
+    $('m-remover').classList.toggle('oculto', !c2.nome);
+  }
+  // Estado da conta 2 enquanto os itens dela não chegam (buscando ou erro).
+  function desenharEstadoC2(){
+    var el = $('c2-estado');
+    if (c2.carregando) {
+      el.innerHTML = '<p class="meta">Buscando os itens de ' + textoSeguro(c2.nome) + '...</p><div class="esq alto"></div><div class="esq"></div><div class="esq"></div>';
+    } else if (c2.erro) {
+      el.innerHTML = '<p class="aviso">Não consegui buscar os itens de ' + textoSeguro(c2.nome) + ' (' + textoSeguro(c2.erro) + ').</p>' +
+        '<div class="acoes"><button type="button" class="btn" id="c2-tentar">Tentar de novo</button><button type="button" class="btn sec" id="c2-trocar2">Trocar conta 2</button></div>';
+      $('c2-tentar').addEventListener('click', function(){ pedirConta2('conta2/carregar'); });
+      $('c2-trocar2').addEventListener('click', function(){ abrirForm(); });
+    } else {
+      el.innerHTML = '';
+    }
+  }
+  function mostrarConta(k){
+    if (k === 2 && !c2.nome) k = 1;
+    conta = k;
+    document.body.classList.toggle('c2ativa', k === 2);
+    $('inv-1').classList.toggle('oculto', k !== 1);
+    $('inv-2').classList.toggle('oculto', k !== 2);
+    $('faixa-conta').classList.toggle('oculto', k !== 2);
+    $('fc-ini').textContent = inicial(c2.nome);
+    $('fc-txt').textContent = 'Vendo a conta de ' + (c2.nome || '');
+    mostrarBotoesConta();
+    desenharEstadoC2();
+    // A aba Anúncios passa a cruzar os anúncios com os itens da conta escolhida.
+    if (window.thAnunciosConta) {
+      try { window.thAnunciosConta(k === 2 && c2.carregada ? c2.anuncios : null); } catch (e) {}
+    }
+    aba(abaAtual);
+    if (k === 2 && !c2.carregada && !c2.carregando && !c2.erro) pedirConta2('conta2/carregar');
+  }
+  // Pede à ponte (o Scriptable intercepta o endereço; nada sai do iPhone).
+  function pedirConta2(caminho){
+    c2.carregando = true;
+    c2.erro = null;
+    desenharEstadoC2();
+    var f = document.createElement('iframe');
+    f.style.display = 'none';
+    f.src = PONTE + caminho + (caminho.indexOf('?') < 0 ? '?' : '&') + 't=' + Date.now();
+    document.body.appendChild(f);
+    setTimeout(function(){ if (f.parentNode) f.parentNode.removeChild(f); }, 5000);
+    clearTimeout(c2.timer);
+    c2.timer = setTimeout(function(){
+      if (!c2.carregando) return;
+      c2.carregando = false;
+      c2.erro = 'sem resposta do Scriptable';
+      desenharEstadoC2();
+    }, 120000);
+  }
+  window.receberConta2 = function(res){
+    clearTimeout(c2.timer);
+    c2.carregando = false;
+    res = res || { erro: 'resposta vazia' };
+    var diag = $('diag-conta2');
+    if (diag) diag.textContent = 'Conta 2: ' + (res.diag || res.erro || (res.removida ? 'removida' : ''));
+    if (res.removida) {
+      c2 = { nome: null, carregada: false, carregando: false, erro: null, anuncios: null, timer: null };
+      $('inv-2').innerHTML = '';
+      mostrarConta(1);
+      return;
+    }
+    if (res.erro) {
+      if (res.acao === 'salvar') {
+        // Username novo recusado: a conta 2 anterior (se houver) continua.
+        c2.nome = res.nome || null;
+        c2.erro = null;
+        mostrarConta(c2.nome ? conta : 1);
+        abrirForm(res.erro, res.tentado);
+        return;
+      }
+      c2.erro = res.erro;
+      desenharEstadoC2();
+      aba(abaAtual);
+      return;
+    }
+    c2.nome = res.nome;
+    c2.carregada = true;
+    c2.erro = null;
+    c2.anuncios = { inventario: res.inventario, meuId: res.id, chave: '-c2', nome: res.nome };
+    // Miniaturas dos itens dela entram no mesmo objeto usado pela aba Anúncios.
+    if (typeof TH_D !== 'undefined' && TH_D.miniaturas) {
+      for (var id in res.miniaturas || {}) if (!TH_D.miniaturas[id]) TH_D.miniaturas[id] = res.miniaturas[id];
+    }
+    var raiz = $('inv-2');
+    raiz.innerHTML = res.html;
+    ligarInventario(raiz, res.menu || {}, res.titulo || 'Mudanças');
+    if (conta === 2) mostrarConta(2);
+    else mostrarBotoesConta();
+  };
+
+  // Toques no alternador.
+  $('contas').addEventListener('click', function(ev){
+    var b = ev.target.closest('button');
+    if (!b) return;
+    if (b.id === 'c2-add') { abrirForm(); return; }
+    var k = Number(b.getAttribute('data-conta'));
+    if (k && k !== conta) { mostrarConta(k); window.scrollTo(0, 0); }
+  });
+
+  // ---------- Menu ⋯ e formulário da conta 2 ----------
+  var removerArmado = null;
+  function abrirMenu(){
+    mostrarBotoesConta();
+    $('m-fundo').classList.remove('oculto');
+    $('m-folha').classList.remove('oculto');
+  }
+  function fecharMenu(){
+    $('m-fundo').classList.add('oculto');
+    $('m-folha').classList.add('oculto');
+    clearTimeout(removerArmado);
+    removerArmado = null;
+    $('m-remover').textContent = 'Remover conta 2';
+  }
+  function abrirForm(erro, tentado){
+    fecharMenu();
+    $('c2-campo').value = tentado || c2.nome || '';
+    $('c2-erro').textContent = erro || '';
+    $('c2-erro').classList.toggle('oculto', !erro);
+    $('f-fundo').classList.remove('oculto');
+    $('f-folha').classList.remove('oculto');
+  }
+  function fecharForm(){
+    $('f-fundo').classList.add('oculto');
+    $('f-folha').classList.add('oculto');
+    try { $('c2-campo').blur(); } catch (e) {}
+  }
+  $('mais').addEventListener('click', abrirMenu);
+  $('m-fundo').addEventListener('click', fecharMenu);
+  $('m-cancelar').addEventListener('click', fecharMenu);
+  $('m-trocar').addEventListener('click', function(){ abrirForm(); });
+  // Remover pede um segundo toque (sem confirm(), que pode não existir no Scriptable).
+  $('m-remover').addEventListener('click', function(){
+    var b = this;
+    if (!removerArmado) {
+      b.textContent = 'Toque de novo para remover';
+      removerArmado = setTimeout(function(){ removerArmado = null; b.textContent = 'Remover conta 2'; }, 3000);
+      return;
+    }
+    fecharMenu();
+    mostrarConta(1);
+    pedirConta2('conta2/remover');
+  });
+  $('f-fundo').addEventListener('click', fecharForm);
+  $('c2-cancelar').addEventListener('click', fecharForm);
+  $('f-folha').addEventListener('submit', function(ev){
+    ev.preventDefault();
+    var u = $('c2-campo').value.trim();
+    if (!/^[A-Za-z0-9_]{3,20}$/.test(u)) {
+      $('c2-erro').textContent = 'O username do Roblox tem de 3 a 20 letras, números ou _.';
+      $('c2-erro').classList.remove('oculto');
+      return;
+    }
+    fecharForm();
+    // Mostra a conta nova já buscando; a resposta da ponte confirma (ou recusa).
+    c2.nome = u;
+    c2.carregada = false;
+    c2.anuncios = null;
+    $('inv-2').innerHTML = '';
+    // Primeiro marca "buscando" (para mostrarConta não pedir de novo), depois troca a tela.
+    pedirConta2('conta2/salvar?u=' + encodeURIComponent(u));
+    mostrarConta(2);
+  });
 })();
 </script>
 ${av.erro ? '' : avaliador.script(av.json, cfg) + anuncios.script(cfg, r.usuario.id)}
 </body></html>`;
 }
 
-module.exports = { gerar };
+module.exports = { gerar, inventario };

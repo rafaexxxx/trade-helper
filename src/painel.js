@@ -25,6 +25,26 @@ async function pedirUsername(atual) {
   return valor;
 }
 
+// v5.2: logo depois do username principal, pergunta a conta 2 (opcional).
+// Retorna o username ou '' (Agora não). Tudo fica só neste iPhone.
+async function pedirConta2(atual) {
+  const al = new Alert();
+  al.title = 'Conta 2 (opcional)';
+  al.message = 'Quer acompanhar outra conta também? Digite o username dela.\n(fica salvo só neste iPhone; dá para mudar depois no botão ⋯)';
+  al.addTextField('username da conta 2', atual || '');
+  al.addAction('Salvar');
+  al.addCancelAction('Agora não');
+  const escolha = await al.presentAlert();
+  const valor = al.textFieldValue(0).trim();
+  return escolha === -1 ? '' : valor;
+}
+
+const USERNAME_VALIDO = /^[A-Za-z0-9_]{3,20}$/;
+
+function mesmoNome(x, y) {
+  return String(x || '').toLowerCase() === String(y || '').toLowerCase();
+}
+
 // Variação dos totais + mudanças por item em relação a um retrato base.
 function comparar(itens, totais, base) {
   return {
@@ -62,10 +82,22 @@ async function executar(ctx) {
   const noWidget = config.runsInWidget;
   const store = hist.criarArmazenamento(ctx.dirDados);
   let ajustes = store.ler('ajustes') || {};
+  const avisosIniciais = [];
 
   if (!ajustes.username || (ctx.trocarUsername && !noWidget)) {
     if (noWidget) throw new Error('Abra o Trade Helper no app do Scriptable uma vez para informar o username.');
+    // A conta 2 salva continua (o TROCAR_USERNAME do loader não a apaga).
+    const conta2Antes = ajustes.conta2 || null;
     ajustes = { username: await pedirUsername(ajustes.username) };
+    const u2 = await pedirConta2(conta2Antes ? conta2Antes.username : '');
+    if (u2 && USERNAME_VALIDO.test(u2) && !mesmoNome(u2, ajustes.username)) {
+      ajustes.conta2 = conta2Antes && conta2Antes.username === u2 ? conta2Antes : { username: u2 };
+    } else if (conta2Antes && !mesmoNome(conta2Antes.username, ajustes.username)) {
+      ajustes.conta2 = conta2Antes;
+    }
+    if (u2 && !(ajustes.conta2 && ajustes.conta2.username === u2)) {
+      avisosIniciais.push('A conta 2 "' + u2 + '" não foi salva (username inválido ou igual ao principal). Use o botão ⋯ para tentar de novo.');
+    }
     store.gravar('ajustes', ajustes);
   }
 
@@ -95,11 +127,13 @@ async function executar(ctx) {
   }
 
   const miniaturas = await api.buscarMiniaturas(store, itens.map((i) => String(i.assetId)));
-  const avisos = (ctx.avisos || []).concat(dados.avisos);
+  const avisos = (ctx.avisos || []).concat(avisosIniciais, dados.avisos);
   const robloxItens = dados.roblox ? dados.roblox.itens : [];
 
   const resultado = {
     usuario: dados.usuario,
+    // v5.2: só o nome da conta 2 (os itens dela vêm pela ponte, ao tocar no alternador).
+    conta2: ajustes.conta2 ? { nome: ajustes.conta2.nomeReal || ajustes.conta2.username } : null,
     itens,
     fonte,
     totais,
@@ -225,11 +259,99 @@ async function executar(ctx) {
     });
   }
 
+  // v5.2: itens da conta 2, montados aqui com o mesmo catálogo já baixado.
+  // As setas e quedas de 24h usam o retrato do catálogo (analise.baseDoCatalogo).
+  async function montarConta2() {
+    const c2 = ajustes.conta2;
+    if (await api.garantirId(c2)) store.gravar('ajustes', ajustes);
+    const j = await api.carregarJogador(store, c2, cfg.CACHE_CONTA2_MIN);
+    const montado = analise.montarItens({ jogador: j.jogador, roblox: null, rolimons: dados.rolimons });
+    const itens2 = montado.itens;
+    const totais2 = analise.calcularTotais(itens2);
+    const agora2 = Date.now();
+    const base2 = analise.baseDoCatalogo(itens2, baseCatalogo, montado.fonte);
+    const dia2 = comparar(itens2, totais2, base2);
+    const thumbs2 = await api.buscarMiniaturas(store, itens2.map((i) => String(i.assetId)));
+    const bloco = html.inventario({
+      itens: itens2,
+      totais: totais2,
+      riscos: analise.encontrarRiscos(itens2, base2, cfg),
+      comparacoes: { dia: dia2 },
+      miniaturas: thumbs2,
+      avisos: j.avisos,
+      agora: agora2,
+    }, cfg);
+    return {
+      id: j.usuario.id,
+      nome: j.usuario.nome,
+      html: bloco.html,
+      menu: bloco.menu,
+      titulo: bloco.titulo,
+      inventario: avaliador.inventarioCompacto(itens2),
+      miniaturas: thumbs2,
+      diag: itens2.length + ' itens · origem ' + j.origem + ' · base 24h ' +
+        (base2 ? analise.fmtData(base2.data) + " (retrato do catálogo)" : 'em formação') +
+        ' · miniaturas ' + Object.keys(thumbs2).length + '/' + itens2.length +
+        (j.avisos.length ? ' · avisos: ' + j.avisos.join(' | ') : ''),
+    };
+  }
+
+  // Ponte da conta 2: PONTE + 'conta2/carregar', 'conta2/salvar?u=...' ou 'conta2/remover'.
+  // O username vem num endereço falso que é barrado aqui: nada sai do iPhone.
+  function atenderConta2(url) {
+    const m = /conta2\/(carregar|salvar|remover)/.exec(url);
+    const acao = m ? m[1] : 'carregar';
+    const mu = /[?&]u=([^&]*)/.exec(url);
+    let tentado = '';
+    try {
+      tentado = mu ? decodeURIComponent(mu[1]).trim() : '';
+    } catch (e) {
+      tentado = '';
+    }
+    filaPonte = filaPonte.then(async () => {
+      let res;
+      const nomeAtual = () => (ajustes.conta2 ? ajustes.conta2.nomeReal || ajustes.conta2.username : null);
+      try {
+        if (acao === 'remover') {
+          delete ajustes.conta2;
+          store.gravar('ajustes', ajustes);
+          res = { removida: true };
+        } else {
+          if (acao === 'salvar') {
+            if (!USERNAME_VALIDO.test(tentado)) throw new Error('O username do Roblox tem de 3 a 20 letras, números ou _.');
+            if (mesmoNome(tentado, ajustes.username) || mesmoNome(tentado, ajustes.nomeReal)) {
+              throw new Error('Esse é o seu username principal.');
+            }
+            // Confere no Roblox antes de salvar: se não existir, a conta 2 anterior continua.
+            const nova = ajustes.conta2 && ajustes.conta2.username === tentado ? ajustes.conta2 : { username: tentado };
+            await api.garantirId(nova);
+            if (nova.userId === ajustes.userId) throw new Error('Esse é o seu username principal.');
+            ajustes.conta2 = nova;
+            store.gravar('ajustes', ajustes);
+          }
+          if (!ajustes.conta2) throw new Error('nenhuma conta 2 salva');
+          res = await montarConta2();
+        }
+      } catch (e) {
+        res = { erro: e.message || String(e), acao, nome: nomeAtual(), tentado };
+      }
+      try {
+        await wv.evaluateJavaScript('window.receberConta2 && window.receberConta2(' + avaliador.serializar(res) + ')', false);
+      } catch (e) {
+        // página fechada ou sem a função: ignora
+      }
+    });
+  }
+
   // Links do menu de toque abrem fora do painel (Safari ou app do Roblox).
   wv.shouldAllowRequest = (req) => {
     const url = (req && req.url) || '';
     if (url.indexOf(avaliador.PONTE + 'anuncios') === 0) {
       atenderAnuncios();
+      return false;
+    }
+    if (url.indexOf(avaliador.PONTE + 'conta2') === 0) {
+      atenderConta2(url);
       return false;
     }
     if (url.indexOf(avaliador.PONTE) === 0) {
