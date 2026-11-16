@@ -34,10 +34,19 @@ module.exports = {
   // As contas usam o "value base": o value do Rolimon's; item sem value entra
   // pelo RAP. O RAP aparece só como informação (não muda o veredito).
 
-  // Diferença (%) do value considerada "justa" (amarelo).
+  // O veredito depende da FORMA da trade, sempre do seu ponto de vista
+  // (pela contagem de itens de cada lado).
+  // Sidegrade (mesmo número de itens): diferença (%) do value considerada "justa".
   FAIXA_JUSTA_PCT: 3,
-  // Veredito: a partir desta diferença (%) vira "Vale muito a pena" / "Não vale de jeito nenhum".
+  // Sidegrade: a partir desta diferença (%) vira "Vale muito a pena" / "Não vale de jeito nenhum".
   VEREDITO_FORTE_PCT: 10,
+  // Upgrade e downgrade: cada lista tem o mínimo (%) para
+  // [Não vale a pena, Troca justa, Vale a pena, Vale muito a pena].
+  // Abaixo do primeiro número: "Não vale de jeito nenhum".
+  // Upgrade (você dá mais itens e recebe menos, porém maiores): pagar um pouco a mais é normal.
+  VEREDITO_UPGRADE_PCT: [-20, -9, -7, -5],
+  // Downgrade (você recebe mais itens, porém menores): o normal é receber a mais.
+  VEREDITO_DOWNGRADE_PCT: [0, 5, 7, 12],
   // Diferença de demanda média entre os lados (escala 0 terrível .. 4 incrível):
   // a partir de MOTIVO vira uma frase no veredito; a partir de REBAIXA (contra você)
   // o veredito cai um nível.
@@ -67,14 +76,17 @@ module.exports = {
   // entre as consultas). Um anúncio guardado pode já ter sido fechado.
   ANUNCIOS_GUARDAR_HORAS: 2,
   ANUNCIOS_MAX_GUARDADOS: 3000,
-  // Anúncios que pedem só a tag "upgrade" (a pessoa dá mais itens que você):
-  // sua combinação precisa te dar um ganho entre MIN e MAX (%), e a escolhida
-  // é a mais perto de ALVO (equilíbrio entre ganho e chance de aceitarem).
-  ANUNCIO_UPGRADE_MIN_PCT: 3,
-  ANUNCIO_UPGRADE_MAX_PCT: 15,
-  ANUNCIO_UPGRADE_ALVO_PCT: 9,
-  // Tag "downgrade" (você dá mais itens): até quanto (%) você aceita pagar a mais.
-  ANUNCIO_DOWNGRADE_PAGAR_MAX_PCT: 5,
+  // Combinações sugeridas para anúncios que pedem só tags. A tag é do ponto de
+  // vista do DONO do anúncio; os nomes abaixo são do SEU ponto de vista.
+  // Dono pede "downgrade" = SEU UPGRADE (você dá mais itens): você paga de 0 até
+  // MAX (%) a mais, e a sugestão mira ALVO (o menor overpay que ele deve aceitar).
+  ANUNCIO_SEU_UPGRADE_PAGAR_MAX_PCT: 9,
+  ANUNCIO_SEU_UPGRADE_PAGAR_ALVO_PCT: 5,
+  // Dono pede "upgrade" = SEU DOWNGRADE (você recebe mais itens): ganho de MIN a
+  // MAX (%), mirando ALVO (lucro sem pesar a mão).
+  ANUNCIO_SEU_DOWNGRADE_MIN_PCT: 5,
+  ANUNCIO_SEU_DOWNGRADE_MAX_PCT: 12,
+  ANUNCIO_SEU_DOWNGRADE_ALVO_PCT: 9,
   // Tag "any": mesmo número de itens, diferença de até ±X%.
   ANUNCIO_ANY_PCT: 3,
   // Quantos dos seus itens entram na busca de combinações (mais = mais lento).

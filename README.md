@@ -107,8 +107,10 @@ Ficam em [`src/config.js`](src/config.js):
 | `CACHE_ROLIMONS_MIN` | 5 | Minutos reaproveitando os values baixados |
 | `CACHE_INVENTARIO_MIN` | 1 | Minutos reaproveitando o inventário baixado |
 | `WIDGET_ATUALIZAR_MIN` | 30 | Intervalo pedido ao iOS para atualizar o widget |
-| `FAIXA_JUSTA_PCT` | 3 | Diferença (%) considerada justa (amarelo) |
-| `VEREDITO_FORTE_PCT` | 10 | A partir daqui: "Vale muito a pena" / "Não vale de jeito nenhum" |
+| `FAIXA_JUSTA_PCT` | 3 | Sidegrade (mesmo número de itens): diferença (%) considerada justa |
+| `VEREDITO_FORTE_PCT` | 10 | Sidegrade: a partir daqui, "Vale muito a pena" / "Não vale de jeito nenhum" |
+| `VEREDITO_UPGRADE_PCT` | −20 / −9 / −7 / −5 | Upgrade (você dá mais itens): mínimo (%) para Não vale, Justa, Vale e Vale muito |
+| `VEREDITO_DOWNGRADE_PCT` | 0 / 5 / 7 / 12 | Downgrade (você recebe mais itens): mínimo (%) para Não vale, Justa, Vale e Vale muito |
 | `DEMANDA_DIF_MOTIVO` | 0,75 | Diferença de demanda média que vira motivo no veredito |
 | `DEMANDA_DIF_REBAIXA` | 1,5 | Diferença de demanda (contra você) que rebaixa o veredito um nível |
 | `DEMANDA_SEM_DADOS_FRACAO` | 0,5 | Fração do value recebido sem dados de demanda que gera aviso e rebaixa um nível |
@@ -118,11 +120,11 @@ Ficam em [`src/config.js`](src/config.js):
 | `RETRATO_CATALOGO_HORAS` | 30 | Por quantas horas guardar os retratos do catálogo |
 | `ANUNCIOS_CACHE_MIN` | 3 | Intervalo mínimo (min) entre buscas de anúncios |
 | `ANUNCIOS_GUARDAR_HORAS` | 2 | Por quantas horas guardar os anúncios já vistos |
-| `ANUNCIO_UPGRADE_MIN_PCT` / `MAX` / `ALVO` | 3 / 15 / 9 | Faixa de ganho para a tag upgrade e o ponto preferido |
-| `ANUNCIO_DOWNGRADE_PAGAR_MAX_PCT` | 5 | Quanto (%) você aceita pagar a mais na tag downgrade |
+| `ANUNCIO_SEU_UPGRADE_PAGAR_MAX_PCT` / `ALVO` | 9 / 5 | Dono pede downgrade (seu upgrade): até quanto (%) você paga a mais e o ponto preferido |
+| `ANUNCIO_SEU_DOWNGRADE_MIN_PCT` / `MAX` / `ALVO` | 5 / 12 / 9 | Dono pede upgrade (seu downgrade): faixa de ganho (%) e o ponto preferido |
 | `ANUNCIO_ANY_PCT` | 3 | Diferença máxima (±%) na tag any |
 | `ANUNCIO_COMBINACAO_MAX_ITENS` | 25 | Quantos dos seus itens entram na busca de combinações |
-| `ANUNCIOS_MAX_NA_LISTA` | 40 | Cartões por bloco |
+| `ANUNCIOS_MAX_NA_LISTA` | 40 | Linhas mostradas na lista de anúncios |
 
 **Trocar o username:** no script do Scriptable, mude `TROCAR_USERNAME` para `true`, rode uma vez e volte para `false`.
 

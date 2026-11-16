@@ -95,16 +95,34 @@ function calcularVeredito(dou, rec, td, tr, tipo, robuxRecebo, P) {
     return { titulo: 'Proposta incompleta', cor: 'sub', nivel: null, motivos: ['Adicione itens (ou Robux) nos dois lados para avaliar.'] };
   }
 
-  // 1. Nível pela diferença do value base (Robux já com a taxa).
+  // 1. Nível pela diferença do value base (Robux já com a taxa), com a régua
+  // da FORMA da trade (do seu ponto de vista): upgrade, downgrade ou sidegrade.
   var dif = tr.value - td.value;
   var temBase = td.value > 0;
   var pct = temBase ? (dif / td.value) * 100 : dif > 0 ? 100 : 0;
-  var n = pct >= P.forte ? 4 : pct >= P.faixa ? 3 : pct > -P.faixa ? 2 : pct > -P.forte ? 1 : 0;
+  var regua = tipo === 'upgrade' ? P.reguaUp : tipo === 'downgrade' ? P.reguaDown : null;
+  var n;
+  if (regua) n = pct >= regua[3] ? 4 : pct >= regua[2] ? 3 : pct >= regua[1] ? 2 : pct >= regua[0] ? 1 : 0;
+  else n = pct >= P.forte ? 4 : pct >= P.faixa ? 3 : pct > -P.faixa ? 2 : pct > -P.forte ? 1 : 0;
   var difTxt = (dif > 0 ? '+' : '') + fmtNum(dif);
   var valorTxt;
-  if (n >= 3) valorTxt = 'Você ganha cerca de ' + (temBase ? fmtPctSinal(pct) + ' ' : '') + 'em value (' + difTxt + ').';
-  else if (n === 2) valorTxt = 'Os dois lados valem quase o mesmo em value (' + difTxt + (temBase ? ', ' + fmtPctSinal(pct) : '') + ').';
-  else valorTxt = 'Você perde cerca de ' + (temBase ? fmtPct(-pct) + ' ' : '') + 'em value (' + difTxt + ').';
+  if (!regua && Math.abs(pct) < P.faixa) valorTxt = 'Os dois lados valem quase o mesmo em value (' + difTxt + (temBase ? ', ' + fmtPctSinal(pct) : '') + ').';
+  else if (dif > 0) valorTxt = 'Você ganha cerca de ' + (temBase ? fmtPctSinal(pct) + ' ' : '') + 'em value (' + difTxt + ').';
+  else if (dif < 0) valorTxt = 'Você paga cerca de ' + (temBase ? fmtPct(-pct) + ' ' : '') + 'a mais em value (' + difTxt + ').';
+  else valorTxt = 'Os dois lados valem o mesmo em value.';
+
+  // 1a. A régua da forma, explicada (fica logo depois do value).
+  function pctRegua(x) {
+    return String(Math.abs(x)).replace('.', ',') + '%';
+  }
+  var formaTxt = null;
+  if (tipo === 'upgrade') {
+    formaTxt = 'É um upgrade (você dá mais itens e recebe menos, porém maiores): pagar um pouco a mais é normal. Pagar até ' +
+      pctRegua(regua[3]) + ' a mais é ótimo, até ' + pctRegua(regua[2]) + ' ainda vale a pena, e acima de ' + pctRegua(regua[1]) + ' não vale.';
+  } else if (tipo === 'downgrade') {
+    formaTxt = 'É um downgrade (você recebe mais itens, porém menores): o normal é receber a mais. Abaixo de +' +
+      pctRegua(regua[1]) + ' não compensa, de +' + pctRegua(regua[2]) + ' vale a pena, e de +' + pctRegua(regua[3]) + ' vale muito.';
+  }
 
   // 1b. RAP só como informação (não muda o veredito).
   var difRap = tr.rap - td.rap;
@@ -186,25 +204,27 @@ function calcularVeredito(dou, rec, td, tr, tipo, robuxRecebo, P) {
 
   // 4. Motivo extra (o mais importante que sobrar).
   var extras = [];
-  if (tipo === 'upgrade') extras.push('É um upgrade (menos itens, porém maiores): costuma exigir pagar um pouco a mais.');
-  if (tipo === 'downgrade') extras.push('É um downgrade (mais itens, porém menores): costuma valer receber um pouco a mais.');
   if (robuxRecebo) extras.push('Os Robux recebidos já contam com o desconto de ' + Math.round(P.taxaRobux * 100) + '% do Roblox.');
   if (dou.some(function (i) { return !i.doInventario; })) extras.push('Proposta simulada: há item no lado Dou que não está no seu inventário.');
 
+  var forma = tipo || (td.qtd && tr.qtd ? 'sidegrade' : null);
   var motivos;
   if (fortes.length) {
     motivos = [fortes[0], valorTxt + ' Sem esse alerta, o veredito seria "' + NIVEIS[n].titulo + '".', rapTxt];
     if (fortes[1]) motivos.push(fortes[1]);
     else if (motivoSemDem) motivos.push(motivoSemDem);
     else if (motivoDem) motivos.push(motivoDem);
-    return { titulo: 'Cuidado', cor: 'neg', nivel: -1, motivos: motivos, semDemanda: !!motivoSemDem };
+    else if (formaTxt) motivos.push(formaTxt);
+    return { titulo: 'Cuidado', cor: 'neg', nivel: -1, motivos: motivos, semDemanda: !!motivoSemDem, forma: forma };
   }
-  // Até 4 motivos: value, RAP, demanda (sem dados e média) e o extra mais importante.
-  motivos = [valorTxt, rapTxt];
+  // Até 4 motivos: value, forma (upgrade/downgrade), RAP, demanda (sem dados e média) e o extra mais importante.
+  motivos = [valorTxt];
+  if (formaTxt) motivos.push(formaTxt);
+  motivos.push(rapTxt);
   if (motivoSemDem) motivos.push(motivoSemDem);
   if (motivoDem) motivos.push(motivoDem);
   for (var k = 0; k < extras.length && motivos.length < 4; k++) motivos.push(extras[k]);
-  return { titulo: NIVEIS[n].titulo, cor: NIVEIS[n].cor, nivel: n, motivos: motivos.slice(0, 4), semDemanda: !!motivoSemDem };
+  return { titulo: NIVEIS[n].titulo, cor: NIVEIS[n].cor, nivel: n, motivos: motivos.slice(0, 4), semDemanda: !!motivoSemDem, forma: forma };
 }
 
 // Chave de cor/estilo do veredito (v4): pílula cheia para os extremos.
@@ -224,6 +244,8 @@ function parametros(cfg) {
     semDadosFracao: cfg.DEMANDA_SEM_DADOS_FRACAO,
     faixa: cfg.FAIXA_JUSTA_PCT,
     forte: cfg.VEREDITO_FORTE_PCT,
+    reguaUp: cfg.VEREDITO_UPGRADE_PCT,
+    reguaDown: cfg.VEREDITO_DOWNGRADE_PCT,
     demMotivo: cfg.DEMANDA_DIF_MOTIVO,
     demRebaixa: cfg.DEMANDA_DIF_REBAIXA,
     alertaRap24: cfg.ALERTA_RAP_24H_PCT,
@@ -320,7 +342,7 @@ function secao(cfg, baseData, erro) {
     '<table id="av-resumo" class="av-resumo">' +
     '<thead><tr><th></th><th>Dou</th><th>Recebo</th><th>Diferença</th></tr></thead>' +
     '<tbody></tbody></table>' +
-    '<p class="nota av-nota">O RAP é só informativo. Faixa justa: ±' + cfg.FAIXA_JUSTA_PCT + '%.</p>' +
+    '<p class="nota av-nota">O RAP é só informativo. O veredito usa a régua da forma da trade: upgrade, downgrade ou sidegrade (mesmo número de itens, faixa justa ±' + cfg.FAIXA_JUSTA_PCT + '%).</p>' +
     '</div>' +
     '</div></details>' +
     '<details class="bloco" data-chave="av-alertas"><summary>Alertas<span class="cont" id="n-alertas"></span></summary><div class="dentro">' +
@@ -596,7 +618,7 @@ function paginaAvaliador(D, P) {
       (proposta.robuxRecebo ? '<span class="det">de ' + fmtNum(proposta.robuxRecebo) + '</span>' : '') + '</td>' +
       celDif(tr.robux - td.robux, 0) + '</tr>';
     h += '<tr><td>Itens</td><td class="num">' + td.qtd + '</td><td class="num">' + tr.qtd + '</td><td class="num sub">' +
-      (tipo || '—') + '</td></tr>';
+      (tipo || (td.qtd && tr.qtd ? 'sidegrade' : '—')) + '</td></tr>';
     $('av-resumo').tBodies[0].innerHTML = h;
   }
 
@@ -633,8 +655,14 @@ function paginaAvaliador(D, P) {
       if (i.dem >= 3 && i.tend === 3) add(i, 'você está dando um item com demanda alta e em alta', 'warn');
       if (i.val24) add(i, 'value mudou ' + fmtPctSinal(i.val24) + ' em 24h', 'sub');
     });
-    if (tipo === 'upgrade') add(null, 'Upgrade (você recebe menos itens, porém maiores): costuma exigir pagar um pouco a mais.', 'sub');
-    if (tipo === 'downgrade') add(null, 'Downgrade (você recebe mais itens, porém menores): quem faz downgrade costuma receber um pouco a mais.', 'sub');
+    if (tipo === 'upgrade') {
+      add(null, 'Upgrade (você dá mais itens e recebe menos, porém maiores): pagar até ' + Math.abs(P.reguaUp[3]) +
+        '% a mais é ótimo; acima de ' + Math.abs(P.reguaUp[1]) + '% não vale.', 'sub');
+    }
+    if (tipo === 'downgrade') {
+      add(null, 'Downgrade (você recebe mais itens, porém menores): o normal é receber a mais; abaixo de +' + P.reguaDown[1] +
+        '% não compensa, de +' + P.reguaDown[2] + '% vale a pena.', 'sub');
+    }
     if (proposta.robuxRecebo) add(null, 'Os Robux recebidos já estão com o desconto de ' + Math.round(P.taxaRobux * 100) + '% do Roblox.', 'sub');
     return L;
   }
@@ -673,7 +701,7 @@ function paginaAvaliador(D, P) {
       var dif = tr.value - td.value;
       var difTxt = (dif > 0 ? '+' : '') + fmtNum(dif);
       pct = td.value > 0 ? fmtPctSinal((dif / td.value) * 100) : difTxt;
-      sub = 'em value · ' + difTxt;
+      sub = 'em value · ' + difTxt + (v.forma ? ' · ' + v.forma : '');
     }
     $('av-ver-pct').textContent = pct;
     $('av-ver-sub').textContent = sub;

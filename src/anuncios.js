@@ -153,10 +153,12 @@ function parametros(cfg, meuId) {
   return {
     meuId: Number(meuId) || 0,
     horas: cfg.ANUNCIOS_GUARDAR_HORAS,
-    upMin: cfg.ANUNCIO_UPGRADE_MIN_PCT,
-    upMax: cfg.ANUNCIO_UPGRADE_MAX_PCT,
-    upAlvo: cfg.ANUNCIO_UPGRADE_ALVO_PCT,
-    downPagar: cfg.ANUNCIO_DOWNGRADE_PAGAR_MAX_PCT,
+    // Do SEU ponto de vista (a tag do anúncio é do dono).
+    upPagarMax: cfg.ANUNCIO_SEU_UPGRADE_PAGAR_MAX_PCT,
+    upPagarAlvo: cfg.ANUNCIO_SEU_UPGRADE_PAGAR_ALVO_PCT,
+    downMin: cfg.ANUNCIO_SEU_DOWNGRADE_MIN_PCT,
+    downMax: cfg.ANUNCIO_SEU_DOWNGRADE_MAX_PCT,
+    downAlvo: cfg.ANUNCIO_SEU_DOWNGRADE_ALVO_PCT,
     any: cfg.ANUNCIO_ANY_PCT,
     pool: cfg.ANUNCIO_COMBINACAO_MAX_ITENS,
     maxLista: cfg.ANUNCIOS_MAX_NA_LISTA,
@@ -510,13 +512,23 @@ function paginaAnuncios(D, P, PA) {
     if (!kq) return { descarte: 'oferta só de Robux' };
     var proibidos = {};
     rec.forEach(function (i) { proibidos[i.id] = true; });
+    // A tag é do ponto de vista do DONO:
+    // "upgrade" = ele dá mais itens = SEU DOWNGRADE (você ganha a mais, sem pesar a mão);
+    // "downgrade" = ele dá menos itens = SEU UPGRADE (você paga o menor overpay que ele deve aceitar).
     var opcoes = [];
-    if (querUp) opcoes.push({ tag: 'upgrade', c: melhorCombinacao(tr.value, 1, kq - 1, PA.upMin, PA.upMax, PA.upAlvo, proibidos, fixo) });
-    if (querDown) opcoes.push({ tag: 'downgrade', c: melhorCombinacao(tr.value, kq + 1, P.maxItens, -PA.downPagar, 0, 0, proibidos, fixo) });
+    if (querUp) opcoes.push({ tag: 'upgrade', c: melhorCombinacao(tr.value, 1, kq - 1, PA.downMin, PA.downMax, PA.downAlvo, proibidos, fixo) });
+    if (querDown) opcoes.push({ tag: 'downgrade', c: melhorCombinacao(tr.value, kq + 1, P.maxItens, -PA.upPagarMax, 0, -PA.upPagarAlvo, proibidos, fixo) });
     if (querAny) opcoes.push({ tag: 'any', c: melhorCombinacao(tr.value, kq, kq, -PA.any, PA.any, PA.any, proibidos, fixo) });
+    // Entre as tags aceitas, fica a opção de melhor veredito (empate: maior ganho).
     var melhor = null;
     opcoes.forEach(function (o) {
-      if (o.c && (!melhor || o.c.pct > melhor.c.pct)) melhor = o;
+      if (!o.c) return;
+      o.td = somarLado(o.c.itens, 0, false, P);
+      o.tipo = tipoTrocaLados(o.td, tr);
+      o.v = calcularVeredito(o.c.itens, rec, o.td, tr, o.tipo, ad[5], P);
+      o.p = ganho(o.td, tr);
+      o.nivel = o.v && o.v.nivel != null ? o.v.nivel : -2;
+      if (!melhor || o.nivel > melhor.nivel || (o.nivel === melhor.nivel && (o.p == null ? -1e9 : o.p) > (melhor.p == null ? -1e9 : melhor.p))) melhor = o;
     });
     if (!melhor) {
       return {
@@ -525,15 +537,16 @@ function paginaAnuncios(D, P, PA) {
       };
     }
     var dou2 = melhor.c.itens;
-    td = somarLado(dou2, 0, false, P);
-    tipo = tipoTrocaLados(td, tr);
-    v = calcularVeredito(dou2, rec, td, tr, tipo, ad[5], P);
-    p = ganho(td, tr);
+    td = melhor.td;
+    tipo = melhor.tipo;
+    v = melhor.v;
+    p = melhor.p;
     var nota;
     if (melhor.tag === 'upgrade') {
-      nota = 'Ele quer upgrade: você dá menos itens e ganha ' + fmtPct(p) + ' em value.';
+      nota = 'Ele quer upgrade, então para você é downgrade: você dá menos itens e ganha ' + fmtPct(p) + ' em value.';
     } else if (melhor.tag === 'downgrade') {
-      nota = 'Ele quer downgrade: você dá mais itens e ' + (p < 0 ? 'paga ' + fmtPct(-p) + ' a mais (normal para quem sobe de item).' : 'não paga nada a mais.');
+      nota = 'Ele quer downgrade, então para você é upgrade: você dá mais itens e ' +
+        (p < 0 ? 'paga ' + fmtPct(-p) + ' a mais (perto do mínimo que ele deve aceitar).' : 'não paga nada a mais.');
     } else {
       nota = 'Ele aceita qualquer item: combinação com o mesmo número de itens (' + fmtPctSinal(p) + ').';
     }
@@ -662,6 +675,14 @@ function paginaAnuncios(D, P, PA) {
       '<a class="btn" href="https://www.roblox.com/users/' + ad[2] + '/trade">Abrir trade</a></div>';
     return h + '</div>';
   }
+  // Etiqueta da linha: a forma da trade do SEU ponto de vista (a tag do dono fica
+  // na nota do cartão). Azul = pede seus itens; cinza = combinação sugerida.
+  function etiqueta(r) {
+    if (!r.rec.length) return 'por Robux';
+    if (r.tipo === 'upgrade') return 'seu upgrade';
+    if (r.tipo === 'downgrade') return 'seu downgrade';
+    return 'sidegrade';
+  }
   // Linha curta: jogador, etiqueta do tipo, tempo, miniaturas dos dois lados e a %.
   // O toque abre/fecha o cartão completo logo abaixo.
   function linha(r, k) {
@@ -673,7 +694,7 @@ function paginaAnuncios(D, P, PA) {
       '<div class="an-it' + (aberto ? ' aberto' : '') + '">' +
       '<button type="button" class="an-linha" data-k="' + k + '" aria-expanded="' + aberto + '">' +
       '<span class="an-main"><span class="an-l1"><b>' + esc(ad[3] || 'Jogador ' + ad[2]) + '</b>' +
-      '<span class="an-etq' + (sug ? '' : ' seus') + '">' + esc(sug ? r.tag : 'seus itens') + '</span>' +
+      '<span class="an-etq' + (sug ? '' : ' seus') + '">' + esc(etiqueta(r)) + '</span>' +
       '<span class="an-tempo">' + haQuanto(ad[1]) + '</span></span>' +
       '<span class="an-l2">' + grupo(r.rec, ad[5], 'rec') + '<span class="an-tr">⇄</span>' +
       grupo(r.dou, 0, 'dou' + (sug ? ' sug' : '')) + '</span></span>' +
