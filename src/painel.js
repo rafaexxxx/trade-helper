@@ -88,7 +88,9 @@ async function executar(ctx) {
     if (noWidget) throw new Error('Abra o Trade Helper no app do Scriptable uma vez para informar o username.');
     // A conta 2 salva continua (o TROCAR_USERNAME do loader não a apaga).
     const conta2Antes = ajustes.conta2 || null;
+    const temaAntes = ajustes.tema || null;
     ajustes = { username: await pedirUsername(ajustes.username) };
+    if (temaAntes) ajustes.tema = temaAntes;
     const u2 = await pedirConta2(conta2Antes ? conta2Antes.username : '');
     if (u2 && USERNAME_VALIDO.test(u2) && !mesmoNome(u2, ajustes.username)) {
       ajustes.conta2 = conta2Antes && conta2Antes.username === u2 ? conta2Antes : { username: u2 };
@@ -134,6 +136,8 @@ async function executar(ctx) {
     usuario: dados.usuario,
     // v5.2: só o nome da conta 2 (os itens dela vêm pela ponte, ao tocar no alternador).
     conta2: ajustes.conta2 ? { nome: ajustes.conta2.nomeReal || ajustes.conta2.username } : null,
+    // v5.3.1: tema escolhido no menu ⋯ (gravado no arquivo de ajustes).
+    tema: html.temaValido(ajustes.tema) ? ajustes.tema : null,
     itens,
     fonte,
     totais,
@@ -150,6 +154,7 @@ async function executar(ctx) {
       versao: ctx.versao,
       commit: String(ctx.sha || '').slice(0, 7),
       loader: ctx.loaderVersao,
+      tema: ajustes.tema || 'segue o iPhone',
       usuario: dados.usuario,
       fonteItens: fonte,
       origem: dados.origem,
@@ -343,9 +348,29 @@ async function executar(ctx) {
     });
   }
 
+  // v5.3.1: ponte do tema: PONTE + 'tema?t=<id>' grava o tema no arquivo de ajustes,
+  // para ele continuar depois de fechar o app (o localStorage do WebView não guarda).
+  function atenderTema(url) {
+    const m = /[?&]t=([a-z0-9]+)/.exec(url);
+    const id = m ? m[1] : '';
+    if (!html.temaValido(id)) return;
+    filaPonte = filaPonte.then(() => {
+      try {
+        ajustes.tema = id;
+        store.gravar('ajustes', ajustes);
+      } catch (e) {
+        // sem gravar: o tema vale só até fechar o app
+      }
+    });
+  }
+
   // Links do menu de toque abrem fora do painel (Safari ou app do Roblox).
   wv.shouldAllowRequest = (req) => {
     const url = (req && req.url) || '';
+    if (url.indexOf(avaliador.PONTE + 'tema') === 0) {
+      atenderTema(url);
+      return false;
+    }
     if (url.indexOf(avaliador.PONTE + 'anuncios') === 0) {
       atenderAnuncios();
       return false;
