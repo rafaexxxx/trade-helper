@@ -1,10 +1,11 @@
 {
-  "versao": "5.3.1",
+  "versao": "5.4.0",
   "arquivos": [
     "src/config.js",
     "src/historico.js",
     "src/api.js",
     "src/analise.js",
+    "src/ajuda.js",
     "src/avaliador.js",
     "src/anuncios.js",
     "src/html.js",

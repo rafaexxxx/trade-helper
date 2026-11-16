@@ -4,6 +4,7 @@
 // as funções do avaliador (value base e veredito) já injetadas na página.
 const api = require('api');
 const avaliador = require('avaliador');
+const ajuda = require('ajuda');
 
 // Tags numéricas do pedido, na ordem do formulário do Rolimon's
 // (fonte de terceiros; a contagem aparece no Diagnóstico para conferir).
@@ -187,6 +188,8 @@ function secao(cfg, erro) {
     '</div></div>' +
     '<section class="secao"><h2>Anúncios<span class="cont" id="an-n"></span></h2>' +
     '<div id="an-lista"></div></section>' +
+    // v5.4: as regras desta aba ficam na Ajuda (a tag é do dono do anúncio etc.).
+    ajuda.link('aj-tags', 'Como as contas funcionam?') +
     '</div>'
   );
 }

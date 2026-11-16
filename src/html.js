@@ -6,9 +6,11 @@
 // e menu ⋯ (trocar/remover a conta 2; Temas e Ajuda entram aqui depois).
 // v5.3: temas no menu ⋯ (Clássicos e Estéticos). v5.3.1: 13 temas, escolha
 // gravada no arquivo de ajustes do Scriptable pela ponte (PONTE + 'tema?t=').
+// v5.4: tela de Ajuda (módulo ajuda) no menu ⋯ e links "Ver na Ajuda" nas abas.
 const a = require('analise');
 const avaliador = require('avaliador');
 const anuncios = require('anuncios');
+const ajuda = require('ajuda');
 
 function esc(s) {
   const mapa = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
@@ -607,7 +609,8 @@ function inventario(r, cfg) {
   <div class="inv-lista">${linhas}</div>
   <p class="vazio oculto inv-vazio">${r.itens.length ? 'Nada encontrado.' : 'Nenhum item.'}</p>
   <div class="total"><span>Total</span><div class="item-num"><span class="v">${a.fmtNum(t.value)}</span><span class="r"><small>RAP</small>${a.fmtNum(t.rap)}</span></div></div>
-</div>`;
+</div>
+${ajuda.link('aj-armadilhas', 'O que significam as etiquetas?')}`;
   return { html, menu: dadosDoMenu(alertas, d), titulo: per ? per.longo : 'Mudanças' };
 }
 
@@ -706,6 +709,7 @@ try {
 ${CSS_BASE}
 ${avaliador.css()}
 ${anuncios.css()}
+${ajuda.css()}
 </style></head><body>
 <div class="ceu" aria-hidden="true"><i></i><b></b></div>
 <div class="app">
@@ -760,7 +764,7 @@ ${anuncios.secao(cfg, av.erro ? 'os dados do avaliador não foram preparados (' 
   <button type="button" class="op" id="m-trocar">Adicionar conta 2</button>
   <button type="button" class="op perigo oculto" id="m-remover">Remover conta 2</button>
   <button type="button" class="op" id="m-temas">Temas</button>
-  <button type="button" class="op" disabled>Ajuda <small>(em breve)</small></button>
+  <button type="button" class="op" id="m-ajuda">Ajuda</button>
   <button type="button" class="op cancelar" id="m-cancelar">Cancelar</button>
 </div>
 ${folhaTemas()}
@@ -773,6 +777,7 @@ ${folhaTemas()}
   <div class="acoes"><button type="button" class="btn sec" id="c2-cancelar">Cancelar</button><button type="submit" class="btn" id="c2-salvar">Salvar</button></div>
 </form>
 ${av.erro ? '' : avaliador.folhas() + anuncios.folha()}
+${ajuda.secao(cfg)}
 
 <script>
 (function(){
@@ -1120,6 +1125,12 @@ ${av.erro ? '' : avaliador.folhas() + anuncios.folha()}
     $('t-fundo').classList.remove('oculto');
     $('t-folha').classList.remove('oculto');
   });
+  // ---------- Ajuda (v5.4) ----------
+  $('m-ajuda').addEventListener('click', function(){
+    fecharMenu();
+    if (window.thAbrirAjuda) window.thAbrirAjuda();
+  });
+
   $('t-fundo').addEventListener('click', fecharTemas);
   $('t-pronto').addEventListener('click', fecharTemas);
   $('t-folha').addEventListener('click', function(ev){
@@ -1152,6 +1163,7 @@ ${av.erro ? '' : avaliador.folhas() + anuncios.folha()}
 })();
 </script>
 ${av.erro ? '' : avaliador.script(av.json, cfg) + anuncios.script(cfg, r.usuario.id)}
+${ajuda.script()}
 </body></html>`;
 }
 

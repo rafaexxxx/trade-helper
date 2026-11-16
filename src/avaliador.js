@@ -2,6 +2,7 @@
 // O cálculo roda dentro da página (sem requisições extras): este módulo prepara
 // um catálogo enxuto e gera o HTML, o CSS e o JS da aba.
 const a = require('analise');
+const ajuda = require('ajuda');
 
 // Endereço falso usado pela página para pedir miniaturas ao Scriptable
 // (interceptado em painel.js; nunca sai do iPhone).
@@ -333,6 +334,8 @@ function secao(cfg, baseData, erro) {
     '</div>' +
     '<p class="nota">Value base: o value do Rolimon\'s; item sem value entra pelo RAP (marcado com "RAP" ao lado do número). ' +
     'Os totais incluem Robux, e quem recebe Robux fica com ' + Math.round((1 - cfg.TAXA_ROBUX) * 100) + '%.</p>' +
+    // v5.4: atalho para a régua do veredito na tela de Ajuda.
+    ajuda.link('aj-regua', 'Como o veredito funciona?') +
     '<div id="av-veredito" class="veredito oculto">' +
     '<span class="selo" id="av-ver-titulo"></span>' +
     '<div class="ver-pct" id="av-ver-pct"></div>' +
@@ -886,6 +889,10 @@ function paginaAvaliador(D, P) {
       // A aba Anúncios usa as mesmas miniaturas (objeto compartilhado).
       if (window.thAoReceberMiniaturas) {
         try { window.thAoReceberMiniaturas(); } catch (e) {}
+      }
+      // v5.4: a tela de Ajuda também usa as miniaturas (cartões de exemplo).
+      if (window.thAjudaMiniaturas) {
+        try { window.thAjudaMiniaturas(); } catch (e) {}
       }
     }
   };
