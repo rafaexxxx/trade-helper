@@ -164,6 +164,8 @@ function parametros(cfg, meuId) {
 }
 
 // ---------- HTML ----------
+// v5.0: status + filtros (um item seu, ordem) + uma lista única de linhas curtas.
+// A explicação das regras foi para a tela de Ajuda.
 function secao(cfg, erro) {
   if (erro) {
     return '<div id="aba-anuncios" class="aba oculto"><p class="aviso">A aba Anúncios não pôde ser montada: ' + esc(erro) + '</p></div>';
@@ -173,28 +175,27 @@ function secao(cfg, erro) {
     '<div class="an-status"><p class="meta" id="an-info">Os anúncios são buscados quando você abre esta aba.</p>' +
     '<button class="btn" id="an-atualizar">Atualizar</button></div>' +
     '<p class="aviso oculto" id="an-erro"></p>' +
-    '<details class="bloco" data-chave="an-itens" open><summary>Pedem seus itens<span class="cont" id="an-n-itens"></span></summary>' +
-    '<div class="dentro an-lista" id="an-lista-itens"></div></details>' +
-    '<details class="bloco" data-chave="an-tags" open><summary>Upgrade, downgrade e any<span class="cont" id="an-n-tags"></span></summary>' +
-    '<div class="dentro an-lista" id="an-lista-tags"></div></details>' +
-    '<p class="nota">Ficam de fora anúncios que oferecem item projected, com demanda terrível ou com o RAP subindo mais de ' +
-    cfg.ALERTA_RAP_24H_PCT + '% em 24h. As contas usam o value (item sem value entra pelo RAP). "Pedem seus itens": só com veredito "Vale a pena" ou melhor. Upgrade: você ganha de ' +
-    cfg.ANUNCIO_UPGRADE_MIN_PCT + '% a ' + cfg.ANUNCIO_UPGRADE_MAX_PCT + '%. Downgrade: você paga até ' +
-    cfg.ANUNCIO_DOWNGRADE_PAGAR_MAX_PCT + '% a mais. Any: mesmo número de itens, ±' + cfg.ANUNCIO_ANY_PCT +
-    '%. Itens em hold não entram. Os anúncios guardados (últimas ' + cfg.ANUNCIOS_GUARDAR_HORAS +
-    'h) podem já ter sido fechados. Combinações são sugestões: a decisão é sua.</p>' +
+    '<div class="an-filtros">' +
+    '<button type="button" class="an-fbtn" id="an-filtro"></button>' +
+    '<div class="seg peq" id="an-ordem">' +
+    '<button type="button" data-o="ganho">Maior ganho</button>' +
+    '<button type="button" data-o="recentes">Recentes</button>' +
+    '<button type="button" data-o="value">Maior value</button>' +
+    '</div></div>' +
+    '<section class="secao"><h2>Anúncios<span class="cont" id="an-n"></span></h2>' +
+    '<div id="an-lista"></div></section>' +
     '</div>'
   );
 }
 
+// Folha "Um item seu" (escolhe o item do filtro).
 function folha() {
   return (
     '<div id="an-fundo" class="fundo oculto"></div>' +
-    '<div id="an-folha" class="folha oculto">' +
-    '<p id="an-folha-nome"></p>' +
-    '<a id="an-link-rol" href="#">Ver jogador no Rolimon\'s</a>' +
-    '<a id="an-link-trade" href="#">Abrir trade no Roblox</a>' +
-    '<button id="an-cancelar" class="cancelar">Cancelar</button>' +
+    '<div id="an-folha" class="an-fl oculto">' +
+    '<div class="an-fl-topo"><b>Um item seu</b><button type="button" id="an-fechar">Fechar</button></div>' +
+    '<p class="an-fl-info">Mostra só os anúncios em que esse item entra no seu lado (Dou). Nos de upgrade, downgrade e any, a sugestão é refeita com ele.</p>' +
+    '<div class="an-fl-lista" id="an-fl-lista"></div>' +
     '</div>'
   );
 }
@@ -203,31 +204,85 @@ function css() {
   return `
 .an-status{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .an-status .meta{margin:0}
-details.bloco>.an-lista{gap:16px}
-.an-card{display:flex;flex-direction:column;gap:14px;padding:16px;border-radius:20px;background:var(--card);box-shadow:var(--sombra);overflow:hidden;-webkit-tap-highlight-color:transparent}
-.an-card:active{opacity:.85}
-.an-topo{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
-.an-topo b{font-size:18px;font-weight:700;overflow-wrap:anywhere}
-.an-topo span{font-size:13px;color:var(--sub);white-space:nowrap}
-.an-rotulo{margin:-8px 0 0;font-size:14px;color:var(--sub)}
-.an-lado{display:flex;flex-direction:column;gap:8px}
-.an-cab{display:flex;justify-content:space-between;font-size:15px;font-weight:700}
-.an-cab span:last-child{font-size:13px;font-weight:500;color:var(--sub)}
-.an-cab.rec{color:var(--pos)}
-.an-cab.dou{color:var(--acc-t)}
-.an-linha{display:flex;align-items:center;gap:10px}
-.an-linha .thumb{width:36px;height:36px;border-radius:10px}
-.an-linha .item-txt{gap:1px}
-.an-linha .nome{font-size:15px}
-.an-val{flex:none;text-align:right;font-size:16px;font-weight:700;line-height:1;white-space:nowrap}
-.an-val small{display:inline-block;width:42px;margin-left:6px;text-align:left;font-size:13px;font-weight:500;color:var(--sub)}
-.an-total{display:flex;justify-content:space-between;align-items:center;padding-top:10px;border-top:1px solid var(--borda);font-weight:700}
-.an-total .an-val{font-size:17px}
-.an-card .troca{margin:8px 0}
-.an-pe{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 16px;margin:0 -16px -16px;background:var(--card2)}
+.an-filtros{display:flex;flex-direction:column;gap:8px}
+.an-fbtn{display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px 8px 8px;border:1px solid var(--borda);border-radius:14px;background:var(--card);text-align:left;-webkit-tap-highlight-color:transparent}
+.an-fbtn.on{border-color:var(--acc-t);background:var(--dou-bg)}
+.an-fbtn .thumb{width:32px;height:32px;border-radius:9px}
+.an-ftodos{display:grid;place-items:center;color:var(--sub);font-size:15px}
+.an-ftxt{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.2}
+.an-ftxt small{font-size:12px;font-weight:500;color:var(--sub)}
+.an-ftxt b{font-size:15px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.an-fx{flex:none;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--card2);color:var(--sub);font-size:15px;line-height:1}
+.an-fseta{flex:none;color:var(--sub);font-size:13px}
+
+.an-grupo{display:flex;flex-direction:column;border-radius:18px;background:var(--card);box-shadow:var(--sombra);overflow:hidden}
+.an-it+.an-it{border-top:1px solid var(--borda)}
+.an-linha{display:flex;align-items:center;gap:10px;width:100%;padding:12px 14px;border:0;background:none;text-align:left;-webkit-tap-highlight-color:transparent}
+.an-linha:active,.an-it.aberto>.an-linha{background:var(--card2)}
+.an-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:7px}
+.an-l1{display:flex;align-items:center;gap:6px;min-width:0}
+.an-l1 b{min-width:0;font-size:15px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.an-tempo{flex:none;font-size:12px;color:var(--sub)}
+.an-etq{flex:none;padding:2px 7px;border-radius:6px;font-size:11px;font-weight:700;letter-spacing:.02em;background:var(--card2);color:var(--sub)}
+.an-etq.seus{background:var(--dou-bg);color:var(--acc-t)}
+.an-l2{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.an-grp{display:flex;align-items:center;gap:3px;padding:3px;border-radius:9px}
+.an-grp.rec{background:var(--rec-bg)}
+.an-grp.dou{background:var(--dou-bg)}
+.an-grp.sug{outline:1.5px dashed var(--borda);outline-offset:-1.5px}
+.an-grp .thumb{width:24px;height:24px;border-radius:6px}
+.an-rbx{padding:0 4px;font-size:11px;font-weight:700;color:var(--pos)}
+.an-tr{font-size:13px;color:var(--sub)}
+.an-pct{flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:3px;text-align:right}
+.an-pct b{font-size:20px;font-weight:700;line-height:1;letter-spacing:-.01em;color:var(--c)}
+.an-pct small{font-size:11px;font-weight:600;color:var(--c);white-space:nowrap}
+.an-chev{flex:none;color:var(--sub);font-size:20px;line-height:1;transition:transform .15s}
+.an-it.aberto .an-chev{transform:rotate(90deg)}
+
+.an-det{display:flex;flex-direction:column;gap:12px;padding:4px 14px 14px;background:var(--card2)}
+.an-nota{margin:0;font-size:13px;color:var(--sub)}
+.an-aviso{margin:0;padding:8px 10px;border-radius:10px;background:var(--card);font-size:13px;color:var(--sub)}
+.an-aviso b{color:var(--fg)}
+.an-lado{border-radius:14px;overflow:hidden;background:var(--card)}
+.an-lcab{display:flex;justify-content:space-between;align-items:center;padding:10px 12px 6px;font-size:14px;font-weight:700}
+.an-lcab span:last-child{font-size:12px;font-weight:500;color:var(--sub)}
+.an-lado.rec .an-lcab{color:var(--pos)}
+.an-lado.dou .an-lcab{color:var(--acc-t)}
+.an-i{display:flex;align-items:center;gap:10px;padding:8px 12px;color:inherit;text-decoration:none;-webkit-tap-highlight-color:transparent}
+a.an-i:active{background:var(--card2)}
+.an-i .thumb{width:34px;height:34px;border-radius:9px}
+.an-i .item-txt{gap:1px}
+.an-i .nome{font-size:14px}
+.an-i .det{font-size:12px}
+.an-val{flex:none;text-align:right;font-size:15px;font-weight:700;line-height:1;white-space:nowrap}
+.an-val small{display:inline-block;width:36px;margin-left:4px;text-align:left;font-size:11px;font-weight:500;color:var(--sub)}
+.an-seta{flex:none;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;background:var(--card2);color:var(--acc-t);font-size:12px}
+.an-seta.vazia{visibility:hidden}
+.an-tot{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 12px;border-top:1px solid var(--borda);font-weight:700}
+.an-tot span:first-child{flex:1}
+.an-pe{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .an-pe .selo{font-size:14px;padding:6px 12px}
-.an-pct{font-size:36px;font-weight:700;line-height:1;letter-spacing:-.02em;color:var(--c)}
-.an-mais{margin:0;font-size:13px;color:var(--sub)}
+.an-ganho{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.an-ganho b{font-size:30px;font-weight:700;line-height:1;letter-spacing:-.02em;color:var(--c)}
+.an-ganho small{font-size:15px;font-weight:700;color:var(--c)}
+.an-acoes{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.an-acoes .btn{display:block;padding:10px 8px;font-size:14px;text-align:center;text-decoration:none}
+.an-mais{margin:8px 0 0;font-size:13px;color:var(--sub)}
+
+.an-fl{position:fixed;left:0;right:0;bottom:0;max-height:75vh;display:flex;flex-direction:column;border-radius:18px 18px 0 0;background:var(--bg);box-shadow:0 -6px 24px rgba(0,0,0,.25);padding-bottom:max(12px,env(safe-area-inset-bottom))}
+.an-fl-topo{display:flex;justify-content:space-between;align-items:center;padding:14px 16px 8px}
+.an-fl-topo b{font-size:19px;font-weight:700}
+.an-fl-topo button{border:0;background:none;padding:4px 0;font-size:16px;font-weight:600;color:var(--acc-t)}
+.an-fl-info{margin:0 16px 10px;font-size:13px;color:var(--sub)}
+.an-fl-lista{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;margin:0 12px;border-radius:16px;background:var(--card)}
+.an-fl-op{display:flex;align-items:center;gap:12px;width:100%;padding:10px 12px;border:0;border-bottom:1px solid var(--borda);background:none;text-align:left;-webkit-tap-highlight-color:transparent}
+.an-fl-op:last-child{border-bottom:0}
+.an-fl-op:active{background:var(--card2)}
+.an-fl-op.on{background:var(--dou-bg)}
+.an-fl-op .thumb{width:38px;height:38px;border-radius:10px}
+.an-fl-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.an-fl-txt b{font-size:15px;font-weight:600;overflow-wrap:anywhere}
+.an-fl-txt span{font-size:12px;color:var(--sub)}
 #diag-anuncios{white-space:pre-wrap;overflow-wrap:anywhere}
 `;
 }
@@ -238,7 +293,26 @@ details.bloco>.an-lista{gap:16px}
 function paginaAnuncios(D, P, PA) {
   var C = D.catalogo;
   var THUMBS = D.miniaturas || {};
-  var estado = { carregando: false, carregou: false, manual: false, res: null, itens: [], tags: [], cartoes: [], diag: null, timer: null };
+  var ORDENS = { ganho: 1, recentes: 1, value: 1 };
+
+  function lerSalvo(k, padrao) {
+    try {
+      var v = localStorage.getItem(k);
+      return v == null ? padrao : v;
+    } catch (e) {
+      return padrao;
+    }
+  }
+  function gravarSalvo(k, v) {
+    try { localStorage.setItem(k, v); } catch (e) {}
+  }
+
+  var estado = {
+    carregando: false, carregou: false, manual: false, res: null, timer: null,
+    lista: [], mostrados: [], diag: null, pedidos: {},
+    item: lerSalvo('an-filtro-item', ''), ordem: lerSalvo('an-ordem', 'ganho'), aberto: null,
+  };
+  if (!ORDENS[estado.ordem]) estado.ordem = 'ganho';
 
   function $(id) {
     return document.getElementById(id);
@@ -286,37 +360,71 @@ function paginaAnuncios(D, P, PA) {
     (porAsset[i.id] = porAsset[i.id] || []).push(i);
   });
   var meusOrdenados = meus.slice().sort(function (x, y) { return y.vb - x.vb; });
+  // O item salvo no filtro pode ter saído do inventário (ou entrado em hold).
+  if (estado.item && !porAsset[estado.item]) estado.item = '';
 
   // Ganho em % (value base) de quem dá td e recebe tr; mesma conta do veredito.
   function ganho(td, tr) {
     return td.value > 0 ? ((tr.value - td.value) / td.value) * 100 : null;
   }
 
+  // Nomes dos itens (mesmo assetId) que aparecem nos dois lados.
+  function repetidos(dou, rec) {
+    var noRec = {};
+    rec.forEach(function (i) { noRec[i.id] = true; });
+    var vistos = {};
+    var r = [];
+    dou.forEach(function (i) {
+      if (noRec[i.id] && !vistos[i.id]) {
+        vistos[i.id] = true;
+        r.push(i.nome);
+      }
+    });
+    return r;
+  }
+
   // Melhor combinação dos seus itens para receber T (value base da oferta):
   // de minQ a maxQ itens, ganho entre lo% e hi%, o mais perto de alvo%.
-  // Empate: a com menos itens. Resultados guardados (ofertas repetidas são comuns).
+  // Empate: a com menos itens. proibidos = assetIds que você recebe: uma
+  // combinação com algum deles só vale se o ganho não for negativo (#4).
+  // fixo = assetId que entra sempre (filtro "Um item seu").
+  // Resultados guardados (ofertas repetidas são comuns).
   var memoCombinacao = {};
-  function melhorCombinacao(T, minQ, maxQ, lo, hi, alvo) {
-    var chave = [Math.round(T), minQ, maxQ, lo, hi, alvo].join('|');
-    if (!(chave in memoCombinacao)) memoCombinacao[chave] = calcularCombinacao(T, minQ, maxQ, lo, hi, alvo);
+  function melhorCombinacao(T, minQ, maxQ, lo, hi, alvo, proibidos, fixo) {
+    var chave = [Math.round(T), minQ, maxQ, lo, hi, alvo, lo < 0 ? Object.keys(proibidos).sort().join(',') : '', fixo || ''].join('|');
+    if (!(chave in memoCombinacao)) memoCombinacao[chave] = calcularCombinacao(T, minQ, maxQ, lo, hi, alvo, proibidos, fixo);
     return memoCombinacao[chave];
   }
-  function calcularCombinacao(T, minQ, maxQ, lo, hi, alvo) {
+  function calcularCombinacao(T, minQ, maxQ, lo, hi, alvo, proibidos, fixo) {
     minQ = Math.max(minQ, 1);
     maxQ = Math.min(maxQ, P.maxItens);
     if (!(T > 0) || maxQ < minQ) return null;
     var sMin = T / (1 + hi / 100);
     var sMax = T / (1 + lo / 100);
+    var escolha = [];
+    var soma0 = 0;
+    var f = null;
+    if (fixo) {
+      f = (porAsset[fixo] || [])[0];
+      if (!f || !(f.vb > 0) || f.vb > sMax) return null;
+      escolha.push(f);
+      soma0 = f.vb;
+    }
     var pool = [];
     for (var k = 0; k < meusOrdenados.length && pool.length < PA.pool; k++) {
-      var vb = meusOrdenados[k].vb;
-      if (vb > 0 && vb <= sMax) pool.push(meusOrdenados[k]);
+      var x = meusOrdenados[k];
+      if (x === f) continue;
+      if (x.vb > 0 && soma0 + x.vb <= sMax) pool.push(x);
     }
     var melhor = null;
-    var escolha = [];
+    function temProibido() {
+      for (var j = 0; j < escolha.length; j++) if (proibidos[escolha[j].id]) return true;
+      return false;
+    }
     function testar(soma) {
       if (escolha.length < minQ || soma < sMin) return;
       var p = ((T - soma) / soma) * 100;
+      if (p < 0 && temProibido()) return;
       var nota = Math.abs(p - alvo);
       if (!melhor || nota < melhor.nota - 1e-9 || (Math.abs(nota - melhor.nota) < 1e-9 && escolha.length < melhor.itens.length)) {
         melhor = { nota: nota, pct: p, itens: escolha.slice() };
@@ -333,13 +441,14 @@ function paginaAnuncios(D, P, PA) {
         escolha.pop();
       }
     }
-    descer(0, 0);
+    descer(0, soma0);
     return melhor;
   }
 
   // ---------- Análise de um anúncio ----------
   // ad = [id, criadoMs, userId, username, oferta[], robux, pedido[], tags[]]
-  function analisar(ad) {
+  // fixo = assetId do filtro "Um item seu" ('' = sem filtro).
+  function analisar(ad, fixo) {
     if (PA.meuId && ad[2] === PA.meuId) return { descarte: 'anúncio seu' };
     var rec = [];
     var k;
@@ -359,9 +468,12 @@ function paginaAnuncios(D, P, PA) {
     var td;
     var tipo;
     var v;
+    var p;
+    var mesmo;
 
     // 1. Pede itens: você precisa ter todos (cópias sem hold).
     if (ad[6].length) {
+      if (fixo && ad[6].indexOf(fixo) < 0) return { descarte: 'não pede o item do filtro', filtro: true };
       var usados = {};
       var dou = [];
       for (k = 0; k < ad[6].length; k++) {
@@ -375,12 +487,16 @@ function paginaAnuncios(D, P, PA) {
         usados[id] = n + 1;
       }
       td = somarLado(dou, 0, false, P);
+      p = ganho(td, tr);
+      mesmo = repetidos(dou, rec);
+      if (mesmo.length && p != null && p < 0) return { descarte: 'mesmo item dos dois lados com ganho negativo' };
       tipo = tipoTrocaLados(td, tr);
       v = calcularVeredito(dou, rec, td, tr, tipo, ad[5], P);
       if (!v || v.nivel == null || v.nivel < 3) return { descarte: 'pede seus itens, mas não vale a pena' };
       return {
-        modo: 'itens', ad: ad, dou: dou, rec: rec, td: td, tr: tr, tipo: tipo, v: v, pct: ganho(td, tr),
-        nota: tags.length ? 'Também pede: ' + tags.join(', ') + '.' : '',
+        modo: 'itens', ad: ad, dou: dou, rec: rec, td: td, tr: tr, tipo: tipo, v: v, pct: p, mesmo: mesmo,
+        nota: 'Ele pede itens que você tem' + (tipo ? ' (' + tipo + ' para você)' : '') + '.' +
+          (tags.length ? ' Também pede: ' + tags.join(', ') + '.' : ''),
       };
     }
 
@@ -392,20 +508,27 @@ function paginaAnuncios(D, P, PA) {
     if (!querUp && !querDown && !querAny) return { descarte: 'pede só outras tags' };
     var kq = rec.length;
     if (!kq) return { descarte: 'oferta só de Robux' };
+    var proibidos = {};
+    rec.forEach(function (i) { proibidos[i.id] = true; });
     var opcoes = [];
-    if (querUp) opcoes.push({ tag: 'upgrade', c: melhorCombinacao(tr.value, 1, kq - 1, PA.upMin, PA.upMax, PA.upAlvo) });
-    if (querDown) opcoes.push({ tag: 'downgrade', c: melhorCombinacao(tr.value, kq + 1, P.maxItens, -PA.downPagar, 0, 0) });
-    if (querAny) opcoes.push({ tag: 'any', c: melhorCombinacao(tr.value, kq, kq, -PA.any, PA.any, PA.any) });
+    if (querUp) opcoes.push({ tag: 'upgrade', c: melhorCombinacao(tr.value, 1, kq - 1, PA.upMin, PA.upMax, PA.upAlvo, proibidos, fixo) });
+    if (querDown) opcoes.push({ tag: 'downgrade', c: melhorCombinacao(tr.value, kq + 1, P.maxItens, -PA.downPagar, 0, 0, proibidos, fixo) });
+    if (querAny) opcoes.push({ tag: 'any', c: melhorCombinacao(tr.value, kq, kq, -PA.any, PA.any, PA.any, proibidos, fixo) });
     var melhor = null;
     opcoes.forEach(function (o) {
       if (o.c && (!melhor || o.c.pct > melhor.c.pct)) melhor = o;
     });
-    if (!melhor) return { descarte: 'nenhuma combinação sua na faixa (' + opcoes.map(function (o) { return o.tag; }).join('/') + ')' };
+    if (!melhor) {
+      return {
+        descarte: (fixo ? 'nenhuma combinação com o item do filtro' : 'nenhuma combinação sua na faixa') +
+          ' (' + opcoes.map(function (o) { return o.tag; }).join('/') + ')',
+      };
+    }
     var dou2 = melhor.c.itens;
     td = somarLado(dou2, 0, false, P);
     tipo = tipoTrocaLados(td, tr);
     v = calcularVeredito(dou2, rec, td, tr, tipo, ad[5], P);
-    var p = ganho(td, tr);
+    p = ganho(td, tr);
     var nota;
     if (melhor.tag === 'upgrade') {
       nota = 'Ele quer upgrade: você dá menos itens e ganha ' + fmtPct(p) + ' em value.';
@@ -414,38 +537,60 @@ function paginaAnuncios(D, P, PA) {
     } else {
       nota = 'Ele aceita qualquer item: combinação com o mesmo número de itens (' + fmtPctSinal(p) + ').';
     }
-    return { modo: 'tag', tag: melhor.tag, ad: ad, dou: dou2, rec: rec, td: td, tr: tr, tipo: tipo, v: v, pct: p, nota: nota };
+    return { modo: 'tag', tag: melhor.tag, ad: ad, dou: dou2, rec: rec, td: td, tr: tr, tipo: tipo, v: v, pct: p, mesmo: repetidos(dou2, rec), nota: nota };
+  }
+
+  function ordenar(lista) {
+    var o = estado.ordem;
+    lista.sort(function (x, y) {
+      if (o === 'recentes') return (y.ad[1] || 0) - (x.ad[1] || 0);
+      if (o === 'value') return y.tr.value - x.tr.value;
+      return (y.pct == null ? -1e9 : y.pct) - (x.pct == null ? -1e9 : x.pct);
+    });
   }
 
   function processar() {
     var t0 = Date.now();
     var lista = (estado.res && estado.res.lista) || [];
-    var itens = [];
-    var tags = [];
+    var saida = [];
     var descartes = {};
     var contTags = {};
+    var pedidos = {};
+    var foraDoFiltro = 0;
+    var nItens = 0;
     lista.forEach(function (ad) {
       (ad[7] || []).forEach(function (t) { contTags[t] = (contTags[t] || 0) + 1; });
+      // Quantos anúncios pedem cada item seu (para a folha do filtro).
+      if (!(PA.meuId && ad[2] === PA.meuId)) {
+        var vistos = {};
+        (ad[6] || []).forEach(function (id) {
+          if (porAsset[id] && !vistos[id]) {
+            vistos[id] = true;
+            pedidos[id] = (pedidos[id] || 0) + 1;
+          }
+        });
+      }
       var r;
       try {
-        r = analisar(ad);
+        r = analisar(ad, estado.item);
       } catch (e) {
         r = { descarte: 'erro na análise: ' + (e && e.message) };
       }
       if (r.descarte) {
-        descartes[r.descarte] = (descartes[r.descarte] || 0) + 1;
+        if (r.filtro) foraDoFiltro++;
+        else descartes[r.descarte] = (descartes[r.descarte] || 0) + 1;
         return;
       }
-      (r.modo === 'itens' ? itens : tags).push(r);
+      if (r.modo === 'itens') nItens++;
+      saida.push(r);
     });
-    function porGanho(x, y) {
-      return (y.pct == null ? -1e9 : y.pct) - (x.pct == null ? -1e9 : x.pct);
-    }
-    itens.sort(porGanho);
-    tags.sort(porGanho);
-    estado.itens = itens;
-    estado.tags = tags;
-    estado.diag = { descartes: descartes, contTags: contTags, ms: Date.now() - t0, analisados: lista.length };
+    ordenar(saida);
+    estado.lista = saida;
+    estado.pedidos = pedidos;
+    estado.diag = {
+      descartes: descartes, contTags: contTags, ms: Date.now() - t0, analisados: lista.length,
+      nItens: nItens, nTags: saida.length - nItens, foraDoFiltro: foraDoFiltro,
+    };
     desenhar();
   }
 
@@ -466,62 +611,115 @@ function paginaAnuncios(D, P, PA) {
   function valor(n, fonte) {
     return '<span class="an-val">' + fmtNum(n) + '<small>' + fonte + '</small></span>';
   }
+  // Item do cartão aberto: o toque abre a página do item no Rolimon's
+  // (o painel.js manda o link para o Safari).
   function linhaItem(i) {
     return (
-      '<div class="an-linha">' + miniatura(i.id) +
-      '<div class="item-txt"><span class="nome">' + esc(i.nome) + '</span>' +
-      '<span class="det">' + detalhes(i) + '</span></div>' +
-      valor(valorEfetivo(i), i.value != null ? 'value' : 'RAP') + '</div>'
+      '<a class="an-i" href="https://www.rolimons.com/item/' + esc(i.id) + '">' + miniatura(i.id) +
+      '<span class="item-txt"><span class="nome">' + esc(i.nome) + '</span>' +
+      '<span class="det">' + detalhes(i) + '</span></span>' +
+      valor(valorEfetivo(i), i.value != null ? 'value' : 'RAP') +
+      '<span class="an-seta" aria-hidden="true">↗</span></a>'
     );
   }
   // Um lado (Recebo ou Dou) com a linha Total (value base, Robux já incluídos).
   function blocoLado(classe, rotulo, itens, robux, recebe, t) {
-    var h = '<div class="an-lado"><div class="an-cab ' + classe + '"><span>' + rotulo + '</span><span>Valor</span></div>';
+    var h = '<div class="an-lado ' + classe + '"><div class="an-lcab"><span>' + rotulo + '</span><span>Valor</span></div>';
     h += itens.map(linhaItem).join('');
     if (robux) {
       var liquido = recebe ? Math.floor(robux * (1 - P.taxaRobux)) : robux;
-      h += '<div class="an-linha"><div class="item-txt"><span class="nome">+ ' + fmtNum(robux) + ' Robux</span></div>' +
-        valor(liquido, recebe ? 'líq.' : '') + '</div>';
+      h += '<div class="an-i"><span class="item-txt"><span class="nome">+ ' + fmtNum(robux) + ' Robux</span>' +
+        (recebe ? '<span class="det">já sem a taxa de ' + Math.round(P.taxaRobux * 100) + '%</span>' : '') + '</span>' +
+        valor(liquido, recebe ? 'líq.' : '') + '<span class="an-seta vazia"></span></div>';
     }
-    h += '<div class="an-total"><span>Total</span>' + valor(t.value, '') + '</div>';
+    h += '<div class="an-tot"><span>Total</span>' + valor(t.value, '') + '<span class="an-seta vazia"></span></div>';
     return h + '</div>';
   }
-  // Cartão: topo, Recebo + Total, divisor, Dou + Total e rodapé com o veredito e a %.
-  function cartao(r, k) {
-    var ad = r.ad;
-    var rotulo = r.modo === 'itens'
-      ? 'Pede seus itens' + (r.tipo ? ' · ' + r.tipo + ' para você' : '')
-      : 'Pede ' + r.tag;
+  // Miniaturas pequenas de um lado, na linha fechada.
+  function grupo(itens, robux, classe) {
     return (
-      '<div class="an-card" data-k="' + k + '" data-cor="' + corVeredito(r.v) + '">' +
-      '<div class="an-topo"><b>' + esc(ad[3] || 'Jogador ' + ad[2]) + '</b><span>' + haQuanto(ad[1]) + '</span></div>' +
-      '<p class="an-rotulo">' + esc(rotulo) + '</p>' +
-      blocoLado('rec', 'Recebo', r.rec, ad[5], true, r.tr) +
-      '<div class="troca"><span>⇅</span></div>' +
-      blocoLado('dou', r.modo === 'tag' ? 'Dou (sugestão)' : 'Dou', r.dou, 0, false, r.td) +
-      '<div class="an-pe"><span class="selo">' + esc(r.v.titulo) + '</span><span class="an-pct">' + pctTxt(r.pct) + '</span></div>' +
-      '</div>'
+      '<span class="an-grp ' + classe + '">' +
+      itens.map(function (i) { return miniatura(i.id); }).join('') +
+      (robux ? '<span class="an-rbx">R$</span>' : '') + '</span>'
     );
   }
-  function desenharBloco(lista, idLista, idN, vazio) {
-    $(idN).textContent = estado.carregou ? lista.length : '';
-    $(idN).className = 'cont' + (lista.length ? ' pos' : '');
+  // Cartão aberto: nota, aviso do mesmo item, Recebo, Dou, veredito com a % e o
+  // ganho em R$ (value base), e os botões do jogador e do trade.
+  function detalhe(r) {
+    var ad = r.ad;
+    var h = '<div class="an-det">';
+    if (r.nota) h += '<p class="an-nota">' + esc(r.nota) + '</p>';
+    if (r.mesmo && r.mesmo.length) {
+      h += '<p class="an-aviso">Tem <b>' + esc(r.mesmo.join(', ')) + '</b> dos dois lados. Continua na lista porque o ganho não é negativo.</p>';
+    }
+    h += blocoLado('rec', 'Recebo', r.rec, ad[5], true, r.tr);
+    h += blocoLado('dou', r.modo === 'tag' ? 'Dou (sugestão)' : 'Dou', r.dou, 0, false, r.td);
+    var dif = r.tr.value - r.td.value;
+    h += '<div class="an-pe" data-cor="' + corVeredito(r.v) + '"><span class="selo">' + esc(r.v ? r.v.titulo : '') + '</span>' +
+      '<span class="an-ganho"><b>' + pctTxt(r.pct) + '</b><small>' + (dif > 0 ? '+' : '') + fmtNum(dif) + ' R$</small></span></div>';
+    h += '<div class="an-acoes">' +
+      '<a class="btn sec" href="https://www.rolimons.com/player/' + ad[2] + '">Ver jogador</a>' +
+      '<a class="btn" href="https://www.roblox.com/users/' + ad[2] + '/trade">Abrir trade</a></div>';
+    return h + '</div>';
+  }
+  // Linha curta: jogador, etiqueta do tipo, tempo, miniaturas dos dois lados e a %.
+  // O toque abre/fecha o cartão completo logo abaixo.
+  function linha(r, k) {
+    var ad = r.ad;
+    var aberto = estado.aberto === ad[0];
+    var sug = r.modo === 'tag';
+    var cor = corVeredito(r.v);
+    return (
+      '<div class="an-it' + (aberto ? ' aberto' : '') + '">' +
+      '<button type="button" class="an-linha" data-k="' + k + '" aria-expanded="' + aberto + '">' +
+      '<span class="an-main"><span class="an-l1"><b>' + esc(ad[3] || 'Jogador ' + ad[2]) + '</b>' +
+      '<span class="an-etq' + (sug ? '' : ' seus') + '">' + esc(sug ? r.tag : 'seus itens') + '</span>' +
+      '<span class="an-tempo">' + haQuanto(ad[1]) + '</span></span>' +
+      '<span class="an-l2">' + grupo(r.rec, ad[5], 'rec') + '<span class="an-tr">⇄</span>' +
+      grupo(r.dou, 0, 'dou' + (sug ? ' sug' : '')) + '</span></span>' +
+      '<span class="an-pct" data-cor="' + cor + '"><b>' + pctTxt(r.pct) + '</b><small>' + esc(r.v ? r.v.titulo : '') + '</small></span>' +
+      '<span class="an-chev">›</span></button>' +
+      (aberto ? detalhe(r) : '') + '</div>'
+    );
+  }
+  function nomeDoItem(id) {
+    var l = porAsset[id];
+    return l && l[0] ? l[0].nome : '';
+  }
+  function desenharFiltro() {
+    var b = $('an-filtro');
+    if (estado.item && porAsset[estado.item]) {
+      var i = porAsset[estado.item][0];
+      b.className = 'an-fbtn on';
+      b.innerHTML = miniatura(i.id) + '<span class="an-ftxt"><small>Só anúncios com</small><b>' + esc(i.nome) + '</b></span>' +
+        '<span class="an-fx" data-limpar="1" aria-label="Tirar filtro">✕</span>';
+    } else {
+      b.className = 'an-fbtn';
+      b.innerHTML = '<span class="thumb an-ftodos">☰</span><span class="an-ftxt"><small>Um item seu</small><b>Todos os seus itens</b></span>' +
+        '<span class="an-fseta">▼</span>';
+    }
+    var bs = document.querySelectorAll('#an-ordem button');
+    for (var k = 0; k < bs.length; k++) bs[k].classList.toggle('on', bs[k].getAttribute('data-o') === estado.ordem);
+  }
+  function desenharLista() {
+    var lista = estado.lista;
+    estado.mostrados = [];
+    $('an-n').textContent = estado.carregou ? lista.length : '';
+    $('an-n').className = 'cont' + (estado.carregou && lista.length ? ' pos' : '');
     if (!estado.carregou) {
-      $(idLista).innerHTML = '<p class="vazio">' + (estado.carregando ? 'Buscando...' : '—') + '</p>';
-      return [];
+      $('an-lista').innerHTML = '<p class="vazio">' + (estado.carregando ? 'Buscando...' : '—') + '</p>';
+      return;
     }
     if (!lista.length) {
-      $(idLista).innerHTML = '<p class="vazio">' + vazio + '</p>';
-      return [];
+      $('an-lista').innerHTML = '<p class="vazio">' + (estado.item
+        ? 'Nenhum anúncio serve para ' + esc(nomeDoItem(estado.item)) + ' agora.'
+        : 'Nenhum anúncio com vantagem para você agora.') + '</p>';
+      return;
     }
-    var mostrados = lista.slice(0, PA.maxLista);
-    var h = mostrados.map(function (r) {
-      estado.cartoes.push(r);
-      return cartao(r, estado.cartoes.length - 1);
-    }).join('');
-    if (lista.length > mostrados.length) h += '<p class="an-mais">Mostrando ' + mostrados.length + ' de ' + lista.length + '.</p>';
-    $(idLista).innerHTML = h;
-    return mostrados;
+    estado.mostrados = lista.slice(0, PA.maxLista);
+    var h = '<div class="an-grupo">' + estado.mostrados.map(linha).join('') + '</div>';
+    if (lista.length > estado.mostrados.length) h += '<p class="an-mais">Mostrando ' + estado.mostrados.length + ' de ' + lista.length + '.</p>';
+    $('an-lista').innerHTML = h;
   }
   function desenharStatus() {
     var res = estado.res;
@@ -563,26 +761,30 @@ function paginaAnuncios(D, P, PA) {
     if (dg) {
       var tg = Object.keys(dg.contTags).sort(function (x, y) { return dg.contTags[y] - dg.contTags[x]; });
       L.push('Tags vistas: ' + (tg.length ? tg.map(function (t) { return t + ' ' + dg.contTags[t]; }).join(' · ') : 'nenhuma'));
-      L.push('Análise: ' + estado.itens.length + ' pedem seus itens, ' + estado.tags.length + ' por tag, em ' + dg.ms + ' ms · seus itens livres: ' + meus.length);
+      L.push('Análise: ' + estado.lista.length + ' na lista (' + dg.nItens + ' pedem seus itens, ' + dg.nTags + ' por tag)' +
+        (estado.item ? ' · filtro ' + nomeDoItem(estado.item) + ' (' + dg.foraDoFiltro + ' não pedem o item)' : '') +
+        ', em ' + dg.ms + ' ms · ordem ' + estado.ordem + ' · seus itens livres: ' + meus.length);
       var ds = Object.keys(dg.descartes).sort(function (x, y) { return dg.descartes[y] - dg.descartes[x]; });
       if (ds.length) L.push('Fora da lista: ' + ds.map(function (d) { return d + ' ' + dg.descartes[d]; }).join(' · '));
     }
     if (lt && lt.amostra) L.push('Amostra bruta: ' + lt.amostra);
     el.textContent = L.join('\n');
   }
+  function pedirMiniaturas(ids) {
+    if (!window.thPedirMiniaturas || !ids.length) return;
+    try { window.thPedirMiniaturas(ids); } catch (e) {}
+  }
   function desenhar() {
-    estado.cartoes = [];
     desenharStatus();
-    var a = desenharBloco(estado.itens, 'an-lista-itens', 'an-n-itens', 'Nenhum anúncio pede itens seus com vantagem agora.');
-    var b = desenharBloco(estado.tags, 'an-lista-tags', 'an-n-tags', 'Nenhuma combinação sua serve para os anúncios de upgrade, downgrade ou any agora.');
+    desenharFiltro();
+    desenharLista();
     desenharDiag();
-    if (window.thPedirMiniaturas) {
-      var ids = [];
-      a.concat(b).forEach(function (r) {
-        r.rec.concat(r.dou).forEach(function (i) { ids.push(i.id); });
-      });
-      try { window.thPedirMiniaturas(ids); } catch (e) {}
-    }
+    var ids = [];
+    estado.mostrados.forEach(function (r) {
+      r.rec.concat(r.dou).forEach(function (i) { ids.push(i.id); });
+    });
+    if (estado.item) ids.push(estado.item);
+    pedirMiniaturas(ids);
   }
 
   // ---------- Busca pela ponte (página -> Scriptable -> página) ----------
@@ -617,30 +819,84 @@ function paginaAnuncios(D, P, PA) {
   };
   window.thAoReceberMiniaturas = function () {
     if (estado.carregou) desenhar();
+    else desenharFiltro();
+    if (!$('an-folha').classList.contains('oculto')) desenharFolha();
   };
 
-  // ---------- Menu do cartão ----------
-  function fecharMenu() {
+  // ---------- Filtro "Um item seu" ----------
+  function desenharFolha() {
+    var h = '<button type="button" class="an-fl-op' + (estado.item ? '' : ' on') + '" data-id="">' +
+      '<span class="thumb an-ftodos">☰</span><span class="an-fl-txt"><b>Todos os seus itens</b><span>Sem filtro</span></span></button>';
+    var vistos = {};
+    meusOrdenados.forEach(function (i) {
+      if (vistos[i.id]) return;
+      vistos[i.id] = true;
+      var copias = porAsset[i.id].length;
+      var ped = estado.pedidos[i.id] || 0;
+      var sub = fmtNum(i.vb) + ' ' + (i.value != null ? 'value' : 'RAP') +
+        (copias > 1 ? ' · ' + copias + ' cópias' : '') +
+        (ped ? ' · pedido em ' + ped + (ped === 1 ? ' anúncio' : ' anúncios') : '');
+      h += '<button type="button" class="an-fl-op' + (estado.item === i.id ? ' on' : '') + '" data-id="' + esc(i.id) + '">' +
+        miniatura(i.id) + '<span class="an-fl-txt"><b>' + esc(i.nome) + '</b><span>' + sub + '</span></span></button>';
+    });
+    $('an-fl-lista').innerHTML = h;
+  }
+  function abrirFolha() {
+    desenharFolha();
+    $('an-fundo').classList.remove('oculto');
+    $('an-folha').classList.remove('oculto');
+    var ids = [];
+    meusOrdenados.forEach(function (i) { ids.push(i.id); });
+    pedirMiniaturas(ids);
+  }
+  function fecharFolha() {
     $('an-fundo').classList.add('oculto');
     $('an-folha').classList.add('oculto');
   }
+  function escolherItem(id) {
+    estado.item = id && porAsset[id] ? id : '';
+    gravarSalvo('an-filtro-item', estado.item);
+    estado.aberto = null;
+    if (estado.carregou) processar();
+    else desenhar();
+  }
+
+  // ---------- Toques ----------
+  $('an-filtro').addEventListener('click', function (ev) {
+    if (ev.target.closest('[data-limpar]')) {
+      escolherItem('');
+      return;
+    }
+    abrirFolha();
+  });
+  $('an-fl-lista').addEventListener('click', function (ev) {
+    var b = ev.target.closest('.an-fl-op');
+    if (!b) return;
+    fecharFolha();
+    escolherItem(b.getAttribute('data-id'));
+  });
+  $('an-fundo').addEventListener('click', fecharFolha);
+  $('an-fechar').addEventListener('click', fecharFolha);
+  $('an-ordem').addEventListener('click', function (ev) {
+    var b = ev.target.closest('button[data-o]');
+    if (!b) return;
+    estado.ordem = b.getAttribute('data-o');
+    gravarSalvo('an-ordem', estado.ordem);
+    ordenar(estado.lista);
+    desenhar();
+  });
+  // Links (item, jogador, trade) seguem sozinhos: o painel.js abre no Safari.
+  // O toque na linha só abre e fecha o cartão.
   $('aba-anuncios').addEventListener('click', function (ev) {
-    var c = ev.target.closest('.an-card');
-    if (!c) return;
-    var r = estado.cartoes[Number(c.getAttribute('data-k'))];
+    if (ev.target.closest('a')) return;
+    var l = ev.target.closest('.an-linha');
+    if (!l) return;
+    var r = estado.mostrados[Number(l.getAttribute('data-k'))];
     if (!r) return;
-    var ad = r.ad;
-    $('an-folha-nome').textContent = (ad[3] || 'Jogador ' + ad[2]) + ' · ' + r.v.titulo;
-    $('an-link-rol').href = 'https://www.rolimons.com/player/' + ad[2];
-    $('an-link-trade').href = 'https://www.roblox.com/users/' + ad[2] + '/trade';
-    $('an-fundo').classList.remove('oculto');
-    $('an-folha').classList.remove('oculto');
+    estado.aberto = estado.aberto === r.ad[0] ? null : r.ad[0];
+    desenharLista();
   });
   $('an-atualizar').addEventListener('click', function () { pedir(true); });
-  $('an-fundo').addEventListener('click', fecharMenu);
-  $('an-cancelar').addEventListener('click', fecharMenu);
-  $('an-link-rol').addEventListener('click', function () { setTimeout(fecharMenu, 300); });
-  $('an-link-trade').addEventListener('click', function () { setTimeout(fecharMenu, 300); });
 
   // ---------- Início ----------
   desenhar();
