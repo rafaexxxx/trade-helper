@@ -7,6 +7,7 @@ const html = require('html');
 const widget = require('widget');
 const avaliador = require('avaliador');
 const anuncios = require('anuncios');
+const desejos = require('desejos');
 
 async function pedirUsername(atual) {
   const al = new Alert();
@@ -89,8 +90,10 @@ async function executar(ctx) {
     // A conta 2 salva continua (o TROCAR_USERNAME do loader não a apaga).
     const conta2Antes = ajustes.conta2 || null;
     const temaAntes = ajustes.tema || null;
+    const desejosAntes = ajustes.desejos || null;
     ajustes = { username: await pedirUsername(ajustes.username) };
     if (temaAntes) ajustes.tema = temaAntes;
+    if (desejosAntes) ajustes.desejos = desejosAntes;
     const u2 = await pedirConta2(conta2Antes ? conta2Antes.username : '');
     if (u2 && USERNAME_VALIDO.test(u2) && !mesmoNome(u2, ajustes.username)) {
       ajustes.conta2 = conta2Antes && conta2Antes.username === u2 ? conta2Antes : { username: u2 };
@@ -138,6 +141,8 @@ async function executar(ctx) {
     conta2: ajustes.conta2 ? { nome: ajustes.conta2.nomeReal || ajustes.conta2.username } : null,
     // v5.3.1: tema escolhido no menu ⋯ (gravado no arquivo de ajustes).
     tema: html.temaValido(ajustes.tema) ? ajustes.tema : null,
+    // v6.0: Lista de desejos (assetIds), gravada no arquivo de ajustes pela ponte.
+    desejos: desejos.limpar(ajustes.desejos, cfg.LISTA_DESEJOS_MAX),
     itens,
     fonte,
     totais,
@@ -155,6 +160,7 @@ async function executar(ctx) {
       commit: String(ctx.sha || '').slice(0, 7),
       loader: ctx.loaderVersao,
       tema: ajustes.tema || 'segue o iPhone',
+      listaDesejos: desejos.limpar(ajustes.desejos, cfg.LISTA_DESEJOS_MAX).length + ' itens',
       usuario: dados.usuario,
       fonteItens: fonte,
       origem: dados.origem,
@@ -364,11 +370,31 @@ async function executar(ctx) {
     });
   }
 
+  // v6.0: ponte da Lista de desejos: PONTE + 'desejos?ids=1,2,3' grava a lista
+  // inteira no arquivo de ajustes (lista vazia = 'desejos?ids='). Só ids numéricos.
+  function atenderDesejos(url) {
+    const m = /[?&]ids=([\d,]*)/.exec(url);
+    if (!m) return;
+    const ids = desejos.limpar(m[1].split(','), cfg.LISTA_DESEJOS_MAX);
+    filaPonte = filaPonte.then(() => {
+      try {
+        ajustes.desejos = ids;
+        store.gravar('ajustes', ajustes);
+      } catch (e) {
+        // sem gravar: a lista vale só até fechar o app
+      }
+    });
+  }
+
   // Links do menu de toque abrem fora do painel (Safari ou app do Roblox).
   wv.shouldAllowRequest = (req) => {
     const url = (req && req.url) || '';
     if (url.indexOf(avaliador.PONTE + 'tema') === 0) {
       atenderTema(url);
+      return false;
+    }
+    if (url.indexOf(avaliador.PONTE + 'desejos') === 0) {
+      atenderDesejos(url);
       return false;
     }
     if (url.indexOf(avaliador.PONTE + 'anuncios') === 0) {

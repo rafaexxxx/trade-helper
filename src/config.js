@@ -96,4 +96,9 @@ module.exports = {
   ANUNCIO_COMBINACAO_MAX_ITENS: 25,
   // Quantos cartões cada bloco da aba mostra.
   ANUNCIOS_MAX_NA_LISTA: 40,
+
+  // ===== Lista de desejos (v6.0) =====
+  // Máximo de itens na lista (sem limite de preço). Anúncios que oferecem um
+  // item dela e pedem itens seus entram a partir de "Troca justa".
+  LISTA_DESEJOS_MAX: 100,
 };

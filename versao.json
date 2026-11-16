@@ -1,5 +1,5 @@
 {
-  "versao": "5.4.1",
+  "versao": "6.0.0",
   "arquivos": [
     "src/config.js",
     "src/historico.js",
@@ -8,6 +8,7 @@
     "src/ajuda.js",
     "src/avaliador.js",
     "src/anuncios.js",
+    "src/desejos.js",
     "src/html.js",
     "src/widget.js",
     "src/painel.js"

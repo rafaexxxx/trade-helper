@@ -7,10 +7,12 @@
 // v5.3: temas no menu ⋯ (Clássicos e Estéticos). v5.3.1: 13 temas, escolha
 // gravada no arquivo de ajustes do Scriptable pela ponte (PONTE + 'tema?t=').
 // v5.4: tela de Ajuda (módulo ajuda) no menu ⋯ e links "Ver na Ajuda" nas abas.
+// v6.0: Lista de desejos (módulo desejos) no menu ⋯; destaque na aba Anúncios.
 const a = require('analise');
 const avaliador = require('avaliador');
 const anuncios = require('anuncios');
 const ajuda = require('ajuda');
+const desejos = require('desejos');
 
 function esc(s) {
   const mapa = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
@@ -710,6 +712,7 @@ ${CSS_BASE}
 ${avaliador.css()}
 ${anuncios.css()}
 ${ajuda.css()}
+${desejos.css()}
 </style></head><body>
 <div class="ceu" aria-hidden="true"><i></i><b></b></div>
 <div class="app">
@@ -763,6 +766,7 @@ ${anuncios.secao(cfg, av.erro ? 'os dados do avaliador não foram preparados (' 
   <p>Opções</p>
   <button type="button" class="op" id="m-trocar">Adicionar conta 2</button>
   <button type="button" class="op perigo oculto" id="m-remover">Remover conta 2</button>
+  <button type="button" class="op" id="m-desejos"${av.erro ? ' disabled' : ''}>Lista de desejos <small id="m-desejos-n"></small></button>
   <button type="button" class="op" id="m-temas">Temas</button>
   <button type="button" class="op" id="m-ajuda">Ajuda</button>
   <button type="button" class="op cancelar" id="m-cancelar">Cancelar</button>
@@ -776,7 +780,7 @@ ${folhaTemas()}
   <p class="erro oculto" id="c2-erro"></p>
   <div class="acoes"><button type="button" class="btn sec" id="c2-cancelar">Cancelar</button><button type="submit" class="btn" id="c2-salvar">Salvar</button></div>
 </form>
-${av.erro ? '' : avaliador.folhas() + anuncios.folha()}
+${av.erro ? '' : avaliador.folhas() + anuncios.folha() + desejos.secao()}
 ${ajuda.secao(cfg)}
 
 <script>
@@ -1130,6 +1134,11 @@ ${ajuda.secao(cfg)}
     fecharMenu();
     if (window.thAbrirAjuda) window.thAbrirAjuda();
   });
+  // ---------- Lista de desejos (v6.0) ----------
+  $('m-desejos').addEventListener('click', function(){
+    fecharMenu();
+    if (window.thAbrirDesejos) window.thAbrirDesejos();
+  });
 
   $('t-fundo').addEventListener('click', fecharTemas);
   $('t-pronto').addEventListener('click', fecharTemas);
@@ -1162,7 +1171,7 @@ ${ajuda.secao(cfg)}
   });
 })();
 </script>
-${av.erro ? '' : avaliador.script(av.json, cfg) + anuncios.script(cfg, r.usuario.id)}
+${av.erro ? '' : avaliador.script(av.json, cfg) + anuncios.script(cfg, r.usuario.id) + desejos.script(r.desejos, cfg)}
 ${ajuda.script()}
 </body></html>`;
 }
