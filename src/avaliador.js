@@ -241,6 +241,14 @@ function corVeredito(v) {
   return ['nenhum', 'neg', 'justa', 'pos', 'muito'][v.nivel] || 'cuidado';
 }
 
+// v6.2.1: título do veredito com a gíria dos traders: W (ganhou), F (justa),
+// L (perdeu). "Cuidado" e "Proposta incompleta" ficam sem letra.
+function tituloWFL(v) {
+  if (!v) return '';
+  var s = v.nivel == null || v.nivel < 0 ? '' : v.nivel >= 3 ? 'W' : v.nivel === 2 ? 'F' : 'L';
+  return v.titulo + (s ? ' · ' + s : '');
+}
+
 function parametros(cfg) {
   const demandaCurta = {};
   const tendenciaCurta = {};
@@ -709,7 +717,7 @@ function paginaAvaliador(D, P) {
     el.classList.toggle('oculto', !v);
     if (!v) return;
     el.setAttribute('data-cor', corVeredito(v));
-    $('av-ver-titulo').textContent = v.titulo;
+    $('av-ver-titulo').textContent = tituloWFL(v);
     var pct = '';
     var sub = '';
     if (v.nivel != null) {
@@ -1009,6 +1017,7 @@ function script(json, cfg) {
     demandaMediaLado.toString() + '\n' +
     calcularVeredito.toString() + '\n' +
     corVeredito.toString() + '\n' +
+    tituloWFL.toString() + '\n' +
     'var TH_D = ' + json + ';\n' +
     'var TH_P = ' + serializar(parametros(cfg)) + ';\n' +
     '(' + paginaAvaliador.toString() + ')(TH_D, TH_P);\n' +

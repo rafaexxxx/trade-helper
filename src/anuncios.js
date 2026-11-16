@@ -717,7 +717,7 @@ function paginaAnuncios(D, P, PA) {
     h += blocoLado('rec', 'Recebo', r.rec, ad[5], true, r.tr);
     h += blocoLado('dou', r.modo === 'tag' ? 'Dou (sugestão)' : 'Dou', r.dou, 0, false, r.td);
     var dif = r.tr.value - r.td.value;
-    h += '<div class="an-pe" data-cor="' + corVeredito(r.v) + '"><span class="selo">' + esc(r.v ? r.v.titulo : '') + '</span>' +
+    h += '<div class="an-pe" data-cor="' + corVeredito(r.v) + '"><span class="selo">' + esc(r.v ? tituloWFL(r.v) : '') + '</span>' +
       '<span class="an-ganho"><b>' + pctTxt(r.pct) + '</b><small>' + (dif > 0 ? '+' : '') + fmtNum(dif) + ' R$</small></span></div>';
     h += '<div class="an-acoes">' +
       '<a class="btn sec" href="https://www.rolimons.com/player/' + ad[2] + '">Ver jogador</a>' +

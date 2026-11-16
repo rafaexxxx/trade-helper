@@ -119,6 +119,17 @@ function capitulo1(cfg) {
     <div><b class="pos">${num(fica)}</b><small>o que conta para você</small></div>
   </div>
   <p class="aj-legenda">Se você dá Robux, conta o valor cheio. Se recebe, conta ${100 - taxa}%.</p>
+
+  <h3 id="aj-regras">Quem pode trocar, e o quê</h3>
+  <ul class="aj-lista">
+    <li><b>Roblox Plus:</b> desde 2026, os <b>dois</b> jogadores precisam de Roblox Plus (ou do Premium antigo) e da verificação de idade para fazer trade.</li>
+    <li><b>Só itens feitos pelo Roblox:</b> Limited e Limited U criados pelo próprio Roblox entram na trade. Os <b>UGC</b> (feitos por criadores da comunidade) só podem ser <b>revendidos</b> no Marketplace, não trocados.</li>
+    <li><b>Até ${cfg.MAX_ITENS_POR_LADO} itens por lado</b>, mais Robux (no máximo metade do valor dos itens oferecidos).</li>
+    <li><b>Hold:</b> o item que você recebe numa trade fica travado por cerca de 2 dias; um item comprado de outro jogador, por até uns 7 dias.</li>
+    <li><b>Validade:</b> uma proposta enviada expira em cerca de 4 dias se ninguém responder.</li>
+  </ul>
+  <div class="aj-dica"><b>Filtro de qualidade.</b> Nas configurações do Roblox (Privacidade → Trading) dá para esconder automaticamente as propostas muito desiguais. Lowball "quase justo" ainda passa, então confira sempre.</div>
+  <p class="aj-legenda">Essas regras mudam de tempos em tempos. Na dúvida, confira na ajuda oficial do Roblox.</p>
   ${subir()}
 </section>`;
 }
@@ -142,6 +153,8 @@ function capitulo2(cfg) {
   // Exemplo de upgrade: dou 28.500 (3 itens), recebo 27.500 (1 item).
   const pUp = ((27500 - 28500) / 28500) * 100;
   const vUp = NIVEIS[nivel(pUp, ru)];
+  const nUp = nivel(pUp, ru);
+  const wflUp = nUp >= 3 ? 'W' : nUp === 2 ? 'F' : 'L';
   // Exemplo de downgrade: dou 4.700, recebo 5.200.
   const pDown = ((5200 - 4700) / 4700) * 100;
   const vDown = NIVEIS[nivel(pDown, rd)];
@@ -176,7 +189,7 @@ function capitulo2(cfg) {
   <p class="aj-legenda">Com o mesmo número de itens dos dois lados (sidegrade), o normal é ficar perto de 1 por 1. Cada lado pode ter até ${max} itens.</p>
 
   <h3>Por que quem sobe paga a mais</h3>
-  <p>Um item grande é mais procurado e mais fácil de revender do que vários pequenos. Por isso quem junta itens para levar um maior costuma pagar um extra, o <b>overpay</b> (OP). Quem abre mão do item grande espera receber esse extra.</p>
+  <p>Um item grande costuma ser mais procurado e mais fácil de revender do que vários pequenos. Por isso quem junta itens para levar um maior costuma pagar um extra, o <b>overpay</b> (OP). Quem abre mão do item grande espera receber esse extra.</p>
 
   <h3 id="aj-escada">A escadinha: como o inventário cresce</h3>
   <p>É assim que se evolui fazendo trade: você alterna os dois tipos de troca, e cada volta deixa um pouco a mais para você.</p>
@@ -229,7 +242,7 @@ function capitulo2(cfg) {
     </div>
   </div>
   <div class="veredito aj-veredito" data-cor="${vUp[1]}">
-    <span class="selo">${vUp[0]}</span>
+    <span class="selo">${vUp[0]} · ${wflUp}</span>
     <div class="ver-pct">${pctS(pUp)}</div>
     <div class="ver-sub">em value · −1.000</div>
     <ul class="motivos">
@@ -238,7 +251,7 @@ function capitulo2(cfg) {
       <li>O que você recebe tem demanda maior que o que você dá: fica mais fácil revender.</li>
     </ul>
   </div>
-  <p class="aj-legenda">A pílula diz o veredito; o número grande é a diferença de value; embaixo vêm os motivos.</p>
+  <p class="aj-legenda">A pílula diz o veredito e a gíria dos traders (W ganhou, F justa, L perdeu); o número grande é a diferença de value; embaixo vêm os motivos.</p>
 
   <h3>Exemplo de downgrade</h3>
   <p>O caminho contrário: você dá um item de 4.700 e recebe três menores que somam 5.200. Você ganha ${pct(pDown)}, e o app diz "${vDown[0]}". Se ganhasse só 3%, diria "${vDown3[0]}": ficar com vários itens pequenos dá trabalho para girar, então pouco extra não compensa.</p>
@@ -271,7 +284,7 @@ function capitulo2(cfg) {
         <p class="an-nota">Ele quer downgrade, então para você é upgrade: você dá mais itens e paga ${pct(pUp)} a mais (perto do mínimo que ele deve aceitar).</p>
         <div class="an-lado rec"><div class="an-lcab"><span>Recebo</span><span>Valor</span></div>${anItem('vh', alta, 27500)}<div class="an-tot"><span>Total</span><span class="an-val">27.500<small></small></span></div></div>
         <div class="an-lado dou"><div class="an-lcab"><span>Dou (sugestão)</span><span>Valor</span></div>${anItem('sf', alta, 12000)}${anItem('ch', normal, 9500)}${anItem('bh', normal, 7000)}<div class="an-tot"><span>Total</span><span class="an-val">28.500<small></small></span></div></div>
-        <div class="an-pe" data-cor="${vUp[1]}"><span class="selo">${vUp[0]}</span><span class="an-ganho"><b>${pctS(pUp)}</b><small>−1.000 R$</small></span></div>
+        <div class="an-pe" data-cor="${vUp[1]}"><span class="selo">${vUp[0]} · ${wflUp}</span><span class="an-ganho"><b>${pctS(pUp)}</b><small>−1.000 R$</small></span></div>
       </div>
     </div>
   </div>
@@ -319,8 +332,27 @@ function capitulo3(cfg) {
     <div><dt><span class="tag neg">RAP disparando</span></dt><dd>RAP subindo mais de ${pct(cfg.ALERTA_RAP_24H_PCT)} em 24h pode ser manipulação. No Avaliar, vira "Cuidado".</dd></div>
     <div><dt><span class="tag warn">Hold</span></dt><dd>Item recém-recebido fica travado por alguns dias e não pode ser trocado. Seus itens em hold não entram nas sugestões dos Anúncios.</dd></div>
     <div><dt><span class="tag sub">Sem value</span></dt><dd>O app usa o RAP no lugar, que é uma conta menos segura.</dd></div>
-    <div><dt><span class="tag sub">Rare</span></dt><dd>Existem pouquíssimas cópias. O preço costuma ser mais difícil de estimar.</dd></div>
+    <div><dt><span class="tag sub">Rare</span></dt><dd>Para o Rolimon's, item com até 100 cópias existentes. Raridade sozinha não garante valor: sem procura, um item raro também fica parado.</dd></div>
   </dl>
+
+  <h3 id="aj-projected">Como reconhecer um projected</h3>
+  <ul class="aj-lista">
+    <li>O preço ficou parado por meses e de repente deu um <b>salto</b> em poucos dias, com poucas vendas grandes.</li>
+    <li>Depois do salto, quase ninguém vende perto do preço novo.</li>
+    <li>O value fica muito abaixo do RAP, e a demanda é baixa.</li>
+    <li>As vendas vêm sempre das mesmas poucas contas.</li>
+  </ul>
+  <p class="aj-legenda">Um salto sozinho não prova nada: eventos e moda também sobem o preço. O app usa a marcação de projected do Rolimon's.</p>
+
+  <h3 id="aj-liquidez">O que gira e o que trava</h3>
+  <p>O que diz se um item sai rápido é o <b>volume de vendas</b>, não o tamanho do número. No mercado de Limiteds, poucos itens concentram a maior parte das vendas.</p>
+  <ul class="aj-lista">
+    <li><b>Gira:</b> itens com demanda Alta ou Incrível e várias vendas por semana. Esses você troca de novo sem perder.</li>
+    <li><b>Trava:</b> value ou RAP alto com demanda baixa, item raro que ninguém procura, e item que acabou de virar limited (o preço ainda está se formando e é fácil de manipular).</li>
+    <li><b>Hoard:</b> quando uma pessoa junta muitas cópias de um item para subir o preço. Se ela soltar tudo de uma vez, o preço despenca.</li>
+    <li><b>Conta banida (termed):</b> os itens dela saem de circulação, e o item fica mais raro.</li>
+    <li><b>Item sem value:</b> julgue pelo movimento. As pessoas estão trocando esse item? Se não, cuidado com o número.</li>
+  </ul>
 
   <h3>Quando aparece "Cuidado"</h3>
   <p>O veredito vira "Cuidado" quando o que você recebe é projected, tem demanda terrível ou teve o RAP disparando, ou quando você dá um item em hold. O cartão mostra o motivo primeiro e diz qual seria o veredito sem o alerta.</p>
@@ -381,14 +413,45 @@ function capitulo4(cfg) {
   <h3 id="aj-conta2">Conta 2</h3>
   <p>No menu ⋯, "Adicionar conta 2" guarda o username de outra conta (só neste iPhone). O chip com ⇄ embaixo do título troca entre as contas. Na conta 2 o painel muda de cor, mostra "Vendo a conta de …" e um botão Voltar. Inventário e Anúncios passam a ser os dela; o Avaliar some.</p>
 
+  <h3 id="aj-diario">Diário de trades</h3>
+  <p>Fica no fim do Inventário. A cada consulta (painel e widget), o app compara os seus itens com os da vez anterior. Quando itens saem e outros entram, ele pergunta no topo do Inventário: <b>"Você fez esta trade?"</b>. Você responde Sim ou Não foi trade e, se quiser, coloca os Robux que entraram ou saíram.</p>
+  <ul class="aj-lista">
+    <li><b>Lucro até hoje:</b> o value de hoje do que entrou, menos o value de hoje do que saiu, mais os Robux. Mostra se as suas trades estão dando certo com o tempo.</li>
+    <li><b>Por que ele pergunta:</b> o app não vê as suas trades de verdade (não tem login). Duas trades entre uma consulta e outra aparecem juntas, e compra ou venda também podem gerar pergunta.</li>
+    <li>Toque numa trade do diário para ver os detalhes ou apagá-la.</li>
+  </ul>
+
+  <h3 id="aj-notif">Notificações</h3>
+  <p>Quando o widget atualiza, o app pode mandar <b>uma notificação-resumo</b> com anúncios novos "Vale muito a pena" para você e com itens seus que viraram projected ou ficaram com demanda terrível. O mesmo aviso não se repete, e das ${cfg.SILENCIO_INICIO_H}h às ${cfg.SILENCIO_FIM_H}h fica em silêncio. Como depende do widget, o aviso pode atrasar: quem decide a hora é o iOS.</p>
+
   <h3 id="aj-temas">Temas</h3>
   <p>Menu ⋯ &gt; Temas. O toque aplica na hora e fica salvo neste iPhone. Sem tema escolhido, o painel segue o claro ou escuro do iPhone.</p>
 
   <h3 id="aj-widget">Widget</h3>
-  <p>Há os tamanhos pequeno, médio e grande, com o value total e os seus maiores itens. O widget pede para atualizar a cada ${cfg.WIDGET_ATUALIZAR_MIN} min, mas quem decide a hora é o iOS. Ele usa sempre o visual grafite.</p>
+  <p>Há os tamanhos pequeno, médio e grande, com o value total e os seus maiores itens. O widget pede para atualizar a cada ${cfg.WIDGET_ATUALIZAR_MIN} min, mas quem decide a hora é o iOS. Ele usa sempre o tema OLED (fundo preto), seja qual for o tema do painel.</p>
 
   <h3 id="aj-diag">Diagnóstico</h3>
   <p>No fim do painel. Se algo der errado, abra, copie o texto e mande para quem cuida do app.</p>
+  ${subir()}
+</section>`;
+}
+
+function capitulo5() {
+  return `<section class="aj-cap" id="aj-cap5">
+  <div class="aj-cab"><span class="aj-eb">Capítulo 5</span><h2>Segurança: golpes comuns</h2></div>
+  <p>Trade de Limited atrai golpista. Quase todo golpe usa a mesma coisa: <b>pressa</b> e algo <b>fora da janela oficial de trade</b> do Roblox.</p>
+  <dl class="aj-armas" id="aj-golpes">
+    <div><dt><span class="tag neg">Site falso de values</span></dt><dd>Mandam um link de um "Rolimon's" copiado, com o item deles valendo muito mais. Digite você mesmo o endereço do site de values; nunca use link recebido em chat ou DM.</dd></div>
+    <div><dt><span class="tag neg">"Vai você primeiro"</span></dt><dd>Pedem que você mande o seu item primeiro ou que a trade seja "em duas partes". A segunda parte nunca chega. Por isso os traders dizem <b>NGF</b> (não vou primeiro).</dd></div>
+    <div><dt><span class="tag neg">Middleman falso</span></dt><dd>Alguém se passa por um intermediário conhecido, com o username com uma letra trocada, a foto copiada e prints falsos de "vouch".</dd></div>
+    <div><dt><span class="tag neg">Link de "verificar inventário"</span></dt><dd>Pedem para você entrar num site para "confirmar a trade". Ele rouba a sua senha ou o acesso da conta e esvazia o inventário. O único lugar para fazer login é o roblox.com.</dd></div>
+  </dl>
+  <ul class="aj-lista">
+    <li><b>Faça trade só pela janela oficial do Roblox.</b> Os itens só trocam de dono quando a proposta é aceita lá.</li>
+    <li><b>O Roblox não devolve</b> nada perdido em acordo feito por fora.</li>
+    <li><b>Este app nunca pede senha</b> nem login. Ele só lê dados públicos.</li>
+  </ul>
+  <div class="aj-dica"><b>Regra de ouro:</b> se alguém tem muita pressa ou a proposta é boa demais para ser verdade, pare e confira com calma.</div>
   ${subir()}
 </section>`;
 }
@@ -405,7 +468,7 @@ function glossario() {
     ['Overpay (OP)', 'O extra que um lado paga, em value.'],
     ['Projected', 'Item com RAP inflado de propósito. Nunca aceite pelo RAP.'],
     ['RAP', 'Média das vendas recentes, calculada pelo Roblox.'],
-    ['Rare', 'Item com pouquíssimas cópias.'],
+    ['Rare', "Item com até 100 cópias existentes (critério do Rolimon's)."],
     ['Serial', 'O número da sua cópia (#318).'],
     ['Sidegrade', 'Mesmo número de itens dos dois lados.'],
     ['Tendência', 'Para onde o preço anda: subindo, estável, caindo.'],
@@ -415,9 +478,34 @@ function glossario() {
     ['Value base', 'O número do app: o value; sem value, o RAP.'],
     ['Veredito', 'A segunda opinião do app: de "Não vale de jeito nenhum" a "Vale muito a pena", ou "Cuidado".'],
   ];
+  // Gírias e siglas que aparecem nos chats, anúncios e grupos de trade.
+  const girias = [
+    ['W / F / L', 'Win, Fair, Loss: ganhou, justa ou perdeu. "W or L?" quer dizer "essa trade é boa?". O app mostra a letra ao lado do veredito.'],
+    ['OP', 'Overpay: o extra pago acima do value, geralmente em % ("10% OP").'],
+    ['Lowball', 'Oferta bem abaixo do value, esperando que você não perceba.'],
+    ['Adds', 'Robux ou itens pequenos colocados para fechar a conta ("minha Valk pela sua + 5k adds").'],
+    ['UG / UPG · DG', 'Upgrade e downgrade.'],
+    ['LF / FT', 'Looking for (procuro) e For trade (troco), usados nos anúncios.'],
+    ['NFT', 'Not for trade: o dono não troca esse item.'],
+    ['A/C · A/D', 'Accept or counter (aceita ou faz contraproposta) · Accept or decline (aceita ou recusa).'],
+    ['NGF', 'Not going first: "não vou primeiro". Proteção contra golpe.'],
+    ['MM', 'Middleman: intermediário que segura os itens. Cuidado: há muitos falsos.'],
+    ['PC', 'Price check: pedir para avaliarem quanto vale um item.'],
+    ['Value item', "Item que tem value no Rolimon's (só cerca de 1 em cada 5 limiteds tem)."],
+    ['RAP item', 'Item sem value, negociado pelo RAP. Conta menos segura.'],
+    ['Hoard', 'Uma pessoa segurando muitas cópias para subir o preço.'],
+    ['Termed', 'Conta banida; os itens dela saem de circulação.'],
+    ['Sharking', 'Se aproveitar de quem não conhece os values, com lowball em iniciante.'],
+    ['Sniping', 'Comprar no Marketplace logo que alguém anuncia barato.'],
+    ['Sigla', "Apelido curto do item, como DC (Domino Crown) ou BV (Blackvalk). O Rolimon's tem uma para cada item; a busca do Avaliar aceita."],
+  ];
+  const lista = (l) => '<dl class="aj-glos">' + l.map((t) => '<div><dt>' + esc(t[0]) + '</dt><dd>' + esc(t[1]) + '</dd></div>').join('') + '</dl>';
   return `<section class="aj-cap" id="aj-glossario">
   <div class="aj-cab"><span class="aj-eb">Consulta</span><h2>Glossário</h2></div>
-  <dl class="aj-glos">${termos.map((t) => '<div><dt>' + esc(t[0]) + '</dt><dd>' + esc(t[1]) + '</dd></div>').join('')}</dl>
+  ${lista(termos)}
+  <h3 id="aj-girias">Gírias e siglas dos traders</h3>
+  <p>Você vai ver essas palavras nos anúncios, nos chats e nos grupos de trade.</p>
+  ${lista(girias)}
   ${subir()}
 </section>`;
 }
@@ -433,7 +521,10 @@ function perguntas(cfg) {
     ['O anúncio diz "downgrade", mas o app mostra "seu upgrade". Está errado?', 'Não. A tag é do dono do anúncio; o app mostra a trade do seu lado.', 'aj-tags', 'Ver a explicação'],
     ['Por que o app ignora o RAP no veredito?', 'Porque o RAP chega atrasado e pode ser manipulado. Ele aparece como informação; quem decide é o value.', 'aj-cap1', 'Ver no capítulo 1'],
     ['Recebi 1.000 Robux, mas a conta mostra ' + num(Math.floor(1000 * (1 - cfg.TAXA_ROBUX))) + '. Por quê?', 'O Roblox fica com ' + taxa + '% dos Robux de quem recebe. O app já mostra o que sobra.', 'aj-robux', 'Ver no capítulo 1'],
-    ['Por que não consigo colocar um item meu na trade?', 'Ele deve estar em hold: item recém-recebido fica travado por alguns dias.', 'aj-armadilhas', 'Ver as armadilhas'],
+    ['Por que não consigo colocar um item meu na trade?', 'Ele deve estar em hold (item recém-recebido fica travado por alguns dias) ou é um UGC, que só pode ser revendido, não trocado.', 'aj-regras', 'Ver as regras'],
+    ['O que quer dizer "W or L?"', 'É "essa trade é boa?". W = ganhou, F = justa, L = perdeu. O app mostra a letra ao lado do veredito.', 'aj-girias', 'Ver as gírias'],
+    ['Pediram para eu mandar primeiro ou entrar num site para "verificar". E agora?', 'Não faça. Isso é golpe. Trade só pela janela oficial do Roblox, e login só no roblox.com.', 'aj-cap5', 'Ver os golpes comuns'],
+    ['Item raro sempre vale a pena?', 'Não. Raridade sem procura também trava. Olhe a demanda e se as pessoas trocam esse item.', 'aj-liquidez', 'Ver o que gira e o que trava'],
     ['O app garante lucro?', 'Não. Ele dá uma segunda opinião com regras práticas da comunidade. A decisão é sempre sua.', null, null],
   ];
   return `<section class="aj-cap" id="aj-faq">
@@ -449,8 +540,9 @@ function secao(cfg) {
     ['aj-cap1', '1', 'O básico', 'Limited, value, RAP e Robux'],
     ['aj-cap2', '2', 'Upgrade, downgrade e quanto pagar a mais', 'A escadinha e o veredito'],
     ['aj-cap3', '3', 'Demanda e armadilhas', 'O que conferir antes de aceitar'],
-    ['aj-cap4', '4', 'Como usar o app', 'Abas, filtros, conta 2, temas e widget'],
-    ['aj-glossario', 'A–Z', 'Glossário', 'Todos os termos numa linha'],
+    ['aj-cap4', '4', 'Como usar o app', 'Abas, filtros, diário, conta 2, temas e widget'],
+    ['aj-cap5', '5', 'Segurança: golpes comuns', 'Como não cair em golpe'],
+    ['aj-glossario', 'A–Z', 'Glossário e gírias', 'Termos, gírias e siglas dos traders'],
     ['aj-faq', '?', 'Perguntas rápidas', 'Toque para abrir a resposta'],
   ];
   return `<div id="aj-tela" class="aj-tela oculto" role="dialog" aria-modal="true" aria-label="Ajuda">
@@ -466,6 +558,7 @@ function secao(cfg) {
   ${capitulo2(cfg)}
   ${capitulo3(cfg)}
   ${capitulo4(cfg)}
+  ${capitulo5()}
   ${glossario()}
   ${perguntas(cfg)}
 </div>
