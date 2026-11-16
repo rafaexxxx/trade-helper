@@ -1,11 +1,12 @@
 {
-  "versao": "6.0.1",
+  "versao": "6.1.0",
   "arquivos": [
     "src/config.js",
     "src/historico.js",
     "src/api.js",
     "src/analise.js",
     "src/ajuda.js",
+    "src/diario.js",
     "src/avaliador.js",
     "src/anuncios.js",
     "src/html.js",

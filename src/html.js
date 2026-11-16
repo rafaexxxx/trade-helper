@@ -7,10 +7,13 @@
 // v5.3: temas no menu ⋯ (Clássicos e Estéticos). v5.3.1: 13 temas, escolha
 // gravada no arquivo de ajustes do Scriptable pela ponte (PONTE + 'tema?t=').
 // v5.4: tela de Ajuda (módulo ajuda) no menu ⋯ e links "Ver na Ajuda" nas abas.
+// v6.1: diário de trades (módulo diario) no Inventário da conta principal:
+// perguntas "Você fez esta trade?" no topo e a seção com o lucro no fim.
 const a = require('analise');
 const avaliador = require('avaliador');
 const anuncios = require('anuncios');
 const ajuda = require('ajuda');
+const diario = require('diario');
 
 function esc(s) {
   const mapa = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
@@ -659,6 +662,7 @@ function gerar(r, cfg) {
   const inv = inventario(r, cfg);
   const menu = inv.menu;
   const tituloMud = inv.titulo;
+  const dia = r.diario && r.diario.dados ? r.diario : null;
 
   return `<!doctype html>
 <html lang="pt-BR"${r.tema ? ' data-tema="' + esc(r.tema) + '"' : ''}><head>
@@ -710,6 +714,7 @@ ${CSS_BASE}
 ${avaliador.css()}
 ${anuncios.css()}
 ${ajuda.css()}
+${diario.css()}
 </style></head><body>
 <div class="ceu" aria-hidden="true"><i></i><b></b></div>
 <div class="app">
@@ -730,7 +735,9 @@ ${ajuda.css()}
 
 <div id="aba-inv" class="aba">
 <div class="inv aba" id="inv-1">
+${dia ? diario.topo() : ''}
 ${inv.html}
+${dia ? diario.secao() : ''}
 </div>
 <div class="inv aba oculto" id="inv-2"></div>
 </div>
@@ -743,6 +750,7 @@ ${anuncios.secao(cfg, av.erro ? 'os dados do avaliador não foram preparados (' 
   <p id="diag-ponte"></p>
   <p id="diag-anuncios"></p>
   <p id="diag-conta2">Conta 2: ${r.conta2 ? 'salva, ainda não aberta nesta abertura' : 'nenhuma'}</p>
+  <p id="diag-diario">Diário: ${esc(r.diario && r.diario.erro ? 'erro ao montar (' + r.diario.erro + ')' : (r.diag && r.diag.diario) || '')}</p>
   <textarea readonly>${esc(JSON.stringify(r.diag, null, 2))}</textarea>
 </details>
 
@@ -1164,6 +1172,7 @@ ${ajuda.secao(cfg)}
 </script>
 ${av.erro ? '' : avaliador.script(av.json, cfg) + anuncios.script(cfg, r.usuario.id)}
 ${ajuda.script()}
+${dia ? diario.script(avaliador.serializar(dia.dados), avaliador.serializar(avaliador.PONTE), avaliador.serializar(dia.miniaturas || {})) : ''}
 </body></html>`;
 }
 

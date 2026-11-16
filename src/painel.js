@@ -7,6 +7,7 @@ const html = require('html');
 const widget = require('widget');
 const avaliador = require('avaliador');
 const anuncios = require('anuncios');
+const diario = require('diario');
 
 async function pedirUsername(atual) {
   const al = new Alert();
@@ -108,6 +109,16 @@ async function executar(ctx) {
   const totais = analise.calcularTotais(itens);
   const agora = Date.now();
 
+  // v6.1: diário de trades (só a conta principal). Painel e widget comparam os
+  // itens com a consulta anterior e guardam a pergunta; só o painel pergunta.
+  // Se algo falhar aqui, o resto segue.
+  let diarioResumo;
+  try {
+    diarioResumo = diario.detectar(store, dados, itens, fonte, agora, noWidget ? 'widget' : 'painel');
+  } catch (e) {
+    diarioResumo = 'erro: ' + (e.message || String(e));
+  }
+
   // Só compara com retratos feitos a partir da mesma fonte de itens.
   const salvo = hist.lerSnapshot(store);
   const ultima = comparar(itens, totais, salvo && salvo.fonte === fonte ? salvo : null);
@@ -170,6 +181,7 @@ async function executar(ctx) {
         ultimaConsulta: ultima.base ? analise.fmtData(ultima.base.data) : null,
       },
       divergencia,
+      diario: diarioResumo,
       linhasDoCatalogo: itens.slice(0, 10).map((i) => ({
         assetId: i.assetId,
         linha: dados.rolimons[String(i.assetId)] || null,
@@ -217,6 +229,16 @@ async function executar(ctx) {
     base24hCatalogo: baseCatalogo ? analise.fmtData(baseCatalogo.data) : null,
     erro: resultado.avaliador.erro,
   };
+
+  // v6.1: perguntas e trades do diário, com o value de hoje e as miniaturas.
+  try {
+    const pag = diario.paraPagina(store, dados.rolimons, dados.usuario.id);
+    const ids = diario.idsDaPagina(pag);
+    const mini = ids.length ? await api.buscarMiniaturas(store, ids) : {};
+    resultado.diario = { dados: pag, miniaturas: mini, erro: null };
+  } catch (e) {
+    resultado.diario = { dados: null, miniaturas: {}, erro: e.message || String(e) };
+  }
 
   const wv = new WebView();
 
@@ -364,9 +386,41 @@ async function executar(ctx) {
     });
   }
 
+  // v6.1: ponte do diário: PONTE + 'diario?acao=sim|nao|apagar&id=<n>&r=<robux>'.
+  // Grava no arquivo do diário e devolve o estado salvo para a página.
+  function atenderDiario(url) {
+    const ma = /[?&]acao=([a-z]+)/.exec(url);
+    const mi = /[?&]id=(\d+)/.exec(url);
+    const mr = /[?&]r=(-?\d+)/.exec(url);
+    const acao = ma ? ma[1] : '';
+    const id = mi ? Number(mi[1]) : 0;
+    const robux = mr ? Number(mr[1]) : 0;
+    filaPonte = filaPonte.then(async () => {
+      let res;
+      try {
+        if (!id) throw new Error('pedido sem id');
+        if (acao === 'sim' || acao === 'nao') diario.responder(store, id, acao === 'sim', robux);
+        else if (acao === 'apagar') diario.apagar(store, id);
+        else throw new Error('ação desconhecida: ' + acao);
+        res = diario.paraPagina(store, dados.rolimons, dados.usuario.id);
+      } catch (e) {
+        res = { erro: e.message || String(e) };
+      }
+      try {
+        await wv.evaluateJavaScript('window.receberDiario && window.receberDiario(' + avaliador.serializar(res) + ')', false);
+      } catch (e) {
+        // página fechada ou sem a função: ignora
+      }
+    });
+  }
+
   // Links do menu de toque abrem fora do painel (Safari ou app do Roblox).
   wv.shouldAllowRequest = (req) => {
     const url = (req && req.url) || '';
+    if (url.indexOf(avaliador.PONTE + 'diario') === 0) {
+      atenderDiario(url);
+      return false;
+    }
     if (url.indexOf(avaliador.PONTE + 'tema') === 0) {
       atenderTema(url);
       return false;
