@@ -40,7 +40,8 @@ Pronto! Das próximas vezes é só abrir o script. Ele confere sozinho se há ve
 
 - **Faixa de totais** no topo: value total, RAP total e a variação de 24h.
 - **Seus itens** logo abaixo, com miniatura, busca e ordenação (value, RAP, demanda, tendência, nome).
-- **Etiquetas de alerta** na própria linha do item: projected, demanda baixa/terrível, tendência de queda, queda de value/RAP, RAP longe do value. Tocar no item mostra todos os alertas e abre o Rolimon's ou o Roblox.
+- **Cada informação num lugar só** (v6.3): a etiqueta aparece só para o que não está em outro lugar da linha (projected, RAP longe do value); queda de preço fica na seta; demanda e tendência, coloridas embaixo do nome. O chip "Com alerta" filtra todo item com algum risco.
+- **Tocar no item** mostra os alertas (como o item é), as mudanças em 24h (antes → depois) e abre o Rolimon's ou o Roblox.
 - **Setas ▲ ▼**: variação de value/RAP do item nas últimas 24h (a partir de `LIMITE_MUDANCA_PCT`).
 - O histórico de 24h é montado com 1 retrato por hora (painel e widget), guardado por 48h no iPhone.
 

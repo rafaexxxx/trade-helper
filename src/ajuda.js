@@ -324,8 +324,8 @@ function capitulo3(cfg) {
 
   <h3 id="aj-armadilhas">As armadilhas</h3>
   <span class="aj-exemplo">Exemplo · etiqueta de alerta no Inventário</span>
-  <div class="grupo aj-grupo"><div class="item"><span class="thumb aj-mini">?</span><div class="item-txt"><span class="nome">Item de exemplo</span><span class="det"><span class="tags"><span class="tag neg">Projected</span><span class="tag warn">Value ▼8,0%</span></span><span><span class="warn">Baixa</span> · <span class="neg">Caindo</span></span></span></div><div class="item-num"><span class="v">3.100</span><span class="r"><small class="seta pos">▲ 22,0%</small><small>RAP</small>5.800</span></div></div></div>
-  <p class="aj-legenda">Cada alerta vira uma pílula, do mais grave (vermelho) para o mais leve. "Value ▼8,0%" quer dizer que o value caiu 8% desde a consulta de ~24h atrás. Toque no item para ver os detalhes.</p>
+  <div class="grupo aj-grupo"><div class="item"><span class="thumb aj-mini">?</span><div class="item-txt"><span class="nome">Item de exemplo</span><span class="det"><span class="tags"><span class="tag neg">Projected</span></span><span><span class="warn">Baixa</span> · <span class="neg">Caindo</span></span></span></div><div class="item-num"><span class="v">3.100</span><span class="r"><small class="seta pos">▲ 22,0%</small><small>RAP</small>5.800</span></div></div></div>
+  <p class="aj-legenda">A pílula só aparece para o que não está em outro lugar da linha: Projected (vermelho) e RAP longe do value (cinza). Demanda e tendência ruins ficam coloridas embaixo do nome, e a seta mostra quanto o preço mudou em 24h. Toque no item para ver tudo.</p>
   <dl class="aj-armas">
     <div><dt><span class="tag neg">Projected</span></dt><dd>O RAP foi inflado de propósito (gente vendendo caro entre si). Nunca aceite pelo RAP. Anúncios que oferecem item projected nem aparecem.</dd></div>
     <div><dt><span class="tag warn">Hyped</span></dt><dd>Subida passageira por moda. O preço pode cair quando a moda passar.</dd></div>
@@ -387,9 +387,9 @@ function capitulo4(cfg) {
   <ul class="aj-lista">
     <li><b>Faixa de totais:</b> a soma do value e do RAP dos seus itens e quanto mudou em 24h.</li>
     <li><b>Setas ▲ ▼:</b> aparecem no número quando o value ou o RAP do item mudou ${pct(cfg.LIMITE_MUDANCA_PCT)} ou mais em 24h.</li>
-    <li><b>Etiqueta colorida:</b> o alerta mais grave do item. O chip "Com alerta" mostra só esses itens.</li>
+    <li><b>Etiqueta colorida:</b> só para o que não aparece em outro lugar da linha (Projected, RAP longe do value). Queda de preço fica na seta vermelha; demanda e tendência, coloridas na linha de baixo. O chip "Com alerta" mostra todos os itens com algum risco, com ou sem etiqueta.</li>
     <li><b>Chips de ordem:</b> Value, RAP, Demanda, Tendência e Nome. Toque de novo para inverter.</li>
-    <li><b>Toque no item:</b> abre os alertas, as mudanças e os links para o Rolimon's e o Roblox.</li>
+    <li><b>Toque no item:</b> abre os alertas (como o item é), as mudanças em 24h (o que mudou, com antes → depois) e os links para o Rolimon's e o Roblox.</li>
   </ul>
 
   <h3 id="aj-avaliar">Avaliar trade</h3>

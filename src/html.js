@@ -74,13 +74,14 @@ function alertasPorUaid(riscos, per) {
   return m;
 }
 
-// v6.2.6: uma pílula curta para cada alerta, do mais grave para o mais leve
-// (antes era só o pior com "+N"). As quedas usam o texto curto ("RAP ▼9,4%");
-// o texto completo, com o período, continua no menu do item.
+// v6.3: pílula só para o alerta que não aparece em outro lugar da linha
+// (Projected e RAP longe do value). Queda fica na seta; demanda e tendência,
+// na linha de baixo. Todos continuam no menu do item e no filtro "Com alerta".
 function etiqueta(motivos) {
-  if (!motivos || !motivos.length) return '';
-  return '<span class="tags">' + motivos
-    .map((x) => '<span class="tag ' + COR_GRAVIDADE[x.grav] + '">' + esc(x.curto || maiuscula(x.texto)) + '</span>')
+  const p = (motivos || []).filter((x) => x.pilula);
+  if (!p.length) return '';
+  return '<span class="tags">' + p
+    .map((x) => '<span class="tag ' + COR_GRAVIDADE[x.grav] + '">' + esc(maiuscula(x.texto)) + '</span>')
     .join('') + '</span>';
 }
 
@@ -126,7 +127,7 @@ function linhaItem(i, miniatura, motivos, vari, lim) {
     '" data-nome="' + esc((i.nome + ' ' + i.sigla).toLowerCase()) +
     '" data-value="' + i.valorEfetivo + '" data-rap="' + i.rap +
     '" data-dem="' + i.demanda + '" data-tend="' + i.tendencia +
-    '" data-alerta="' + (tag ? '1' : '0') + '">' +
+    '" data-alerta="' + (motivos && motivos.length ? '1' : '0') + '">' +
     img +
     '<div class="item-txt"><span class="nome">' + esc(i.nome) + '</span>' +
     (tag || det ? '<span class="det">' + tag + (det ? '<span>' + det + '</span>' : '') + '</span>' : '') + '</div>' +
@@ -150,7 +151,8 @@ function dadosDoMenu(alertas, c) {
   const m = {};
   const pegar = (uaid) => (m[uaid] = m[uaid] || { a: [], m: [] });
   for (const uaid of Object.keys(alertas)) {
-    pegar(uaid).a = alertas[uaid].map((x) => [maiuscula(x.texto), COR_GRAVIDADE[x.grav]]);
+    // v6.3: queda de preço fica só em "Mudanças" (com antes → depois).
+    pegar(uaid).a = alertas[uaid].filter((x) => !x.queda).map((x) => [maiuscula(x.texto), COR_GRAVIDADE[x.grav]]);
   }
   for (const x of c.mudancas || []) {
     pegar(x.item.uaid).m = x.mudancas.map((y) => [textoMudanca(y), COR_DIRECAO[y.dir]]);
@@ -615,7 +617,6 @@ function inventario(r, cfg) {
 <div class="grupo">
   <div class="inv-lista">${linhas}</div>
   <p class="vazio oculto inv-vazio">${r.itens.length ? 'Nada encontrado.' : 'Nenhum item.'}</p>
-  <div class="total"><span>Total</span><div class="item-num"><span class="v">${a.fmtNum(t.value)}</span><span class="r"><small>RAP</small>${a.fmtNum(t.rap)}</span></div></div>
 </div>
 ${ajuda.link('aj-armadilhas', 'O que significam as etiquetas?')}`;
   return { html, menu: dadosDoMenu(alertas, d), titulo: per ? per.longo : 'Mudanças' };

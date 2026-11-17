@@ -279,14 +279,20 @@ function grande(w, r, cfg) {
   const per = rotuloPeriodo(c, r.agora);
   const nMud = c.mudancas ? c.mudancas.length : null;
 
+  // v6.3: "Alertas" mostra só como o item é (projected, demanda, tendência,
+  // RAP longe do value). Quedas de preço ficam só em "Mudanças".
+  const alertas = r.riscos
+    .map((x) => ({ item: x.item, motivos: x.motivos.filter((m) => !m.queda) }))
+    .filter((x) => x.motivos.length);
+
   if (livres < 2) {
-    const resumo = 'Alertas ' + r.riscos.length + ' · Mudanças ' + per + ' ' + (nMud == null ? '—' : nMud);
-    texto(w, resumo, Font.systemFont(11), r.riscos.length ? CORES.warn : CORES.apagado);
+    const resumo = 'Alertas ' + alertas.length + ' · Mudanças ' + per + ' ' + (nMud == null ? '—' : nMud);
+    texto(w, resumo, Font.systemFont(11), alertas.length ? CORES.warn : CORES.apagado);
   } else {
     const maxLinhas = Math.min(3, Math.floor(livres / 2) + 1);
-    rotulo(w, 'Alertas ' + r.riscos.length);
-    if (!r.riscos.length) texto(w, 'Nenhum item em risco', Font.systemFont(11), CORES.apagado);
-    for (const x of r.riscos.slice(0, maxLinhas)) {
+    rotulo(w, 'Alertas ' + alertas.length);
+    if (!alertas.length) texto(w, 'Nenhum alerta', Font.systemFont(11), CORES.apagado);
+    for (const x of alertas.slice(0, maxLinhas)) {
       texto(w, x.item.nome + ': ' + x.motivos.map((m) => m.texto).join(', '), Font.systemFont(11), CORES.warn, 0.8);
     }
     w.addSpacer(6);

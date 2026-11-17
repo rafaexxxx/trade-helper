@@ -160,7 +160,10 @@ function encontrarRiscos(itens, anterior, cfg) {
   const lista = [];
   for (const i of itens) {
     const motivos = [];
-    if (i.projected) motivos.push({ texto: 'projected', grav: 'alta' });
+    // v6.3: "pilula" = alerta que não aparece em nenhum outro lugar da linha do
+    // Inventário (vira etiqueta). "queda" = variação de preço: já aparece na seta e
+    // nas Mudanças, então não entra nas listas de Alertas. Todos contam como risco.
+    if (i.projected) motivos.push({ texto: 'projected', grav: 'alta', pilula: true });
     if (i.demanda === 0) motivos.push({ texto: 'demanda terrível', grav: 'alta' });
     else if (i.demanda === 1) motivos.push({ texto: 'demanda baixa', grav: 'media' });
     if (i.tendencia === 0) motivos.push({ texto: 'tendência de queda', grav: 'media' });
@@ -171,18 +174,18 @@ function encontrarRiscos(itens, anterior, cfg) {
       // repetiria a queda do RAP logo abaixo. Nesse caso só o RAP conta.
       const dv = i.value != null ? pct(p.valorEfetivo, i.valorEfetivo) : null;
       if (dv != null && dv <= -cfg.LIMITE_MUDANCA_PCT) {
-        motivos.push({ texto: 'value caiu ' + fmtPct(-dv), curto: 'Value ▼' + fmtPct(-dv), grav: 'media', queda: true });
+        motivos.push({ texto: 'value caiu ' + fmtPct(-dv), grav: 'media', queda: true });
       }
       const dr = pct(p.rap, i.rap);
       if (dr != null && dr <= -cfg.LIMITE_MUDANCA_PCT) {
-        motivos.push({ texto: 'RAP caiu ' + fmtPct(-dr), curto: 'RAP ▼' + fmtPct(-dr), grav: 'media', queda: true });
+        motivos.push({ texto: 'RAP caiu ' + fmtPct(-dr), grav: 'media', queda: true });
       }
     }
 
     if (i.value != null && i.value > 0) {
       const d = pct(i.value, i.rap);
       if (Math.abs(d) >= cfg.LIMITE_RAP_VALUE_PCT) {
-        motivos.push({ texto: 'RAP ' + fmtPct(Math.abs(d)) + (d > 0 ? ' acima' : ' abaixo') + ' do value', grav: 'baixa' });
+        motivos.push({ texto: 'RAP ' + fmtPct(Math.abs(d)) + (d > 0 ? ' acima' : ' abaixo') + ' do value', grav: 'baixa', pilula: true });
       }
     }
     if (motivos.length) lista.push({ item: i, motivos });
