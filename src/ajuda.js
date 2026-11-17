@@ -7,6 +7,7 @@
 // As miniaturas reais vêm pela ponte de miniaturas do avaliador (quando existe);
 // sem ela, ficam as iniciais do item.
 const a = require('analise');
+const temas = require('temas');
 
 // Itens de exemplo (nomes reais do catálogo; valores inventados).
 const IT = {
@@ -426,6 +427,8 @@ function capitulo4(cfg) {
 
   <h3 id="aj-temas">Temas</h3>
   <p>Menu ⋯ &gt; Temas. O toque aplica na hora e fica salvo neste iPhone. Sem tema escolhido, o painel segue o claro ou escuro do iPhone.</p>
+  <p>São três grupos. <b>Clássicos</b> e <b>Estéticos</b> mudam as cores e o fundo. Os <b>Temáticos</b> (Abissal, Noir, Obsidiana, Veludo, Acid e Fita Perdida) mudam também a forma dos botões e cartões, têm fundo animado e cada um reage ao toque de um jeito.</p>
+  <p>A <b>Fita Perdida</b> tem sustos de vez em quando. Com ela escolhida, aparece na tela de Temas o interruptor <b>Sustos da Fita Perdida</b>: desligado, fica só a imagem de fita velha. Se o iPhone estiver com <b>Reduzir movimento</b> ligado (Ajustes &gt; Acessibilidade &gt; Movimento), as animações dos temas ficam paradas.</p>
 
   <h3 id="aj-widget">Widget</h3>
   <p>Há os tamanhos pequeno, médio e grande, com o value total e os seus maiores itens. O widget pede para atualizar a cada ${cfg.WIDGET_ATUALIZAR_MIN} min, mas quem decide a hora é o iOS. Ele usa sempre o tema OLED (fundo preto), seja qual for o tema do painel. Item em hold aparece com a etiqueta amarela <b>HOLD</b>, e a contagem mostra quantos estão travados (ex.: "3 hold"). O widget não sabe quando o hold acaba, só se o item está travado.</p>
@@ -546,7 +549,7 @@ function secao(cfg) {
     ['aj-faq', '?', 'Perguntas rápidas', 'Toque para abrir a resposta'],
   ];
   return `<div id="aj-tela" class="aj-tela oculto" role="dialog" aria-modal="true" aria-label="Ajuda">
-<div class="ceu" aria-hidden="true"><i></i><b></b></div>
+${temas.ceu()}
 <div class="aj-barra"><h1>Ajuda</h1><button type="button" class="aj-fechar" id="aj-fechar">Fechar</button></div>
 <div class="aj-corpo">
   <p class="aj-lead" id="aj-indice">Um guia para quem nunca fez trade. Leia na ordem da primeira vez; depois use as perguntas rápidas no fim.</p>

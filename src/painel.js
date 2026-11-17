@@ -107,8 +107,10 @@ async function executar(ctx) {
     // A conta 2 salva continua (o TROCAR_USERNAME do loader não a apaga).
     const conta2Antes = ajustes.conta2 || null;
     const temaAntes = ajustes.tema || null;
+    const sustosAntes = ajustes.sustos;
     ajustes = { username: await pedirUsername(ajustes.username) };
     if (temaAntes) ajustes.tema = temaAntes;
+    if (sustosAntes === false) ajustes.sustos = false;
     const u2 = await pedirConta2(conta2Antes ? conta2Antes.username : '');
     if (u2 && USERNAME_VALIDO.test(u2) && !mesmoNome(u2, ajustes.username)) {
       ajustes.conta2 = conta2Antes && conta2Antes.username === u2 ? conta2Antes : { username: u2 };
@@ -166,6 +168,8 @@ async function executar(ctx) {
     conta2: ajustes.conta2 ? { nome: ajustes.conta2.nomeReal || ajustes.conta2.username } : null,
     // v5.3.1: tema escolhido no menu ⋯ (gravado no arquivo de ajustes).
     tema: html.temaValido(ajustes.tema) ? ajustes.tema : null,
+    // v6.4: sustos da Fita Perdida (ligados, a não ser que o usuário desligue).
+    sustos: ajustes.sustos !== false,
     itens,
     fonte,
     totais,
@@ -182,7 +186,7 @@ async function executar(ctx) {
       versao: ctx.versao,
       commit: String(ctx.sha || '').slice(0, 7),
       loader: ctx.loaderVersao,
-      tema: ajustes.tema || 'segue o iPhone',
+      tema: (ajustes.tema || 'segue o iPhone') + (ajustes.sustos === false ? ' (sustos desligados)' : ''),
       usuario: dados.usuario,
       fonteItens: fonte,
       origem: dados.origem,
@@ -425,6 +429,21 @@ async function executar(ctx) {
     });
   }
 
+  // v6.4: ponte dos sustos da Fita Perdida: PONTE + 'sustos?v=0|1' grava no arquivo de ajustes.
+  function atenderSustos(url) {
+    const m = /[?&]v=([01])/.exec(url);
+    if (!m) return;
+    filaPonte = filaPonte.then(() => {
+      try {
+        if (m[1] === '0') ajustes.sustos = false;
+        else delete ajustes.sustos;
+        store.gravar('ajustes', ajustes);
+      } catch (e) {
+        // sem gravar: a escolha vale só até fechar o app
+      }
+    });
+  }
+
   // v6.1: ponte do diário: PONTE + 'diario?acao=sim|nao|apagar&id=<n>&r=<robux>'.
   // Grava no arquivo do diário e devolve o estado salvo para a página.
   function atenderDiario(url) {
@@ -462,6 +481,10 @@ async function executar(ctx) {
     }
     if (url.indexOf(avaliador.PONTE + 'tema') === 0) {
       atenderTema(url);
+      return false;
+    }
+    if (url.indexOf(avaliador.PONTE + 'sustos') === 0) {
+      atenderSustos(url);
       return false;
     }
     if (url.indexOf(avaliador.PONTE + 'anuncios') === 0) {
