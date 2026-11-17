@@ -278,7 +278,8 @@ function capitulo2(cfg) {
     <li><b>Seu downgrade</b> (tag upgrade): você dá <b>1 item só</b> e pede pelo menos ${minMedios} itens médios dele, mirando ganhar perto de ${pct(downAlvo)}.</li>
     <li><b>Seu upgrade</b> (tag downgrade): você dá vários itens (de 2 a ${max}) por <b>1 item só</b> dele, pagando perto de ${pct(upAlvo)} a mais.</li>
     <li><b>Adds</b>: itens de até ${num(addMax)} de value (ovos e itens pequenos). No seu downgrade entram no máximo ${addsMax}, e só como complemento: os itens médios sozinhos já têm que fechar a conta.</li>
-    <li><b>Tag any</b>: mesmo número de itens dos dois lados, com tudo o que ele oferece.</li>
+    <li><b>Tag any</b> (sidegrade): o app não sugere, porque quase ninguém aceita. Um anúncio que só tem essa tag fica de fora.</li>
+    <li>A sugestão nunca põe o mesmo item dos dois lados.</li>
   </ul>
   <span class="aj-exemplo">Exemplo · o mesmo upgrade, num anúncio aberto</span>
   <div class="an-grupo aj-grupo">

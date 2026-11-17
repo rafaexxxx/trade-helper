@@ -99,7 +99,7 @@ O que entra na lista:
 | **Pede seus itens** | Ele pede itens que você tem (todos, em cópias sem hold) e o veredito é **"Vale a pena"** ou melhor | Os itens pedidos |
 | **Tag upgrade** (do dono) = **seu downgrade** | Ele dá mais itens e quer receber menos | **1 item seu só**, pedindo **uma parte** da oferta dele: pelo menos **2 itens médios** + no máximo **2 adds**, ganhando de **+5% a +12%** (mira +9%) |
 | **Tag downgrade** (do dono) = **seu upgrade** | Ele dá menos itens (geralmente 1 maior) | **De 2 a 4 itens seus** por **1 item só** dele, pagando **até 9%** a mais (mira 5%, o menor overpay que ele deve aceitar) |
-| **Tag any** | Ele aceita qualquer item | Uma combinação com o **mesmo número de itens** (oferta inteira), diferença de **±3%** |
+| **Tag any** | Ele aceita qualquer item | **Nada** (v6.6): sidegrade não é sugerido, porque quase ninguém aceita. Anúncio só com "any" fica de fora |
 
 - As tags do Rolimon's são do ponto de vista do **dono do anúncio**; o app traduz para o seu lado.
 - **Adds** (v6.6) = itens de value até **500** (ovos e itens pequenos). No seu downgrade, os itens médios sozinhos já têm que ganhar pelo menos +5%; os adds só complementam. Do seu lado, no seu upgrade, não há limite de adds.
@@ -173,7 +173,6 @@ Ficam em [`src/config.js`](src/config.js):
 | `ANUNCIO_ADD_MAX_VALUE` | 500 | Até esse value, o item conta como add (ovos e itens pequenos) |
 | `ANUNCIO_ADDS_MAX` | 2 | Quantos adds você aceita receber no seu downgrade |
 | `ANUNCIO_SEU_DOWNGRADE_MIN_MEDIOS` | 2 | Mínimo de itens médios que você recebe no seu downgrade |
-| `ANUNCIO_ANY_PCT` | 3 | Diferença máxima (±%) na tag any |
 | `ANUNCIO_COMBINACAO_MAX_ITENS` | 25 | Quantos dos seus itens entram na busca de combinações |
 | `ANUNCIOS_MAX_NA_LISTA` | 40 | Linhas mostradas na lista de anúncios |
 | `NOTIFICACOES_LIGADAS` | true | Liga/desliga as notificações do widget |

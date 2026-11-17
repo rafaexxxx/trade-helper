@@ -99,8 +99,7 @@ module.exports = {
   ANUNCIO_ADD_MAX_VALUE: 500,
   ANUNCIO_ADDS_MAX: 2,
   ANUNCIO_SEU_DOWNGRADE_MIN_MEDIOS: 2,
-  // Tag "any": mesmo número de itens, diferença de até ±X%.
-  ANUNCIO_ANY_PCT: 3,
+  // Tag "any" (sidegrade): v6.6, não gera sugestão (quase ninguém aceita).
   // Quantos dos seus itens entram na busca de combinações (mais = mais lento).
   ANUNCIO_COMBINACAO_MAX_ITENS: 25,
   // Quantos cartões cada bloco da aba mostra.

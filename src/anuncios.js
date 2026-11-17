@@ -167,7 +167,6 @@ function parametros(cfg, meuId) {
     downMin: cfg.ANUNCIO_SEU_DOWNGRADE_MIN_PCT,
     downMax: cfg.ANUNCIO_SEU_DOWNGRADE_MAX_PCT,
     downAlvo: cfg.ANUNCIO_SEU_DOWNGRADE_ALVO_PCT,
-    any: cfg.ANUNCIO_ANY_PCT,
     // v6.6: forma da sugestão (o padrão vale se o config.js for antigo).
     addMax: cfg.ANUNCIO_ADD_MAX_VALUE != null ? cfg.ANUNCIO_ADD_MAX_VALUE : 500,
     addsMax: cfg.ANUNCIO_ADDS_MAX != null ? cfg.ANUNCIO_ADDS_MAX : 2,
@@ -211,7 +210,7 @@ function folha() {
     '<div id="an-fundo" class="fundo oculto"></div>' +
     '<div id="an-folha" class="an-fl oculto">' +
     '<div class="an-fl-topo"><b>Um item seu</b><button type="button" id="an-fechar">Fechar</button></div>' +
-    '<p class="an-fl-info">Mostra só os anúncios em que esse item entra no seu lado (Dou). Nos de upgrade, downgrade e any, a sugestão é refeita com ele.</p>' +
+    '<p class="an-fl-info">Mostra só os anúncios em que esse item entra no seu lado (Dou). Nos de upgrade e downgrade, a sugestão é refeita com ele.</p>' +
     '<div class="an-fl-lista" id="an-fl-lista"></div>' +
     '</div>'
   );
@@ -367,12 +366,12 @@ function criarAnalisador(D, P, PA) {
 
   // Melhor combinação dos seus itens para receber T (value base da oferta):
   // de minQ a maxQ itens, ganho entre lo% e hi%, o mais perto de alvo%.
-  // Empate: a com menos itens. proibidos = assetIds que você recebe: uma
-  // combinação com algum deles só vale se o ganho não for negativo (#4).
+  // Empate: a com menos itens. proibidos = assetIds que você recebe: v6.6, nunca
+  // entram no seu lado (o mesmo item dos dois lados não é sugerido).
   // fixo = assetId que entra sempre (filtro "Um item seu").
   // Resultados guardados (ofertas repetidas são comuns).
   function melhorCombinacao(T, minQ, maxQ, lo, hi, alvo, proibidos, fixo) {
-    var chave = [Math.round(T), minQ, maxQ, lo, hi, alvo, lo < 0 ? Object.keys(proibidos).sort().join(',') : '', fixo || ''].join('|');
+    var chave = [Math.round(T), minQ, maxQ, lo, hi, alvo, Object.keys(proibidos).sort().join(','), fixo || ''].join('|');
     if (!(chave in memoCombinacao)) memoCombinacao[chave] = calcularCombinacao(T, minQ, maxQ, lo, hi, alvo, proibidos, fixo);
     return memoCombinacao[chave];
   }
@@ -387,7 +386,7 @@ function criarAnalisador(D, P, PA) {
     var f = null;
     if (fixo) {
       f = (A.porAsset[fixo] || [])[0];
-      if (!f || !(f.vb > 0) || f.vb > sMax) return null;
+      if (!f || !(f.vb > 0) || f.vb > sMax || proibidos[f.id]) return null;
       escolha.push(f);
       soma0 = f.vb;
     }
@@ -395,18 +394,13 @@ function criarAnalisador(D, P, PA) {
     var ordenados = A.meusOrdenados;
     for (var k = 0; k < ordenados.length && pool.length < PA.pool; k++) {
       var x = ordenados[k];
-      if (x === f) continue;
+      if (x === f || proibidos[x.id]) continue;
       if (x.vb > 0 && soma0 + x.vb <= sMax) pool.push(x);
     }
     var melhor = null;
-    function temProibido() {
-      for (var j = 0; j < escolha.length; j++) if (proibidos[escolha[j].id]) return true;
-      return false;
-    }
     function testar(soma) {
       if (escolha.length < minQ || soma < sMin) return;
       var p = ((T - soma) / soma) * 100;
-      if (p < 0 && temProibido()) return;
       var nota = Math.abs(p - alvo);
       if (!melhor || nota < melhor.nota - 1e-9 || (Math.abs(nota - melhor.nota) < 1e-9 && escolha.length < melhor.itens.length)) {
         melhor = { nota: nota, pct: p, itens: escolha.slice() };
@@ -439,6 +433,7 @@ function criarAnalisador(D, P, PA) {
     var j;
     for (m = 1; m < (1 << n); m++) {
       var itens = [];
+      var ids = {};
       var soma = 0;
       var nucleo = 0;
       var medios = 0;
@@ -449,11 +444,12 @@ function criarAnalisador(D, P, PA) {
         var vb = valorEfetivo(rec[j]);
         if (!(vb > 0)) { ok = false; break; }
         itens.push(rec[j]);
+        ids[rec[j].id] = true;
         soma += vb;
         if (vb > PA.addMax) { medios++; nucleo += vb; } else adds++;
       }
       if (!ok || medios < PA.minMedios || adds > PA.addsMax || itens.length > P.maxItens) continue;
-      ofertas.push({ itens: itens, soma: soma, nucleo: nucleo });
+      ofertas.push({ itens: itens, ids: ids, soma: soma, nucleo: nucleo });
     }
     if (!ofertas.length) return null;
     var dar = fixo ? (A.porAsset[fixo] || []).slice(0, 1) : A.meusOrdenados;
@@ -466,6 +462,8 @@ function criarAnalisador(D, P, PA) {
         var pN = ((o.nucleo - x.vb) / x.vb) * 100;
         var p = ((o.soma - x.vb) / x.vb) * 100;
         if (pN < PA.downMin || p > PA.downMax) continue;
+        // v6.6: o mesmo item nunca vai dos dois lados numa sugestão.
+        if (o.ids[x.id]) continue;
         var nota = Math.abs(p - PA.downAlvo);
         var qtd = o.itens.length + 1;
         if (!melhor || nota < melhor.nota - 1e-9 || (Math.abs(nota - melhor.nota) < 1e-9 && qtd < melhor.qtd)) {
@@ -559,17 +557,18 @@ function criarAnalisador(D, P, PA) {
     if (!tags.length) return { descarte: 'não pede nada' };
     var querUp = tags.indexOf('upgrade') >= 0;
     var querDown = tags.indexOf('downgrade') >= 0;
-    var querAny = tags.indexOf('any') >= 0;
-    if (!querUp && !querDown && !querAny) return { descarte: 'pede só outras tags' };
+    // v6.6: a tag "any" (sidegrade) não gera sugestão: quase ninguém aceita.
+    if (!querUp && !querDown) {
+      return { descarte: tags.indexOf('any') >= 0 ? 'pede só any (sidegrade não é sugerido)' : 'pede só outras tags' };
+    }
     var kq = rec.length;
     if (!kq) return { descarte: 'oferta só de Robux' };
     // A tag é do ponto de vista do DONO:
     // "upgrade" = ele dá mais itens = SEU DOWNGRADE: você dá 1 item e pede uma parte
     //   da oferta (ganha a mais, sem pesar a mão);
     // "downgrade" = ele dá menos itens = SEU UPGRADE: você pede 1 item dele e dá
-    //   vários (paga o menor overpay que ele deve aceitar);
-    // "any" = mesmo número de itens, com a oferta inteira.
-    // v6.6: nos dois primeiros, os Robux do dono ficam de fora (pede só itens).
+    //   vários (paga o menor overpay que ele deve aceitar).
+    // v6.6: os Robux do dono ficam de fora (a sugestão pede só itens).
     var opcoes = [];
     var s;
     if (querUp) {
@@ -580,17 +579,11 @@ function criarAnalisador(D, P, PA) {
       s = melhorUpgrade(rec, fixo);
       opcoes.push({ tag: 'downgrade', dou: s && s.dou, rec: s && s.rec, robux: 0 });
     }
-    if (querAny) {
-      var proibidos = {};
-      rec.forEach(function (i) { proibidos[i.id] = true; });
-      s = melhorCombinacao(tr.value, kq, kq, -PA.any, PA.any, PA.any, proibidos, fixo);
-      opcoes.push({ tag: 'any', dou: s && s.itens, rec: rec, robux: ad[5] });
-    }
     // Entre as tags aceitas, fica a opção de melhor veredito (empate: maior ganho).
     var melhor = null;
     opcoes.forEach(function (o) {
       if (!o.dou) return;
-      o.tr = o.rec === rec ? tr : somarLado(o.rec, o.robux, true, P);
+      o.tr = somarLado(o.rec, o.robux, true, P);
       o.td = somarLado(o.dou, 0, false, P);
       o.tipo = tipoTrocaLados(o.td, o.tr);
       o.v = calcularVeredito(o.dou, o.rec, o.td, o.tr, o.tipo, o.robux, P);
@@ -618,11 +611,9 @@ function criarAnalisador(D, P, PA) {
     var nota;
     if (melhor.tag === 'upgrade') {
       nota = 'Ele quer upgrade, então para você é downgrade: você dá 1 item e ' + pede + '.' + semRobux;
-    } else if (melhor.tag === 'downgrade') {
+    } else {
       nota = 'Ele quer downgrade, então para você é upgrade: você dá ' + dou2.length + ' itens e ' + pede +
         (p < 0 ? ', pagando perto do menor overpay que ele deve aceitar.' : ', sem pagar nada a mais.') + semRobux;
-    } else {
-      nota = 'Ele aceita qualquer item: combinação com o mesmo número de itens.';
     }
     return {
       modo: 'tag', tag: melhor.tag, ad: ad, dou: dou2, rec: rec2, robux: melhor.robux, td: td, tr: melhor.tr, tipo: tipo, v: v, pct: p,
