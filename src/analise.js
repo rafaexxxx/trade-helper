@@ -167,7 +167,9 @@ function encontrarRiscos(itens, anterior, cfg) {
 
     const p = prev[i.uaid];
     if (p) {
-      const dv = pct(p.valorEfetivo, i.valorEfetivo);
+      // v6.2.5: item sem value usa o RAP como valor efetivo; comparar o "value"
+      // repetiria a queda do RAP logo abaixo. Nesse caso só o RAP conta.
+      const dv = i.value != null ? pct(p.valorEfetivo, i.valorEfetivo) : null;
       if (dv != null && dv <= -cfg.LIMITE_MUDANCA_PCT) {
         motivos.push({ texto: 'value caiu ' + fmtPct(-dv), grav: 'media', queda: true });
       }
@@ -197,7 +199,8 @@ function encontrarMudancas(itens, anterior, cfg) {
     const p = anterior.itens[i.uaid];
     if (!p) continue;
     const m = [];
-    const dv = pct(p.valorEfetivo, i.valorEfetivo);
+    // v6.2.5: sem value, a linha "Value" repetiria a do RAP.
+    const dv = i.value != null ? pct(p.valorEfetivo, i.valorEfetivo) : null;
     if (dv != null && Math.abs(dv) >= lim) {
       m.push({ texto: 'Value ' + fmtNum(p.valorEfetivo) + ' → ' + fmtNum(i.valorEfetivo) + ' (' + fmtPctSinal(dv) + ')', dir: dv > 0 ? 'sobe' : 'desce',
         campo: 'value', antes: p.valorEfetivo, depois: i.valorEfetivo, pct: dv });
