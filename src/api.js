@@ -216,6 +216,41 @@ async function buscarAnunciosRecentes() {
   return { lista, resto: JSON.stringify(resto).slice(0, 200) };
 }
 
+// v6.7: vendas de um item (Roblox resale-data): soma das vendas dos últimos
+// `dias` dias, dividida por `dias`. UMA tentativa só (sem esperar e repetir):
+// quem chama decide parar a rodada num 429. Erro traz .status.
+// Formato esperado: { volumeDataPoints: [{ value, date }], priceDataPoints: [...] }.
+async function buscarVendasPorDia(assetId, dias) {
+  const url = 'https://economy.roblox.com/v1/assets/' + encodeURIComponent(assetId) + '/resale-data';
+  const r = new Request(url);
+  r.timeoutInterval = 15;
+  r.headers = { Accept: 'application/json' };
+  let texto;
+  try {
+    texto = await r.loadString();
+  } catch (e) {
+    throw erroApi('Falha de rede: ' + (e.message || e), 0, '', url);
+  }
+  const status = r.response ? r.response.statusCode : 0;
+  if (status !== 200) throw erroApi('HTTP ' + status + (status === 429 ? ' (muitas requisições)' : ''), status, texto, url);
+  let j;
+  try {
+    j = JSON.parse(texto);
+  } catch (e) {
+    throw erroApi('A resposta não veio em JSON', status, texto, url);
+  }
+  const pontos = j && Array.isArray(j.volumeDataPoints) ? j.volumeDataPoints : null;
+  if (!pontos) throw erroApi('Resposta sem volumeDataPoints', status, texto, url);
+  const desde = Date.now() - dias * 86400000;
+  let soma = 0;
+  for (const p of pontos) {
+    const t = p ? Date.parse(p.date) : NaN;
+    const v = p ? Number(p.value) : NaN;
+    if (t >= desde && v > 0) soma += v;
+  }
+  return Math.round((soma / dias) * 100) / 100;
+}
+
 // Descobre o id do username (users.roblox.com) só quando o username muda.
 // conta = { username, userId, nomeReal, userIdDe }. Retorna true se mudou algo
 // (quem chama grava os ajustes).
@@ -297,4 +332,4 @@ async function carregarTudo(store, ajustes) {
   };
 }
 
-module.exports = { carregarTudo, garantirId, carregarJogador, buscarMiniaturas, miniaturasEmCache, buscarAnunciosRecentes };
+module.exports = { carregarTudo, garantirId, carregarJogador, buscarMiniaturas, miniaturasEmCache, buscarAnunciosRecentes, buscarVendasPorDia };

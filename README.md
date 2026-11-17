@@ -103,6 +103,7 @@ O que entra na lista:
 
 - As tags do Rolimon's são do ponto de vista do **dono do anúncio**; o app traduz para o seu lado.
 - **Adds** (v6.6) = itens de value até **500** (ovos e itens pequenos). No seu downgrade, os itens médios sozinhos já têm que ganhar pelo menos +5%; os adds só complementam. Do seu lado, no seu upgrade, não há limite de adds.
+- **Vendas por dia** (v6.7): um item **médio** que você recebe (value de 500 até **10.000**) só entra na sugestão se vender **pelo menos 1 vez por dia** (média de 30 dias, dado do Roblox `resale-data`, guardado por 24h). Item sem o dado ainda fica de fora; acima de 10.000 a regra não vale. Se a busca falhar em todos os itens (ex.: o Roblox pedir login), a regra desliga sozinha e o **Diagnóstico** mostra o motivo. No cartão aberto, as vendas por dia aparecem embaixo do nome do item.
 - Entre várias trades possíveis, fica a mais perto do alvo (empate: menos itens). Quando a sugestão pede só uma parte da oferta, os **Robux** do dono ficam de fora.
 - Ficam de fora anúncios que oferecem item **projected**, com **demanda terrível**, com o **RAP subindo mais de 15% em 24h** ou fora do catálogo do Rolimon's, além dos seus próprios anúncios.
 - **Mesmo item dos dois lados**: só aparece se você não perder value.
@@ -173,6 +174,11 @@ Ficam em [`src/config.js`](src/config.js):
 | `ANUNCIO_ADD_MAX_VALUE` | 500 | Até esse value, o item conta como add (ovos e itens pequenos) |
 | `ANUNCIO_ADDS_MAX` | 2 | Quantos adds você aceita receber no seu downgrade |
 | `ANUNCIO_SEU_DOWNGRADE_MIN_MEDIOS` | 2 | Mínimo de itens médios que você recebe no seu downgrade |
+| `ANUNCIO_VENDAS_MIN_DIA` | 1 | Mínimo de vendas por dia de um item médio que você recebe |
+| `ANUNCIO_VENDAS_ATE_VALUE` | 10000 | Acima desse value, a regra de vendas não vale |
+| `ANUNCIO_VENDAS_DIAS` | 30 | Período (dias) da média de vendas |
+| `ANUNCIO_VENDAS_CACHE_H` | 24 | Por quantas horas o número de vendas fica guardado |
+| `ANUNCIO_VENDAS_MAX_BUSCAS` / `PARALELAS` | 40 / 5 | Consultas de vendas por abertura da aba e quantas de cada vez |
 | `ANUNCIO_COMBINACAO_MAX_ITENS` | 25 | Quantos dos seus itens entram na busca de combinações |
 | `ANUNCIOS_MAX_NA_LISTA` | 40 | Linhas mostradas na lista de anúncios |
 | `NOTIFICACOES_LIGADAS` | true | Liga/desliga as notificações do widget |

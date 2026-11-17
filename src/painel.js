@@ -321,6 +321,12 @@ async function executar(ctx) {
       } catch (e) {
         res = { lista: [], origem: 'falhou', erro: e.message || String(e) };
       }
+      // v6.7: vendas por dia dos itens médios oferecidos (com cache de 24h).
+      try {
+        res.vendas = await anuncios.carregarVendas(store, cfg, res.lista, dados.rolimons);
+      } catch (e) {
+        res.vendas = { porId: {}, ativo: false, guardados: 0, erroGeral: e.message || String(e) };
+      }
       try {
         await wv.evaluateJavaScript('window.receberAnuncios && window.receberAnuncios(' + avaliador.serializar(res) + ')', false);
       } catch (e) {
