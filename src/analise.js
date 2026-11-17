@@ -171,11 +171,11 @@ function encontrarRiscos(itens, anterior, cfg) {
       // repetiria a queda do RAP logo abaixo. Nesse caso só o RAP conta.
       const dv = i.value != null ? pct(p.valorEfetivo, i.valorEfetivo) : null;
       if (dv != null && dv <= -cfg.LIMITE_MUDANCA_PCT) {
-        motivos.push({ texto: 'value caiu ' + fmtPct(-dv), grav: 'media', queda: true });
+        motivos.push({ texto: 'value caiu ' + fmtPct(-dv), curto: 'Value ▼' + fmtPct(-dv), grav: 'media', queda: true });
       }
       const dr = pct(p.rap, i.rap);
       if (dr != null && dr <= -cfg.LIMITE_MUDANCA_PCT) {
-        motivos.push({ texto: 'RAP caiu ' + fmtPct(-dr), grav: 'media', queda: true });
+        motivos.push({ texto: 'RAP caiu ' + fmtPct(-dr), curto: 'RAP ▼' + fmtPct(-dr), grav: 'media', queda: true });
       }
     }
 

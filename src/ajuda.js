@@ -324,8 +324,8 @@ function capitulo3(cfg) {
 
   <h3 id="aj-armadilhas">As armadilhas</h3>
   <span class="aj-exemplo">Exemplo · etiqueta de alerta no Inventário</span>
-  <div class="grupo aj-grupo"><div class="item"><span class="thumb aj-mini">?</span><div class="item-txt"><span class="nome">Item de exemplo</span><span class="det"><span class="tag neg">Projected +1</span><span><span class="warn">Baixa</span> · <span class="neg">Caindo</span></span></span></div><div class="item-num"><span class="v">3.100</span><span class="r"><small class="seta pos">▲ 22,0%</small><small>RAP</small>5.800</span></div></div></div>
-  <p class="aj-legenda">A etiqueta mostra o alerta mais grave; "+1" quer dizer que há mais um. Toque no item para ver todos.</p>
+  <div class="grupo aj-grupo"><div class="item"><span class="thumb aj-mini">?</span><div class="item-txt"><span class="nome">Item de exemplo</span><span class="det"><span class="tags"><span class="tag neg">Projected</span><span class="tag warn">Value ▼8,0%</span></span><span><span class="warn">Baixa</span> · <span class="neg">Caindo</span></span></span></div><div class="item-num"><span class="v">3.100</span><span class="r"><small class="seta pos">▲ 22,0%</small><small>RAP</small>5.800</span></div></div></div>
+  <p class="aj-legenda">Cada alerta vira uma pílula, do mais grave (vermelho) para o mais leve. "Value ▼8,0%" quer dizer que o value caiu 8% desde a consulta de ~24h atrás. Toque no item para ver os detalhes.</p>
   <dl class="aj-armas">
     <div><dt><span class="tag neg">Projected</span></dt><dd>O RAP foi inflado de propósito (gente vendendo caro entre si). Nunca aceite pelo RAP. Anúncios que oferecem item projected nem aparecem.</dd></div>
     <div><dt><span class="tag warn">Hyped</span></dt><dd>Subida passageira por moda. O preço pode cair quando a moda passar.</dd></div>

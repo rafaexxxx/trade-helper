@@ -74,12 +74,14 @@ function alertasPorUaid(riscos, per) {
   return m;
 }
 
-// Etiqueta da linha: o pior alerta e "+N" para os outros (todos aparecem no menu do item).
+// v6.2.6: uma pílula curta para cada alerta, do mais grave para o mais leve
+// (antes era só o pior com "+N"). As quedas usam o texto curto ("RAP ▼9,4%");
+// o texto completo, com o período, continua no menu do item.
 function etiqueta(motivos) {
   if (!motivos || !motivos.length) return '';
-  const pior = motivos[0];
-  const mais = motivos.length > 1 ? ' +' + (motivos.length - 1) : '';
-  return '<span class="tag ' + COR_GRAVIDADE[pior.grav] + '">' + esc(maiuscula(pior.texto)) + mais + '</span>';
+  return '<span class="tags">' + motivos
+    .map((x) => '<span class="tag ' + COR_GRAVIDADE[x.grav] + '">' + esc(x.curto || maiuscula(x.texto)) + '</span>')
+    .join('') + '</span>';
 }
 
 // Variação % do value e do RAP do item contra o retrato base (24h).
@@ -492,6 +494,7 @@ input[type=search]::placeholder{color:var(--sub)}
 .tag.warn{background:var(--warn-bg);color:var(--warn)}
 .tag.sub{background:var(--card2);color:var(--sub)}
 .det .tag{white-space:normal;max-width:100%;border-radius:10px}
+.det .tags{display:flex;flex-wrap:wrap;gap:4px;max-width:100%}
 .item-num small.seta{font-weight:700}
 .item-num small.seta.pos{color:var(--pos)}
 .item-num small.seta.neg{color:var(--neg)}
