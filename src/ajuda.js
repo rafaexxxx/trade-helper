@@ -427,7 +427,7 @@ function capitulo4(cfg) {
 
   <h3 id="aj-temas">Temas</h3>
   <p>Menu ⋯ &gt; Temas. O toque aplica na hora e fica salvo neste iPhone. Sem tema escolhido, o painel segue o claro ou escuro do iPhone.</p>
-  <p>São três grupos. <b>Clássicos</b> e <b>Estéticos</b> mudam as cores e o fundo. Os <b>Temáticos</b> (Abissal, Noir, Obsidiana, Veludo, Acid e Fita Perdida) mudam também a forma dos botões e cartões, têm fundo animado e cada um reage ao toque de um jeito.</p>
+  <p>São três grupos: <b>Clássicos</b>, <b>Estéticos</b> e <b>Temáticos</b>. Cada tema tem cores próprias, a forma dos botões e cartões, um fundo animado e um jeito de reagir ao toque (no Azul sai uma ondinha, nos Gatinhos aparece uma patinha). Sem tema escolhido, o painel usa o Azul ou o Dark simples, seguindo o iPhone.</p>
   <p>A <b>Fita Perdida</b> tem sustos de vez em quando. Com ela escolhida, aparece na tela de Temas o interruptor <b>Sustos da Fita Perdida</b>: desligado, fica só a imagem de fita velha. Se o iPhone estiver com <b>Reduzir movimento</b> ligado (Ajustes &gt; Acessibilidade &gt; Movimento), as animações dos temas ficam paradas.</p>
 
   <h3 id="aj-widget">Widget</h3>
