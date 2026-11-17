@@ -418,6 +418,7 @@ function capitulo4(cfg) {
     <li><b>O que aparece:</b> anúncios recentes do Rolimon's com vantagem para você. Os que pedem itens seus entram a partir de "Vale a pena". Os que só pedem uma tag ganham uma sugestão montada com os seus itens.</li>
     <li><b>O que fica de fora:</b> ofertas com item projected, com demanda terrível ou com o RAP subindo mais de ${pct(cfg.ALERTA_RAP_24H_PCT)} em 24h. Seus itens em hold não entram. Trade com o mesmo item dos dois lados só aparece se você não perder value.</li>
     <li><b>Filtro "Um item seu":</b> mostra só os anúncios em que esse item vai no seu lado.</li>
+    <li><b>Todos, Seu upgrade, Seu downgrade:</b> a forma da trade do seu lado. Seu upgrade: você dá vários itens e recebe 1. Seu downgrade: você dá 1 e recebe 2 ou 3. Vale para anúncios que pedem seus itens e para as sugestões; sidegrade e "por Robux" só aparecem em Todos. Se o anúncio aceita as duas formas, cada filtro monta a sugestão daquela forma, e por isso os números podem somar mais que Todos.</li>
     <li><b>Ordem:</b> maior ganho, mais recentes ou maior value recebido.</li>
     <li><b>Atualizar:</b> os anúncios são buscados ao abrir a aba, no máximo a cada ${cfg.ANUNCIOS_CACHE_MIN} min. Os vistos ficam guardados por ${cfg.ANUNCIOS_GUARDAR_HORAS} h e podem já ter sido fechados.</li>
   </ul>

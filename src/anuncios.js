@@ -191,6 +191,12 @@ function secao(cfg, erro) {
     '<p class="meta oculto" id="an-conta"></p>' +
     '<div class="an-filtros">' +
     '<button type="button" class="an-fbtn" id="an-filtro"></button>' +
+    // v6.8: forma da trade do SEU ponto de vista (o número é desenhado na página).
+    '<div class="seg peq" id="an-forma">' +
+    '<button type="button" data-f="todos">Todos<small></small></button>' +
+    '<button type="button" data-f="upgrade">Seu upgrade<small></small></button>' +
+    '<button type="button" data-f="downgrade">Seu downgrade<small></small></button>' +
+    '</div>' +
     '<div class="seg peq" id="an-ordem">' +
     '<button type="button" data-o="ganho">Maior ganho</button>' +
     '<button type="button" data-o="recentes">Recentes</button>' +
@@ -230,6 +236,9 @@ function css() {
 .an-ftxt b{font-size:15px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .an-fx{flex:none;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--card2);color:var(--sub);font-size:15px;line-height:1}
 .an-fseta{flex:none;color:var(--sub);font-size:13px}
+#an-forma button{flex:auto;white-space:nowrap}
+#an-forma small{margin-left:4px;font-size:11px;font-weight:700;opacity:.7;font-variant-numeric:tabular-nums}
+#an-forma small:empty{display:none}
 
 .an-grupo{display:flex;flex-direction:column;border-radius:18px;background:var(--card);border:1px solid var(--card-borda);box-shadow:var(--sombra);overflow:hidden}
 .an-grupo,.an-fbtn{-webkit-backdrop-filter:var(--vidro);backdrop-filter:var(--vidro)}
@@ -498,7 +507,10 @@ function criarAnalisador(D, P, PA) {
   // ---------- Análise de um anúncio ----------
   // ad = [id, criadoMs, userId, username, oferta[], robux, pedido[], tags[]]
   // fixo = assetId do filtro "Um item seu" ('' = sem filtro).
-  A.analisar = function (ad, fixo) {
+  // forma (v6.8, opcional) = 'upgrade' ou 'downgrade' do SEU ponto de vista
+  // (filtro da página): a sugestão é montada só nessa forma e o anúncio que pede
+  // seus itens só passa se a trade tiver essa forma. Sem forma = como antes.
+  A.analisar = function (ad, fixo, forma) {
     var meuId = A.meuId;
     var porAsset = A.porAsset;
     var emHold = A.emHold;
@@ -546,6 +558,7 @@ function criarAnalisador(D, P, PA) {
       tipo = tipoTrocaLados(td, tr);
       v = calcularVeredito(dou, rec, td, tr, tipo, ad[5], P);
       if (!v || v.nivel == null || v.nivel < 3) return { descarte: 'pede seus itens, mas não vale a pena' };
+      if (forma && tipo !== forma) return { descarte: 'fora da forma do filtro', forma: true };
       return {
         modo: 'itens', ad: ad, dou: dou, rec: rec, robux: ad[5], td: td, tr: tr, tipo: tipo, v: v, pct: p, mesmo: mesmo,
         nota: 'Ele pede itens que você tem' + (tipo ? ' (' + tipo + ' para você)' : '') + '.' +
@@ -561,6 +574,11 @@ function criarAnalisador(D, P, PA) {
     if (!querUp && !querDown) {
       return { descarte: tags.indexOf('any') >= 0 ? 'pede só any (sidegrade não é sugerido)' : 'pede só outras tags' };
     }
+    // v6.8: filtro de forma. Seu upgrade vem da tag "downgrade" do dono e o seu
+    // downgrade, da tag "upgrade" (ver abaixo).
+    if (forma === 'upgrade') querUp = false;
+    else if (forma === 'downgrade') querDown = false;
+    if (!querUp && !querDown) return { descarte: 'fora da forma do filtro', forma: true };
     var kq = rec.length;
     if (!kq) return { descarte: 'oferta só de Robux' };
     // A tag é do ponto de vista do DONO:
@@ -631,6 +649,8 @@ function criarAnalisador(D, P, PA) {
 function paginaAnuncios(D, P, PA) {
   var THUMBS = D.miniaturas || {};
   var ORDENS = { ganho: 1, recentes: 1, value: 1 };
+  // v6.8: filtro de forma, do SEU ponto de vista (mesmo texto da etiqueta da linha).
+  var FORMAS = { todos: 'Todos', upgrade: 'Seu upgrade', downgrade: 'Seu downgrade' };
 
   function lerSalvo(k, padrao) {
     try {
@@ -647,9 +667,13 @@ function paginaAnuncios(D, P, PA) {
   var estado = {
     carregando: false, carregou: false, manual: false, res: null, timer: null,
     lista: [], mostrados: [], diag: null, pedidos: {},
+    // formas = as três listas (todos, upgrade, downgrade); lista = a do filtro.
+    formas: { todos: [], upgrade: [], downgrade: [] },
     item: lerSalvo('an-filtro-item', ''), ordem: lerSalvo('an-ordem', 'ganho'), aberto: null,
+    forma: lerSalvo('an-forma', 'todos'),
   };
   if (!ORDENS[estado.ordem]) estado.ordem = 'ganho';
+  if (!FORMAS[estado.forma]) estado.forma = 'todos';
 
   function $(id) {
     return document.getElementById(id);
@@ -709,6 +733,15 @@ function paginaAnuncios(D, P, PA) {
     var pedidos = {};
     var foraDoFiltro = 0;
     var nItens = 0;
+    var nRefeitos = 0;
+    var formas = { todos: [], upgrade: [], downgrade: [] };
+    function analisar(ad, forma) {
+      try {
+        return AN.analisar(ad, estado.item, forma);
+      } catch (e) {
+        return { descarte: 'erro na análise: ' + (e && e.message) };
+      }
+    }
     lista.forEach(function (ad) {
       (ad[7] || []).forEach(function (t) { contTags[t] = (contTags[t] || 0) + 1; });
       // Quantos anúncios pedem cada item seu (para a folha do filtro).
@@ -721,12 +754,7 @@ function paginaAnuncios(D, P, PA) {
           }
         });
       }
-      var r;
-      try {
-        r = AN.analisar(ad, estado.item);
-      } catch (e) {
-        r = { descarte: 'erro na análise: ' + (e && e.message) };
-      }
+      var r = analisar(ad, '');
       if (r.descarte) {
         if (r.filtro) foraDoFiltro++;
         else descartes[r.descarte] = (descartes[r.descarte] || 0) + 1;
@@ -734,13 +762,28 @@ function paginaAnuncios(D, P, PA) {
       }
       if (r.modo === 'itens') nItens++;
       saida.push(r);
+      // v6.8: listas dos filtros Upgrade/Downgrade. O resultado de "Todos" já
+      // serve para a forma dele (r.tipo é do seu ponto de vista). Só o anúncio
+      // com as DUAS tags é analisado de novo, montando a outra forma.
+      if (formas[r.tipo]) formas[r.tipo].push(r);
+      var tags = ad[7] || [];
+      if (r.modo === 'tag' && tags.indexOf('upgrade') >= 0 && tags.indexOf('downgrade') >= 0) {
+        var outra = r.tipo === 'upgrade' ? 'downgrade' : 'upgrade';
+        var r2 = analisar(ad, outra);
+        if (!r2.descarte && r2.tipo === outra) {
+          formas[outra].push(r2);
+          nRefeitos++;
+        }
+      }
     });
-    ordenar(saida);
-    estado.lista = saida;
+    formas.todos = saida;
+    ['todos', 'upgrade', 'downgrade'].forEach(function (f) { ordenar(formas[f]); });
+    estado.formas = formas;
+    estado.lista = formas[estado.forma];
     estado.pedidos = pedidos;
     estado.diag = {
       descartes: descartes, contTags: contTags, ms: Date.now() - t0, analisados: lista.length,
-      nItens: nItens, nTags: saida.length - nItens, foraDoFiltro: foraDoFiltro,
+      nItens: nItens, nTags: saida.length - nItens, foraDoFiltro: foraDoFiltro, nRefeitos: nRefeitos,
     };
     desenhar();
   }
@@ -859,6 +902,13 @@ function paginaAnuncios(D, P, PA) {
     }
     var bs = document.querySelectorAll('#an-ordem button');
     for (var k = 0; k < bs.length; k++) bs[k].classList.toggle('on', bs[k].getAttribute('data-o') === estado.ordem);
+    // v6.8: forma, com quantos anúncios cada uma tem (já com o filtro do item).
+    var fs = document.querySelectorAll('#an-forma button');
+    for (k = 0; k < fs.length; k++) {
+      var f = fs[k].getAttribute('data-f');
+      fs[k].classList.toggle('on', f === estado.forma);
+      fs[k].querySelector('small').textContent = estado.carregou ? estado.formas[f].length : '';
+    }
   }
   function desenharLista() {
     var lista = estado.lista;
@@ -870,9 +920,16 @@ function paginaAnuncios(D, P, PA) {
       return;
     }
     if (!lista.length) {
-      $('an-lista').innerHTML = '<p class="vazio">' + (estado.item
-        ? 'Nenhum anúncio serve para ' + esc(nomeDoItem(estado.item)) + ' agora.'
-        : 'Nenhum anúncio com vantagem para você agora.') + '</p>';
+      var msg;
+      if (estado.forma !== 'todos') {
+        msg = 'Nenhum anúncio de ' + FORMAS[estado.forma].toLowerCase() +
+          (estado.item ? ' com ' + esc(nomeDoItem(estado.item)) : '') + ' agora.';
+      } else {
+        msg = estado.item
+          ? 'Nenhum anúncio serve para ' + esc(nomeDoItem(estado.item)) + ' agora.'
+          : 'Nenhum anúncio com vantagem para você agora.';
+      }
+      $('an-lista').innerHTML = '<p class="vazio">' + msg + '</p>';
       return;
     }
     estado.mostrados = lista.slice(0, PA.maxLista);
@@ -920,7 +977,9 @@ function paginaAnuncios(D, P, PA) {
     if (dg) {
       var tg = Object.keys(dg.contTags).sort(function (x, y) { return dg.contTags[y] - dg.contTags[x]; });
       L.push('Tags vistas: ' + (tg.length ? tg.map(function (t) { return t + ' ' + dg.contTags[t]; }).join(' · ') : 'nenhuma'));
-      L.push('Análise: ' + estado.lista.length + ' na lista (' + dg.nItens + ' pedem seus itens, ' + dg.nTags + ' por tag)' +
+      L.push('Análise: ' + estado.formas.todos.length + ' em Todos (' + dg.nItens + ' pedem seus itens, ' + dg.nTags + ' por tag)' +
+        ' · seu upgrade ' + estado.formas.upgrade.length + ' · seu downgrade ' + estado.formas.downgrade.length +
+        ' (' + dg.nRefeitos + ' refeitos na outra forma) · forma ' + estado.forma +
         (estado.item ? ' · filtro ' + nomeDoItem(estado.item) + ' (' + dg.foraDoFiltro + ' não pedem o item)' : '') +
         ', em ' + dg.ms + ' ms · ordem ' + estado.ordem + ' · seus itens livres: ' + AN.meus.length);
       var ds = Object.keys(dg.descartes).sort(function (x, y) { return dg.descartes[y] - dg.descartes[x]; });
@@ -1063,7 +1122,17 @@ function paginaAnuncios(D, P, PA) {
     if (!b) return;
     estado.ordem = b.getAttribute('data-o');
     gravarSalvo('an-ordem', estado.ordem);
-    ordenar(estado.lista);
+    ['todos', 'upgrade', 'downgrade'].forEach(function (f) { ordenar(estado.formas[f]); });
+    desenhar();
+  });
+  // v6.8: filtro Todos / Seu upgrade / Seu downgrade (as três listas já estão prontas).
+  $('an-forma').addEventListener('click', function (ev) {
+    var b = ev.target.closest('button[data-f]');
+    if (!b || !FORMAS[b.getAttribute('data-f')]) return;
+    estado.forma = b.getAttribute('data-f');
+    gravarSalvo('an-forma', estado.forma);
+    estado.lista = estado.formas[estado.forma];
+    estado.aberto = null;
     desenhar();
   });
   // Links (item, jogador, trade) seguem sozinhos: o painel.js abre no Safari.

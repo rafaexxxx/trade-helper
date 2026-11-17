@@ -90,7 +90,15 @@ A forma é vista do **seu** lado, pela contagem de itens:
 1. No painel, toque em **Anúncios** no topo. Os anúncios recentes do Rolimon's são buscados nessa hora (no máximo 1 busca a cada 3 min).
 2. Os anúncios já vistos ficam guardados no iPhone por **2h**, então a lista cresce a cada consulta. Um anúncio guardado pode já ter sido fechado.
 3. A lista é **única**, em linhas curtas (jogador, itens, % e veredito). Tocar numa linha abre o cartão completo; tocar num item abre a página dele no Rolimon's; os botões levam ao **jogador no Rolimon's** ou abrem a **trade no Roblox** (quem monta e envia a trade é você).
-4. **Filtros**: "Um item seu" (só anúncios que envolvem aquele item) e a ordem: **maior ganho**, **mais recentes** ou **maior value recebido**.
+4. **Filtros**:
+   - **"Um item seu"**: só os anúncios que envolvem aquele item.
+   - **Todos / Seu upgrade / Seu downgrade** (v6.8): a forma da trade do **seu** lado, com a contagem em cada botão.
+     - Seu upgrade: você dá vários itens e recebe 1.
+     - Seu downgrade: você dá 1 item e recebe 2 ou 3.
+     - Vale para os anúncios que pedem seus itens e para as sugestões. Sidegrade e "por Robux" só aparecem em Todos.
+     - Num anúncio com as tags upgrade **e** downgrade, cada filtro monta a sugestão daquela forma. Por isso Upgrade + Downgrade pode passar de Todos.
+     - O filtro fica salvo no iPhone.
+   - **Ordem**: **maior ganho**, **mais recentes** ou **maior value recebido**.
 
 O que entra na lista:
 
