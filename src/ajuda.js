@@ -141,6 +141,10 @@ function capitulo2(cfg) {
   const upAlvo = cfg.ANUNCIO_SEU_UPGRADE_PAGAR_ALVO_PCT;
   const downAlvo = cfg.ANUNCIO_SEU_DOWNGRADE_ALVO_PCT;
   const max = cfg.MAX_ITENS_POR_LADO;
+  // v6.6: forma da sugestão dos Anúncios (padrões se o config.js for antigo).
+  const addMax = cfg.ANUNCIO_ADD_MAX_VALUE != null ? cfg.ANUNCIO_ADD_MAX_VALUE : 500;
+  const addsMax = cfg.ANUNCIO_ADDS_MAX != null ? cfg.ANUNCIO_ADDS_MAX : 2;
+  const minMedios = cfg.ANUNCIO_SEU_DOWNGRADE_MIN_MEDIOS != null ? cfg.ANUNCIO_SEU_DOWNGRADE_MIN_MEDIOS : 2;
 
   // Escadinha: alterna upgrade pagando upAlvo% e downgrade ganhando downAlvo%.
   const r10 = (n) => Math.round(n / 10) * 10;
@@ -269,7 +273,13 @@ function capitulo2(cfg) {
     <div class="aj-meio">→</div>
     <div class="aj-bx"><small>Para você é</small><b class="pos">seu downgrade</b><span>Você recebe a mais</span></div>
   </div>
-  <p>Por isso a etiqueta das linhas na aba Anúncios já vem traduzida: "seu upgrade", "seu downgrade" ou "sidegrade". Quando o anúncio só pede uma tag, o app monta uma sugestão com os seus itens (o lado Dou fica tracejado). Ela mira o que o outro provavelmente aceita: num upgrade seu, pagar perto de ${pct(upAlvo)} a mais; num downgrade seu, ganhar perto de ${pct(downAlvo)}.</p>
+  <p>Por isso a etiqueta das linhas na aba Anúncios já vem traduzida: "seu upgrade", "seu downgrade" ou "sidegrade". Quando o anúncio só pede uma tag, o app monta uma sugestão (o lado Dou fica tracejado) no formato que costuma ser aceito, e pode pedir <b>só uma parte</b> do que ele oferece:</p>
+  <ul class="aj-lista">
+    <li><b>Seu downgrade</b> (tag upgrade): você dá <b>1 item só</b> e pede pelo menos ${minMedios} itens médios dele, mirando ganhar perto de ${pct(downAlvo)}.</li>
+    <li><b>Seu upgrade</b> (tag downgrade): você dá vários itens (de 2 a ${max}) por <b>1 item só</b> dele, pagando perto de ${pct(upAlvo)} a mais.</li>
+    <li><b>Adds</b>: itens de até ${num(addMax)} de value (ovos e itens pequenos). No seu downgrade entram no máximo ${addsMax}, e só como complemento: os itens médios sozinhos já têm que fechar a conta.</li>
+    <li><b>Tag any</b>: mesmo número de itens dos dois lados, com tudo o que ele oferece.</li>
+  </ul>
   <span class="aj-exemplo">Exemplo · o mesmo upgrade, num anúncio aberto</span>
   <div class="an-grupo aj-grupo">
     <div class="an-it aberto">
@@ -282,7 +292,7 @@ function capitulo2(cfg) {
         <span class="an-chev">›</span>
       </div>
       <div class="an-det">
-        <p class="an-nota">Ele quer downgrade, então para você é upgrade: você dá mais itens e paga ${pct(pUp)} a mais (perto do mínimo que ele deve aceitar).</p>
+        <p class="an-nota">Ele quer downgrade, então para você é upgrade: você dá 3 itens e pede o item dele, pagando perto do menor overpay que ele deve aceitar.</p>
         <div class="an-lado rec"><div class="an-lcab"><span>Recebo</span><span>Valor</span></div>${anItem('vh', alta, 27500)}<div class="an-tot"><span>Total</span><span class="an-val">27.500<small></small></span></div></div>
         <div class="an-lado dou"><div class="an-lcab"><span>Dou (sugestão)</span><span>Valor</span></div>${anItem('sf', alta, 12000)}${anItem('ch', normal, 9500)}${anItem('bh', normal, 7000)}<div class="an-tot"><span>Total</span><span class="an-val">28.500<small></small></span></div></div>
         <div class="an-pe" data-cor="${vUp[1]}"><span class="selo">${vUp[0]} · ${wflUp}</span><span class="an-ganho"><b>${pctS(pUp)}</b><small>−1.000 R$</small></span></div>

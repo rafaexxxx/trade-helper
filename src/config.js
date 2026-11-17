@@ -90,6 +90,15 @@ module.exports = {
   ANUNCIO_SEU_DOWNGRADE_MIN_PCT: 5,
   ANUNCIO_SEU_DOWNGRADE_MAX_PCT: 12,
   ANUNCIO_SEU_DOWNGRADE_ALVO_PCT: 9,
+  // v6.6: forma da sugestão (regra do Rafael).
+  // Seu downgrade: você dá 1 item só e pede uma PARTE da oferta dele, com pelo
+  // menos MIN_MEDIOS itens médios e no máximo ADDS_MAX adds (até 4 itens).
+  // Seu upgrade: você pede 1 item só dele e dá de 2 a 4 itens seus.
+  // Add = item de value até ADD_MAX_VALUE (ovos e itens pequenos). O núcleo
+  // (só os médios) já tem que ganhar pelo menos DOWNGRADE_MIN sem os adds.
+  ANUNCIO_ADD_MAX_VALUE: 500,
+  ANUNCIO_ADDS_MAX: 2,
+  ANUNCIO_SEU_DOWNGRADE_MIN_MEDIOS: 2,
   // Tag "any": mesmo número de itens, diferença de até ±X%.
   ANUNCIO_ANY_PCT: 3,
   // Quantos dos seus itens entram na busca de combinações (mais = mais lento).

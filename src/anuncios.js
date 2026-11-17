@@ -168,6 +168,10 @@ function parametros(cfg, meuId) {
     downMax: cfg.ANUNCIO_SEU_DOWNGRADE_MAX_PCT,
     downAlvo: cfg.ANUNCIO_SEU_DOWNGRADE_ALVO_PCT,
     any: cfg.ANUNCIO_ANY_PCT,
+    // v6.6: forma da sugestão (o padrão vale se o config.js for antigo).
+    addMax: cfg.ANUNCIO_ADD_MAX_VALUE != null ? cfg.ANUNCIO_ADD_MAX_VALUE : 500,
+    addsMax: cfg.ANUNCIO_ADDS_MAX != null ? cfg.ANUNCIO_ADDS_MAX : 2,
+    minMedios: cfg.ANUNCIO_SEU_DOWNGRADE_MIN_MEDIOS != null ? cfg.ANUNCIO_SEU_DOWNGRADE_MIN_MEDIOS : 2,
     pool: cfg.ANUNCIO_COMBINACAO_MAX_ITENS,
     maxLista: cfg.ANUNCIOS_MAX_NA_LISTA,
   };
@@ -423,6 +427,76 @@ function criarAnalisador(D, P, PA) {
     return melhor;
   }
 
+  // v6.6: SEU DOWNGRADE (tag "upgrade" do dono). Você dá 1 item só e pede uma
+  // PARTE da oferta: pelo menos PA.minMedios itens médios (value acima de
+  // PA.addMax) e no máximo PA.addsMax adds, até P.maxItens itens. O núcleo (só
+  // os médios) já tem que ganhar PA.downMin; o total fica até PA.downMax, o mais
+  // perto de PA.downAlvo. Empate: menos itens. fixo = o item que você dá.
+  function melhorDowngrade(rec, fixo) {
+    var ofertas = [];
+    var n = Math.min(rec.length, 8);
+    var m;
+    var j;
+    for (m = 1; m < (1 << n); m++) {
+      var itens = [];
+      var soma = 0;
+      var nucleo = 0;
+      var medios = 0;
+      var adds = 0;
+      var ok = true;
+      for (j = 0; j < n; j++) {
+        if (!(m & (1 << j))) continue;
+        var vb = valorEfetivo(rec[j]);
+        if (!(vb > 0)) { ok = false; break; }
+        itens.push(rec[j]);
+        soma += vb;
+        if (vb > PA.addMax) { medios++; nucleo += vb; } else adds++;
+      }
+      if (!ok || medios < PA.minMedios || adds > PA.addsMax || itens.length > P.maxItens) continue;
+      ofertas.push({ itens: itens, soma: soma, nucleo: nucleo });
+    }
+    if (!ofertas.length) return null;
+    var dar = fixo ? (A.porAsset[fixo] || []).slice(0, 1) : A.meusOrdenados;
+    var melhor = null;
+    for (var k = 0; k < dar.length; k++) {
+      var x = dar[k];
+      if (!(x.vb > 0)) continue;
+      for (j = 0; j < ofertas.length; j++) {
+        var o = ofertas[j];
+        var pN = ((o.nucleo - x.vb) / x.vb) * 100;
+        var p = ((o.soma - x.vb) / x.vb) * 100;
+        if (pN < PA.downMin || p > PA.downMax) continue;
+        var nota = Math.abs(p - PA.downAlvo);
+        var qtd = o.itens.length + 1;
+        if (!melhor || nota < melhor.nota - 1e-9 || (Math.abs(nota - melhor.nota) < 1e-9 && qtd < melhor.qtd)) {
+          melhor = { nota: nota, qtd: qtd, dou: [x], rec: o.itens };
+        }
+      }
+    }
+    return melhor;
+  }
+
+  // v6.6: SEU UPGRADE (tag "downgrade" do dono). Você pede 1 item só da oferta e
+  // dá de 2 a P.maxItens itens seus (sem limite de adds do seu lado), pagando de
+  // 0 a PA.upPagarMax a mais, o mais perto de PA.upPagarAlvo. Empate: menos itens.
+  function melhorUpgrade(rec, fixo) {
+    var melhor = null;
+    for (var k = 0; k < rec.length; k++) {
+      var r = rec[k];
+      var vb = valorEfetivo(r);
+      if (!(vb > 0)) continue;
+      var proibidos = {};
+      proibidos[r.id] = true;
+      var c = melhorCombinacao(vb, 2, P.maxItens, -PA.upPagarMax, 0, -PA.upPagarAlvo, proibidos, fixo);
+      if (!c) continue;
+      var qtd = c.itens.length + 1;
+      if (!melhor || c.nota < melhor.nota - 1e-9 || (Math.abs(c.nota - melhor.nota) < 1e-9 && qtd < melhor.qtd)) {
+        melhor = { nota: c.nota, qtd: qtd, dou: c.itens, rec: [r] };
+      }
+    }
+    return melhor;
+  }
+
   // ---------- Análise de um anúncio ----------
   // ad = [id, criadoMs, userId, username, oferta[], robux, pedido[], tags[]]
   // fixo = assetId do filtro "Um item seu" ('' = sem filtro).
@@ -475,7 +549,7 @@ function criarAnalisador(D, P, PA) {
       v = calcularVeredito(dou, rec, td, tr, tipo, ad[5], P);
       if (!v || v.nivel == null || v.nivel < 3) return { descarte: 'pede seus itens, mas não vale a pena' };
       return {
-        modo: 'itens', ad: ad, dou: dou, rec: rec, td: td, tr: tr, tipo: tipo, v: v, pct: p, mesmo: mesmo,
+        modo: 'itens', ad: ad, dou: dou, rec: rec, robux: ad[5], td: td, tr: tr, tipo: tipo, v: v, pct: p, mesmo: mesmo,
         nota: 'Ele pede itens que você tem' + (tipo ? ' (' + tipo + ' para você)' : '') + '.' +
           (tags.length ? ' Também pede: ' + tags.join(', ') + '.' : ''),
       };
@@ -489,23 +563,38 @@ function criarAnalisador(D, P, PA) {
     if (!querUp && !querDown && !querAny) return { descarte: 'pede só outras tags' };
     var kq = rec.length;
     if (!kq) return { descarte: 'oferta só de Robux' };
-    var proibidos = {};
-    rec.forEach(function (i) { proibidos[i.id] = true; });
     // A tag é do ponto de vista do DONO:
-    // "upgrade" = ele dá mais itens = SEU DOWNGRADE (você ganha a mais, sem pesar a mão);
-    // "downgrade" = ele dá menos itens = SEU UPGRADE (você paga o menor overpay que ele deve aceitar).
+    // "upgrade" = ele dá mais itens = SEU DOWNGRADE: você dá 1 item e pede uma parte
+    //   da oferta (ganha a mais, sem pesar a mão);
+    // "downgrade" = ele dá menos itens = SEU UPGRADE: você pede 1 item dele e dá
+    //   vários (paga o menor overpay que ele deve aceitar);
+    // "any" = mesmo número de itens, com a oferta inteira.
+    // v6.6: nos dois primeiros, os Robux do dono ficam de fora (pede só itens).
     var opcoes = [];
-    if (querUp) opcoes.push({ tag: 'upgrade', c: melhorCombinacao(tr.value, 1, kq - 1, PA.downMin, PA.downMax, PA.downAlvo, proibidos, fixo) });
-    if (querDown) opcoes.push({ tag: 'downgrade', c: melhorCombinacao(tr.value, kq + 1, P.maxItens, -PA.upPagarMax, 0, -PA.upPagarAlvo, proibidos, fixo) });
-    if (querAny) opcoes.push({ tag: 'any', c: melhorCombinacao(tr.value, kq, kq, -PA.any, PA.any, PA.any, proibidos, fixo) });
+    var s;
+    if (querUp) {
+      s = melhorDowngrade(rec, fixo);
+      opcoes.push({ tag: 'upgrade', dou: s && s.dou, rec: s && s.rec, robux: 0 });
+    }
+    if (querDown) {
+      s = melhorUpgrade(rec, fixo);
+      opcoes.push({ tag: 'downgrade', dou: s && s.dou, rec: s && s.rec, robux: 0 });
+    }
+    if (querAny) {
+      var proibidos = {};
+      rec.forEach(function (i) { proibidos[i.id] = true; });
+      s = melhorCombinacao(tr.value, kq, kq, -PA.any, PA.any, PA.any, proibidos, fixo);
+      opcoes.push({ tag: 'any', dou: s && s.itens, rec: rec, robux: ad[5] });
+    }
     // Entre as tags aceitas, fica a opção de melhor veredito (empate: maior ganho).
     var melhor = null;
     opcoes.forEach(function (o) {
-      if (!o.c) return;
-      o.td = somarLado(o.c.itens, 0, false, P);
-      o.tipo = tipoTrocaLados(o.td, tr);
-      o.v = calcularVeredito(o.c.itens, rec, o.td, tr, o.tipo, ad[5], P);
-      o.p = ganho(o.td, tr);
+      if (!o.dou) return;
+      o.tr = o.rec === rec ? tr : somarLado(o.rec, o.robux, true, P);
+      o.td = somarLado(o.dou, 0, false, P);
+      o.tipo = tipoTrocaLados(o.td, o.tr);
+      o.v = calcularVeredito(o.dou, o.rec, o.td, o.tr, o.tipo, o.robux, P);
+      o.p = ganho(o.td, o.tr);
       o.nivel = o.v && o.v.nivel != null ? o.v.nivel : -2;
       if (!melhor || o.nivel > melhor.nivel || (o.nivel === melhor.nivel && (o.p == null ? -1e9 : o.p) > (melhor.p == null ? -1e9 : melhor.p))) melhor = o;
     });
@@ -515,21 +604,30 @@ function criarAnalisador(D, P, PA) {
           ' (' + opcoes.map(function (o) { return o.tag; }).join('/') + ')',
       };
     }
-    var dou2 = melhor.c.itens;
+    var dou2 = melhor.dou;
+    var rec2 = melhor.rec;
     td = melhor.td;
     tipo = melhor.tipo;
     v = melhor.v;
     p = melhor.p;
+    // v6.6: a nota diz a forma e o que você pede; a % fica só no rodapé do cartão.
+    var pede = rec2.length === kq ?
+      (kq === 1 ? 'pede o item dele' : 'pede os ' + kq + ' itens que ele oferece') :
+      'pede só ' + rec2.length + ' dos ' + kq + ' itens que ele oferece';
+    var semRobux = ad[5] && !melhor.robux ? ' Os Robux dele ficam de fora.' : '';
     var nota;
     if (melhor.tag === 'upgrade') {
-      nota = 'Ele quer upgrade, então para você é downgrade: você dá menos itens e ganha ' + fmtPct(p) + ' em value.';
+      nota = 'Ele quer upgrade, então para você é downgrade: você dá 1 item e ' + pede + '.' + semRobux;
     } else if (melhor.tag === 'downgrade') {
-      nota = 'Ele quer downgrade, então para você é upgrade: você dá mais itens e ' +
-        (p < 0 ? 'paga ' + fmtPct(-p) + ' a mais (perto do mínimo que ele deve aceitar).' : 'não paga nada a mais.');
+      nota = 'Ele quer downgrade, então para você é upgrade: você dá ' + dou2.length + ' itens e ' + pede +
+        (p < 0 ? ', pagando perto do menor overpay que ele deve aceitar.' : ', sem pagar nada a mais.') + semRobux;
     } else {
-      nota = 'Ele aceita qualquer item: combinação com o mesmo número de itens (' + fmtPctSinal(p) + ').';
+      nota = 'Ele aceita qualquer item: combinação com o mesmo número de itens.';
     }
-    return { modo: 'tag', tag: melhor.tag, ad: ad, dou: dou2, rec: rec, td: td, tr: tr, tipo: tipo, v: v, pct: p, mesmo: repetidos(dou2, rec), nota: nota };
+    return {
+      modo: 'tag', tag: melhor.tag, ad: ad, dou: dou2, rec: rec2, robux: melhor.robux, td: td, tr: melhor.tr, tipo: tipo, v: v, pct: p,
+      mesmo: repetidos(dou2, rec2), nota: nota,
+    };
   };
 
   return A;
@@ -714,7 +812,7 @@ function paginaAnuncios(D, P, PA) {
     if (r.mesmo && r.mesmo.length) {
       h += '<p class="an-aviso">Tem <b>' + esc(r.mesmo.join(', ')) + '</b> dos dois lados. Continua na lista porque o ganho não é negativo.</p>';
     }
-    h += blocoLado('rec', 'Recebo', r.rec, ad[5], true, r.tr);
+    h += blocoLado('rec', 'Recebo', r.rec, r.robux, true, r.tr);
     h += blocoLado('dou', r.modo === 'tag' ? 'Dou (sugestão)' : 'Dou', r.dou, 0, false, r.td);
     var dif = r.tr.value - r.td.value;
     h += '<div class="an-pe" data-cor="' + corVeredito(r.v) + '"><span class="selo">' + esc(r.v ? tituloWFL(r.v) : '') + '</span>' +
@@ -745,7 +843,7 @@ function paginaAnuncios(D, P, PA) {
       '<span class="an-main"><span class="an-l1"><b>' + esc(ad[3] || 'Jogador ' + ad[2]) + '</b>' +
       '<span class="an-etq' + (sug ? '' : ' seus') + '">' + esc(etiqueta(r)) + '</span>' +
       '<span class="an-tempo">' + haQuanto(ad[1]) + '</span></span>' +
-      '<span class="an-l2">' + grupo(r.rec, ad[5], 'rec') + '<span class="an-tr">⇄</span>' +
+      '<span class="an-l2">' + grupo(r.rec, r.robux, 'rec') + '<span class="an-tr">⇄</span>' +
       grupo(r.dou, 0, 'dou' + (sug ? ' sug' : '')) + '</span></span>' +
       '<span class="an-pct" data-cor="' + cor + '"><b>' + pctTxt(r.pct) + '</b><small>' + esc(r.v ? r.v.titulo : '') + '</small></span>' +
       '<span class="an-chev">›</span></button>' +

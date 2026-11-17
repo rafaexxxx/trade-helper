@@ -97,11 +97,13 @@ O que entra na lista:
 | Tipo | Quando o anúncio aparece | O que você daria |
 |---|---|---|
 | **Pede seus itens** | Ele pede itens que você tem (todos, em cópias sem hold) e o veredito é **"Vale a pena"** ou melhor | Os itens pedidos |
-| **Tag upgrade** (do dono) = **seu downgrade** | Ele dá mais itens e quer receber menos | Uma combinação sua com **menos itens**, ganhando de **+5% a +12%** (mira +9%) |
-| **Tag downgrade** (do dono) = **seu upgrade** | Ele dá menos itens (geralmente 1 maior) | Uma combinação sua com **mais itens**, pagando **até 9%** a mais (mira 5%, o menor overpay que ele deve aceitar) |
-| **Tag any** | Ele aceita qualquer item | Uma combinação com o **mesmo número de itens**, diferença de **±3%** |
+| **Tag upgrade** (do dono) = **seu downgrade** | Ele dá mais itens e quer receber menos | **1 item seu só**, pedindo **uma parte** da oferta dele: pelo menos **2 itens médios** + no máximo **2 adds**, ganhando de **+5% a +12%** (mira +9%) |
+| **Tag downgrade** (do dono) = **seu upgrade** | Ele dá menos itens (geralmente 1 maior) | **De 2 a 4 itens seus** por **1 item só** dele, pagando **até 9%** a mais (mira 5%, o menor overpay que ele deve aceitar) |
+| **Tag any** | Ele aceita qualquer item | Uma combinação com o **mesmo número de itens** (oferta inteira), diferença de **±3%** |
 
 - As tags do Rolimon's são do ponto de vista do **dono do anúncio**; o app traduz para o seu lado.
+- **Adds** (v6.6) = itens de value até **500** (ovos e itens pequenos). No seu downgrade, os itens médios sozinhos já têm que ganhar pelo menos +5%; os adds só complementam. Do seu lado, no seu upgrade, não há limite de adds.
+- Entre várias trades possíveis, fica a mais perto do alvo (empate: menos itens). Quando a sugestão pede só uma parte da oferta, os **Robux** do dono ficam de fora.
 - Ficam de fora anúncios que oferecem item **projected**, com **demanda terrível**, com o **RAP subindo mais de 15% em 24h** ou fora do catálogo do Rolimon's, além dos seus próprios anúncios.
 - **Mesmo item dos dois lados**: só aparece se você não perder value.
 - As outras tags (demand, rap, adds...) não geram sugestões. A contagem de tags vistas fica no **Diagnóstico**.
@@ -168,6 +170,9 @@ Ficam em [`src/config.js`](src/config.js):
 | `ANUNCIOS_GUARDAR_HORAS` | 2 | Por quantas horas guardar os anúncios já vistos |
 | `ANUNCIO_SEU_UPGRADE_PAGAR_MAX_PCT` / `ALVO` | 9 / 5 | Dono pede downgrade (seu upgrade): até quanto (%) você paga a mais e o ponto preferido |
 | `ANUNCIO_SEU_DOWNGRADE_MIN_PCT` / `MAX` / `ALVO` | 5 / 12 / 9 | Dono pede upgrade (seu downgrade): faixa de ganho (%) e o ponto preferido |
+| `ANUNCIO_ADD_MAX_VALUE` | 500 | Até esse value, o item conta como add (ovos e itens pequenos) |
+| `ANUNCIO_ADDS_MAX` | 2 | Quantos adds você aceita receber no seu downgrade |
+| `ANUNCIO_SEU_DOWNGRADE_MIN_MEDIOS` | 2 | Mínimo de itens médios que você recebe no seu downgrade |
 | `ANUNCIO_ANY_PCT` | 3 | Diferença máxima (±%) na tag any |
 | `ANUNCIO_COMBINACAO_MAX_ITENS` | 25 | Quantos dos seus itens entram na busca de combinações |
 | `ANUNCIOS_MAX_NA_LISTA` | 40 | Linhas mostradas na lista de anúncios |
