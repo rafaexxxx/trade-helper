@@ -491,6 +491,7 @@ input[type=search]::placeholder{color:var(--sub)}
 .tag.neg{background:var(--neg-bg);color:var(--neg)}
 .tag.warn{background:var(--warn-bg);color:var(--warn)}
 .tag.sub{background:var(--card2);color:var(--sub)}
+.det .tag{white-space:normal;max-width:100%;border-radius:10px}
 .item-num small.seta{font-weight:700}
 .item-num small.seta.pos{color:var(--pos)}
 .item-num small.seta.neg{color:var(--neg)}
