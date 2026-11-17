@@ -157,111 +157,6 @@ async function carregar(store, cfg) {
   };
 }
 
-// ---------- v6.7: vendas por dia (Scriptable) ----------
-// Arquivo 'vendas': { itens: { assetId: [porDia, buscadoEmMs] }, rodada: { em, tentados, ok, falhas, erro, parou } }.
-// Para a análise: { porId: { assetId: porDia } (só os ainda válidos), ativo, ... }.
-// ativo = a regra vale. Desliga sozinha quando a última rodada falhou em TODOS
-// os itens que tentou (ex.: o Roblox passou a pedir login).
-function resumoVendas(salvo, cfg, agora, extra) {
-  const validade = (cfg.ANUNCIO_VENDAS_CACHE_H || 24) * 3600000;
-  const itens = (salvo && salvo.itens) || {};
-  const porId = {};
-  let guardados = 0;
-  for (const id of Object.keys(itens)) {
-    const x = itens[id];
-    if (Array.isArray(x) && agora - x[1] <= validade) {
-      porId[id] = x[0];
-      guardados++;
-    }
-  }
-  const rd = (salvo && salvo.rodada) || null;
-  const ativo = !!rd && (rd.ok > 0 || rd.falhas === 0);
-  return Object.assign({ porId, ativo, guardados, rodada: rd }, extra || {});
-}
-
-// Só o que já está guardado (notificações do widget: sem buscar nada).
-function vendasGuardadas(store, cfg) {
-  let salvo = null;
-  try {
-    salvo = store.ler('vendas');
-  } catch (e) {
-    // sem arquivo
-  }
-  return resumoVendas(salvo, cfg, Date.now());
-}
-
-// Busca as vendas que faltam dos itens MÉDIOS oferecidos nos anúncios que pedem
-// só tags upgrade/downgrade (os que podem virar sugestão). Os anúncios mais
-// novos primeiro; no máximo ANUNCIO_VENDAS_MAX_BUSCAS por vez.
-// catalogo = itens do Rolimon's (bruto: [nome, sigla, rap, value, ...]).
-async function carregarVendas(store, cfg, lista, catalogo) {
-  const agora = Date.now();
-  const validade = (cfg.ANUNCIO_VENDAS_CACHE_H || 24) * 3600000;
-  const addMax = cfg.ANUNCIO_ADD_MAX_VALUE != null ? cfg.ANUNCIO_ADD_MAX_VALUE : 500;
-  const ate = cfg.ANUNCIO_VENDAS_ATE_VALUE || 10000;
-  const dias = cfg.ANUNCIO_VENDAS_DIAS || 30;
-  let salvo = null;
-  try {
-    salvo = store.ler('vendas');
-  } catch (e) {
-    // começa vazio
-  }
-  const itens = (salvo && salvo.itens) || {};
-
-  const faltam = [];
-  const vistos = {};
-  for (const ad of lista || []) {
-    if (!Array.isArray(ad) || (ad[6] && ad[6].length)) continue;
-    const tags = ad[7] || [];
-    if (tags.indexOf('upgrade') < 0 && tags.indexOf('downgrade') < 0) continue;
-    for (const id of ad[4] || []) {
-      if (vistos[id]) continue;
-      vistos[id] = true;
-      const r = catalogo && catalogo[id];
-      if (!Array.isArray(r)) continue;
-      const vb = r[3] > 0 ? r[3] : r[2] > 0 ? r[2] : 0;
-      if (!(vb > addMax) || vb > ate) continue;
-      const x = itens[id];
-      if (Array.isArray(x) && agora - x[1] <= validade) continue;
-      faltam.push(id);
-    }
-  }
-
-  const fila = faltam.slice(0, cfg.ANUNCIO_VENDAS_MAX_BUSCAS || 40);
-  const juntos = Math.max(cfg.ANUNCIO_VENDAS_PARALELAS || 5, 1);
-  const rodada = { em: agora, tentados: 0, ok: 0, falhas: 0, erro: null, parou: null, faltavam: faltam.length };
-  for (let k = 0; k < fila.length && !rodada.parou; k += juntos) {
-    const parte = fila.slice(k, k + juntos);
-    const resp = await Promise.all(parte.map((id) =>
-      api.buscarVendasPorDia(id, dias).then((v) => ({ id, v }), (e) => ({ id, e }))
-    ));
-    for (const x of resp) {
-      rodada.tentados++;
-      if (x.e) {
-        rodada.falhas++;
-        if (!rodada.erro) rodada.erro = (x.e.message || String(x.e)) + (x.e.trecho ? ': ' + x.e.trecho.slice(0, 120) : '');
-        if (x.e.status === 429) rodada.parou = 'muitas requisições (429)';
-      } else {
-        rodada.ok++;
-        itens[x.id] = [x.v, Date.now()];
-      }
-    }
-  }
-
-  // Apaga os muito antigos (3x a validade).
-  for (const id of Object.keys(itens)) {
-    if (!Array.isArray(itens[id]) || agora - itens[id][1] > validade * 3) delete itens[id];
-  }
-  // Rodada sem nada para buscar mantém o "ativo" da anterior (não liga uma regra que falhou).
-  const novo = { itens, rodada: rodada.tentados ? rodada : (salvo && salvo.rodada) || rodada };
-  try {
-    store.gravar('vendas', novo);
-  } catch (e) {
-    // segue sem guardar
-  }
-  return resumoVendas(novo, cfg, agora, { agora: rodada });
-}
-
 function parametros(cfg, meuId) {
   return {
     meuId: Number(meuId) || 0,
@@ -276,10 +171,6 @@ function parametros(cfg, meuId) {
     addMax: cfg.ANUNCIO_ADD_MAX_VALUE != null ? cfg.ANUNCIO_ADD_MAX_VALUE : 500,
     addsMax: cfg.ANUNCIO_ADDS_MAX != null ? cfg.ANUNCIO_ADDS_MAX : 2,
     minMedios: cfg.ANUNCIO_SEU_DOWNGRADE_MIN_MEDIOS != null ? cfg.ANUNCIO_SEU_DOWNGRADE_MIN_MEDIOS : 2,
-    // v6.7: vendas por dia dos itens médios que você recebe.
-    vendasMinDia: cfg.ANUNCIO_VENDAS_MIN_DIA != null ? cfg.ANUNCIO_VENDAS_MIN_DIA : 1,
-    vendasAte: cfg.ANUNCIO_VENDAS_ATE_VALUE != null ? cfg.ANUNCIO_VENDAS_ATE_VALUE : 10000,
-    vendasDias: cfg.ANUNCIO_VENDAS_DIAS || 30,
     pool: cfg.ANUNCIO_COMBINACAO_MAX_ITENS,
     maxLista: cfg.ANUNCIOS_MAX_NA_LISTA,
   };
@@ -422,28 +313,8 @@ a.an-i:active{background:var(--card2)}
 function criarAnalisador(D, P, PA) {
   var C = D.catalogo;
   // meuId = dono do inventário (os anúncios dele ficam de fora).
-  var A = { meus: [], porAsset: {}, emHold: {}, meusOrdenados: [], meuId: PA.meuId, vendas: null };
+  var A = { meus: [], porAsset: {}, emHold: {}, meusOrdenados: [], meuId: PA.meuId };
   var memoCombinacao = {};
-
-  // v6.7: vendas por dia ({ porId, ativo, ... } de carregarVendas/vendasGuardadas).
-  A.definirVendas = function (v) {
-    A.vendas = v && v.porId ? v : null;
-  };
-  // Vendas por dia de um item (null = sem dado).
-  A.vendasDe = function (id) {
-    var pd = A.vendas ? A.vendas.porId[id] : null;
-    return pd == null ? null : pd;
-  };
-  // Item MÉDIO (acima dos adds e até PA.vendasAte) só entra numa sugestão se
-  // vender PA.vendasMinDia por dia; sem dado, fica de fora. Regra desligada
-  // (sem dados ou a busca falhou em tudo): todos passam.
-  function vendeBem(i) {
-    if (!A.vendas || !A.vendas.ativo) return true;
-    var vb = valorEfetivo(i);
-    if (!(vb > PA.addMax) || vb > PA.vendasAte) return true;
-    var pd = A.vendasDe(i.id);
-    return pd != null && pd >= PA.vendasMinDia;
-  }
 
   // Seus itens disponíveis (sem hold e com dados no Rolimon's).
   A.montarMeus = function (inv) {
@@ -698,16 +569,14 @@ function criarAnalisador(D, P, PA) {
     // "downgrade" = ele dá menos itens = SEU UPGRADE: você pede 1 item dele e dá
     //   vários (paga o menor overpay que ele deve aceitar).
     // v6.6: os Robux do dono ficam de fora (a sugestão pede só itens).
-    // v6.7: itens médios que vendem pouco (ou sem dado de vendas) não são pedidos.
-    var recOk = rec.filter(vendeBem);
     var opcoes = [];
     var s;
     if (querUp) {
-      s = melhorDowngrade(recOk, fixo);
+      s = melhorDowngrade(rec, fixo);
       opcoes.push({ tag: 'upgrade', dou: s && s.dou, rec: s && s.rec, robux: 0 });
     }
     if (querDown) {
-      s = melhorUpgrade(recOk, fixo);
+      s = melhorUpgrade(rec, fixo);
       opcoes.push({ tag: 'downgrade', dou: s && s.dou, rec: s && s.rec, robux: 0 });
     }
     // Entre as tags aceitas, fica a opção de melhor veredito (empate: maior ganho).
@@ -723,9 +592,6 @@ function criarAnalisador(D, P, PA) {
       if (!melhor || o.nivel > melhor.nivel || (o.nivel === melhor.nivel && (o.p == null ? -1e9 : o.p) > (melhor.p == null ? -1e9 : melhor.p))) melhor = o;
     });
     if (!melhor) {
-      if (recOk.length < rec.length) {
-        return { descarte: 'itens médios com menos de ' + PA.vendasMinDia + ' venda/dia (ou sem dado de vendas)' };
-      }
       return {
         descarte: (fixo ? 'nenhuma combinação com o item do filtro' : 'nenhuma combinação sua na faixa') +
           ' (' + opcoes.map(function (o) { return o.tag; }).join('/') + ')',
@@ -886,17 +752,10 @@ function paginaAnuncios(D, P, PA) {
   function miniatura(id) {
     return THUMBS[id] ? '<img class="thumb" src="' + esc(THUMBS[id]) + '" alt="">' : '<span class="thumb"></span>';
   }
-  // Vendas por dia: 2 casas abaixo de 1, 1 casa até 10, inteiro acima.
-  function fmtVendas(pd) {
-    var c = pd < 1 ? 2 : pd < 10 ? 1 : 0;
-    return (Math.round(pd * Math.pow(10, c)) / Math.pow(10, c)).toFixed(c).replace('.', ',');
-  }
-  // Embaixo do nome: a demanda e (v6.7) as vendas por dia, quando o app tem o dado.
+  // Embaixo do nome: só a demanda.
   function detalhes(i) {
-    var pd = AN.vendasDe(i.id);
-    var v = pd == null ? '' : '<span class="' + (pd < PA.vendasMinDia ? 'warn' : '') + '">' + fmtVendas(pd) + ' vendas/dia</span>';
-    if (!(i.dem >= 0)) return v || '<span class="sub">Sem dados</span>';
-    return '<span class="' + corDem(i.dem) + '">' + esc(P.demandaCurta[i.dem]) + '</span>' + (v ? ' · ' + v : '');
+    if (!(i.dem >= 0)) return '<span class="sub">Sem dados</span>';
+    return '<span class="' + corDem(i.dem) + '">' + esc(P.demandaCurta[i.dem]) + '</span>';
   }
   // Valor com a fonte ao lado ("value" ou "RAP"); a fonte tem largura fixa
   // para os números ficarem alinhados.
@@ -1067,16 +926,6 @@ function paginaAnuncios(D, P, PA) {
       var ds = Object.keys(dg.descartes).sort(function (x, y) { return dg.descartes[y] - dg.descartes[x]; });
       if (ds.length) L.push('Fora da lista: ' + ds.map(function (d) { return d + ' ' + dg.descartes[d]; }).join(' · '));
     }
-    // v6.7: vendas por dia (Roblox resale-data).
-    var vd = res.vendas;
-    if (vd) {
-      var rd = vd.agora && vd.agora.tentados ? vd.agora : vd.rodada;
-      L.push('Vendas/dia: ' + (vd.ativo ? 'regra ligada' : 'regra DESLIGADA') + ' · ' + (vd.guardados || 0) + ' itens guardados' +
-        (rd ? ' · última busca ' + hora(rd.em) + ': ' + rd.tentados + ' tentados, ' + rd.ok + ' ok, ' + rd.falhas + ' falhas' +
-          (rd.faltavam > rd.tentados ? ' (faltavam ' + rd.faltavam + ')' : '') + (rd.parou ? ' · parou: ' + rd.parou : '') +
-          (rd.erro ? ' · erro: ' + rd.erro : '') : '') +
-        (vd.erroGeral ? ' · erro: ' + vd.erroGeral : ''));
-    }
     if (lt && lt.amostra) L.push('Amostra bruta: ' + lt.amostra);
     el.textContent = L.join('\n');
   }
@@ -1122,7 +971,6 @@ function paginaAnuncios(D, P, PA) {
     estado.carregando = false;
     estado.carregou = true;
     estado.res = res || { lista: [], origem: 'falhou', erro: 'resposta vazia' };
-    AN.definirVendas(estado.res.vendas);
     processar();
   };
   window.thAbrirAnuncios = function () {
@@ -1249,4 +1097,4 @@ function script(cfg, meuId) {
   );
 }
 
-module.exports = { TAGS, lerAnuncio, carregar, carregarVendas, vendasGuardadas, parametros, criarAnalisador, secao, folha, css, script };
+module.exports = { TAGS, lerAnuncio, carregar, parametros, criarAnalisador, secao, folha, css, script };

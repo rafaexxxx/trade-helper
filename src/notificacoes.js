@@ -62,12 +62,6 @@ function analisarNovos(pendentes, o, limite) {
   const D = avaliador.prepararDados(o.dados.rolimons, o.itens, base, {});
   const A = anuncios.criarAnalisador(D, avaliador.parametros(cfg), anuncios.parametros(cfg, o.dados.usuario.id));
   A.montarMeus(D.inventario);
-  // v6.7: vendas por dia já guardadas pela aba Anúncios (o widget não busca).
-  try {
-    A.definirVendas(anuncios.vendasGuardadas(o.store, cfg));
-  } catch (e) {
-    // sem a regra de vendas
-  }
   const bons = [];
   const vistos = [];
   let faltaram = 0;

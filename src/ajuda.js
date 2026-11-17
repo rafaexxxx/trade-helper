@@ -145,10 +145,6 @@ function capitulo2(cfg) {
   const addMax = cfg.ANUNCIO_ADD_MAX_VALUE != null ? cfg.ANUNCIO_ADD_MAX_VALUE : 500;
   const addsMax = cfg.ANUNCIO_ADDS_MAX != null ? cfg.ANUNCIO_ADDS_MAX : 2;
   const minMedios = cfg.ANUNCIO_SEU_DOWNGRADE_MIN_MEDIOS != null ? cfg.ANUNCIO_SEU_DOWNGRADE_MIN_MEDIOS : 2;
-  // v6.7: vendas por dia.
-  const vendasMin = String(cfg.ANUNCIO_VENDAS_MIN_DIA != null ? cfg.ANUNCIO_VENDAS_MIN_DIA : 1).replace('.', ',');
-  const vendasAte = cfg.ANUNCIO_VENDAS_ATE_VALUE != null ? cfg.ANUNCIO_VENDAS_ATE_VALUE : 10000;
-  const vendasDias = cfg.ANUNCIO_VENDAS_DIAS || 30;
 
   // Escadinha: alterna upgrade pagando upAlvo% e downgrade ganhando downAlvo%.
   const r10 = (n) => Math.round(n / 10) * 10;
@@ -284,7 +280,6 @@ function capitulo2(cfg) {
     <li><b>Adds</b>: itens de até ${num(addMax)} de value (ovos e itens pequenos). No seu downgrade entram no máximo ${addsMax}, e só como complemento: os itens médios sozinhos já têm que fechar a conta.</li>
     <li><b>Tag any</b> (sidegrade): o app não sugere, porque quase ninguém aceita. Um anúncio que só tem essa tag fica de fora.</li>
     <li>A sugestão nunca põe o mesmo item dos dois lados.</li>
-    <li><b>Vendas por dia</b>: um item médio (de ${num(addMax)} até ${num(vendasAte)} de value) só é pedido se vender pelo menos ${vendasMin} vez por dia, na média dos últimos ${vendasDias} dias. Item que quase não vende fica parado no seu inventário. Acima de ${num(vendasAte)}, o item aparece mesmo vendendo pouco. No cartão aberto, as vendas por dia aparecem embaixo do nome do item.</li>
   </ul>
   <span class="aj-exemplo">Exemplo · o mesmo upgrade, num anúncio aberto</span>
   <div class="an-grupo aj-grupo">

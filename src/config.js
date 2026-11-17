@@ -100,19 +100,6 @@ module.exports = {
   ANUNCIO_ADDS_MAX: 2,
   ANUNCIO_SEU_DOWNGRADE_MIN_MEDIOS: 2,
   // Tag "any" (sidegrade): v6.6, não gera sugestão (quase ninguém aceita).
-  // v6.7: vendas por dia (Roblox resale-data). Item MÉDIO que você recebe numa
-  // sugestão (value acima de ANUNCIO_ADD_MAX_VALUE e até VENDAS_ATE_VALUE) só
-  // entra se vender pelo menos VENDAS_MIN_DIA por dia (média dos últimos
-  // VENDAS_DIAS dias). Item sem o dado ainda fica de fora. Se a busca falhar
-  // para todos os itens, a regra desliga sozinha (o Diagnóstico mostra).
-  ANUNCIO_VENDAS_MIN_DIA: 1,
-  ANUNCIO_VENDAS_ATE_VALUE: 10000,
-  ANUNCIO_VENDAS_DIAS: 30,
-  // O número de cada item fica guardado por X horas.
-  ANUNCIO_VENDAS_CACHE_H: 24,
-  // Consultas por abertura da aba (o resto fica para a próxima) e quantas de cada vez.
-  ANUNCIO_VENDAS_MAX_BUSCAS: 40,
-  ANUNCIO_VENDAS_PARALELAS: 5,
   // Quantos dos seus itens entram na busca de combinações (mais = mais lento).
   ANUNCIO_COMBINACAO_MAX_ITENS: 25,
   // Quantos cartões cada bloco da aba mostra.
