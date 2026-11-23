@@ -361,7 +361,7 @@ body.c2ativa{--acc:var(--c2);--acc-fundo:var(--c2-fundo);--acc-press:var(--c2-pr
 .c2-form .acoes .btn{display:block;width:100%;padding:12px 8px;border:0;border-radius:12px;background:var(--acc-fundo);color:var(--on-acc);font-size:16px;font-weight:600;text-align:center}
 .c2-form .acoes .btn.sec{background:var(--card2);color:var(--acc-t)}
 .c2-form .acoes .btn:disabled{opacity:.45}
-#diag-conta2{white-space:pre-wrap;overflow-wrap:anywhere}
+#diag-conta2,#diag-tempos{white-space:pre-wrap;overflow-wrap:anywhere}
 `;
 
 // Bloco do Inventário de uma conta (faixa de totais, busca, chips e lista).
@@ -452,6 +452,32 @@ function gerar(r, cfg) {
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap">
 <script>
+// v6.13.2: tempos de dentro da página (ms desde o início da navegação), lidos
+// pelo painel depois do loadHTML. Só medição.
+var TH_TEMPOS = {};
+(function(){
+  function agora(){ try { return Math.round(performance.now()); } catch (e) { return null; } }
+  TH_TEMPOS.html = agora();
+  document.addEventListener('DOMContentLoaded', function(){ TH_TEMPOS.dom = agora(); });
+  window.addEventListener('load', function(){
+    TH_TEMPOS.load = agora();
+    try {
+      var rs = performance.getEntriesByType('resource'), f = null, im = 0, n = 0;
+      for (var i = 0; i < rs.length; i++) {
+        var e = rs[i], fim = Math.round(e.responseEnd);
+        if (/fonts\\.(googleapis|gstatic)\\.com/.test(e.name)) f = Math.max(f || 0, fim);
+        else if (e.initiatorType === 'img') { im = Math.max(im, fim); n++; }
+      }
+      TH_TEMPOS.fontes = f;
+      TH_TEMPOS.nImgs = n;
+      TH_TEMPOS.imgs = im;
+    } catch (e) {}
+  });
+  window.receberTempos = function(t){
+    var p = document.getElementById('diag-tempos');
+    if (p) p.textContent = t;
+  };
+})();
 // v5.3: aplica o tema salvo antes do primeiro desenho (sem piscar o tema errado).
 // v5.3.1: o tema vem do arquivo de ajustes (TH_TEMA_ARQ); ao escolher, a página
 // avisa o Scriptable pela ponte, que grava no arquivo. O localStorage fica só de reserva.
@@ -526,6 +552,7 @@ ${anuncios.secao(cfg, av.erro ? 'os dados do avaliador não foram preparados (' 
 
 <details class="diag">
   <summary>Diagnóstico</summary>
+  <p id="diag-tempos">⏱️ Abertura: medindo…</p>
   <p id="diag-ponte"></p>
   <p id="diag-anuncios"></p>
   <p id="diag-cartao">Tela do item: nenhum item aberto ainda</p>
