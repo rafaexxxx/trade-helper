@@ -225,7 +225,9 @@ function folha() {
 function css() {
   return `
 .an-status{display:flex;align-items:center;justify-content:space-between;gap:12px}
-.an-status .meta{margin:0}
+.an-status .meta{flex:1;min-width:0;margin:0}
+/* v6.8.1: o botão nunca encolhe (o texto ao lado é que quebra em linhas). */
+.an-status .btn{flex:none;white-space:nowrap}
 .an-filtros{display:flex;flex-direction:column;gap:8px}
 .an-fbtn{display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px 8px 8px;border:1px solid var(--borda);border-radius:14px;background:var(--card);text-align:left;-webkit-tap-highlight-color:transparent}
 .an-fbtn.on{border-color:var(--acc-t);background:var(--dou-bg)}
