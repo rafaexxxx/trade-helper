@@ -312,6 +312,16 @@ function capitulo2(cfg) {
     </div>
   </div>
   <p class="aj-legenda">Na lista, toque na linha para abrir o cartão; toque num item para ver no Rolimon's.</p>
+
+  <h3 id="aj-plano">Plano para seu inventário</h3>
+  <p>Com vários itens, uma boa estratégia é fazer <b>downgrade em um</b> e <b>upgrade no resto</b>. Por exemplo: trocar um item grande por 2 médios e juntar os outros num item só. No topo dos Anúncios (em Todos, sem item escolhido), o app monta esse plano com os anúncios do momento:</p>
+  <ul class="aj-lista">
+    <li><b>1 · Downgrade:</b> 1 item seu por 2 ou 3 médios (e até ${addsMax} adds), com os mesmos degraus das sugestões.</li>
+    <li><b>2 · Upgrade do resto:</b> de 2 a ${max} dos outros itens por 1, preferindo usar mais itens.</li>
+    <li>Nenhum item seu entra nas duas trades, e cada trade é com um jogador diferente.</li>
+    <li>Quando falta anúncio para uma das trades, ela vira uma <b>meta</b> em números: quanto pedir ou que faixa de value procurar.</li>
+    <li>Toque numa trade para abrir o cartão completo. "Outro plano" mostra a próxima opção. O plano precisa de pelo menos 3 itens seus fora de hold.</li>
+  </ul>
   ${subir()}
 </section>`;
 }

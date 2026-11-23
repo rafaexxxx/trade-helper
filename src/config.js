@@ -96,6 +96,11 @@ module.exports = {
   ANUNCIO_SEU_DOWNGRADE_MAX_PCT: 16,
   ANUNCIO_SEU_DOWNGRADE_ABERTURA_PCT: 14,
   ANUNCIO_DEGRAU_DISTANCIA_PCT: 2,
+  // v6.17: "Plano para seu inventário" (topo dos Anúncios): downgrade em um item
+  // e upgrade no resto. Quantos dos seus maiores itens são testados para o
+  // downgrade (mais = mais lento) e quantos planos o "Outro plano" percorre.
+  PLANO_ITENS_TESTADOS: 12,
+  PLANO_MAX: 5,
   // v6.6: forma da sugestão (regra do Rafael).
   // Seu downgrade: você dá 1 item só e pede uma PARTE da oferta dele, com pelo
   // menos MIN_MEDIOS itens médios e no máximo ADDS_MAX adds (até 4 itens).

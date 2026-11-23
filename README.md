@@ -174,6 +174,12 @@ O que entra na lista:
   - Cada degrau tem a própria combinação. No cartão aberto, o lado que não muda aparece uma vez e o que muda aparece por degrau; embaixo ficam duas caixas com a %, o R$ e o veredito de cada degrau.
   - Na linha fechada aparece a faixa (ex.: "-2 a -8%") com o veredito do **2º degrau** (o pior caso). "Maior ganho" e o filtro de forma também usam o 2º degrau.
   - Quando só uma combinação cabe, fica **uma oferta só** e o 2º degrau vira o **limite em número** (v6.16.1): "dê no máximo X de value" (teto do seu upgrade) ou "aceite a partir de X de value" (mínimo do seu downgrade), para julgar uma contraproposta. Se a oferta já estiver a menos de 2 pontos do limite, a caixa não aparece.
+- **Plano para seu inventário** (v6.17): cartão no topo da lista (só em **Todos**, sem item escolhido) com a estratégia "**downgrade em um, upgrade no resto**":
+  1. **Downgrade** de 1 item seu por 2–3 médios (+ até 2 adds), com os mesmos degraus das sugestões;
+  2. **Upgrade do resto**: de 2 a 4 dos outros itens por 1, preferindo usar mais itens, noutro anúncio.
+  - Nenhum item entra nas duas trades. Testa os seus `PLANO_ITENS_TESTADOS` (12) maiores itens e guarda até `PLANO_MAX` (5) planos ("Outro plano ›"): primeiro os que têm as duas trades em anúncios reais.
+  - Sem anúncio para uma das trades, ela vira uma **meta** em números (quanto pedir no downgrade, ou a faixa de value do item a procurar no upgrade).
+  - Tocar numa trade abre o mesmo cartão da lista. Precisa de pelo menos 3 itens seus fora de hold. A conta roda em partes, depois que a lista aparece.
 - Entre várias trades possíveis, fica a mais perto da abertura (empate: menos itens). Quando a sugestão pede só uma parte da oferta, os **Robux** do dono ficam de fora.
 - Ficam de fora anúncios que oferecem item **projected**, com **demanda terrível**, com o **RAP subindo mais de 15% em 24h** ou fora do catálogo do Rolimon's, além dos seus próprios anúncios.
 - **Mesmo item dos dois lados**: só aparece se você não perder value.
@@ -242,6 +248,7 @@ Ficam em [`src/config.js`](src/config.js):
 | `ANUNCIO_SEU_UPGRADE_ABERTURA_PCT` / `TETO` | 2 / 9 | Dono pede downgrade (seu upgrade): quanto (%) a mais a abertura paga e o teto (o máximo que você paga) |
 | `ANUNCIO_SEU_DOWNGRADE_MIN_PCT` / `MAX` / `ABERTURA` | 7 / 16 / 14 | Dono pede upgrade (seu downgrade): o mínimo que você aceita (2º degrau), o máximo e o ponto da abertura (%) |
 | `ANUNCIO_DEGRAU_DISTANCIA_PCT` | 2 | Distância mínima (pontos de %) entre a abertura e o 2º degrau |
+| `PLANO_ITENS_TESTADOS` / `PLANO_MAX` | 12 / 5 | Plano para seu inventário: quantos dos seus maiores itens são testados para o downgrade e quantos planos ficam |
 | `ANUNCIO_ADD_MAX_VALUE` | 500 | Até esse value, o item conta como add (ovos e itens pequenos) |
 | `ANUNCIO_ADDS_MAX` | 2 | Quantos adds você aceita receber no seu downgrade |
 | `ANUNCIO_SEU_DOWNGRADE_MIN_MEDIOS` | 2 | Mínimo de itens médios que você recebe no seu downgrade |

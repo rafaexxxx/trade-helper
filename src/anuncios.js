@@ -174,6 +174,9 @@ function parametros(cfg, meuId) {
     addsMax: cfg.ANUNCIO_ADDS_MAX != null ? cfg.ANUNCIO_ADDS_MAX : 2,
     minMedios: cfg.ANUNCIO_SEU_DOWNGRADE_MIN_MEDIOS != null ? cfg.ANUNCIO_SEU_DOWNGRADE_MIN_MEDIOS : 2,
     pool: cfg.ANUNCIO_COMBINACAO_MAX_ITENS,
+    // v6.17: Plano para seu inventário.
+    planoItens: cfg.PLANO_ITENS_TESTADOS != null ? cfg.PLANO_ITENS_TESTADOS : 12,
+    planoMax: cfg.PLANO_MAX != null ? cfg.PLANO_MAX : 5,
     maxLista: cfg.ANUNCIOS_MAX_NA_LISTA,
   };
 }
@@ -204,6 +207,8 @@ function secao(cfg, erro) {
     '</div>' +
     '<p class="aviso oculto" id="an-erro"></p>' +
     '<p class="meta oculto" id="an-conta"></p>' +
+    // v6.17: Plano para seu inventário (só em Todos, sem item escolhido).
+    '<div id="an-plano"></div>' +
     '<div id="an-lista"></div>' +
     // v5.4: as regras desta aba ficam na Ajuda (a tag é do dono do anúncio etc.).
     ajuda.link('aj-tags', 'Como as contas funcionam?') +
@@ -332,6 +337,30 @@ button.an-i:active{background:var(--card2)}
 .dg-caixa small{font-size:13px;font-weight:700;color:var(--c)}
 .dg-caixa .selo{align-self:flex-start;max-width:100%;font-size:12px;padding:4px 10px}
 .dg-dica{margin:0;font-size:12px;color:var(--sub)}
+/* v6.17: Plano para seu inventário (protótipo aprovado). */
+#an-plano:empty{display:none}
+.pl{display:flex;flex-direction:column;border-radius:18px;background:var(--card);border:1px solid var(--card-borda);box-shadow:var(--sombra);overflow:hidden}
+.pl{-webkit-backdrop-filter:var(--vidro);backdrop-filter:var(--vidro)}
+.pl-cab{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:13px 14px 10px}
+.pl-cab b{display:block;font-size:16px;font-weight:700}
+.pl-cab span{display:block;margin-top:2px;font-size:12px;color:var(--sub)}
+.pl-n{flex:none;margin:0;padding:3px 8px;border-radius:999px;background:var(--card2);font-size:12px;font-weight:600;color:var(--sub)}
+.pl-tr{border-top:1px solid var(--borda)}
+.pl-linha{display:flex;align-items:center;gap:10px;width:100%;padding:11px 14px;border:0;background:none;text-align:left;-webkit-tap-highlight-color:transparent}
+button.pl-linha:active,.pl-tr.aberto>.pl-linha{background:var(--card2)}
+.pl-tr.aberto>.pl-linha .an-chev{transform:rotate(90deg)}
+.pl-num{flex:none;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:var(--acc-fundo);color:var(--on-acc);font-size:13px;font-weight:700}
+.pl-meta .pl-num{background:var(--card2);color:var(--sub)}
+.pl-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+.pl-l1{display:flex;align-items:baseline;gap:6px;min-width:0;font-size:14px;font-weight:700}
+.pl-t{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pl-l1 .an-tempo{font-weight:500}
+.pl-q{display:grid;place-items:center;font-size:12px;font-weight:700;color:var(--sub)}
+.pl-alvo{margin:0;font-size:13px;line-height:1.4;color:var(--sub)}
+.pl-alvo b{color:var(--fg)}
+.pl-pe{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;border-top:1px solid var(--borda)}
+.pl-pe .meta{margin:0;font-size:12px}
+.pl-outro{flex:none;border:0;background:none;padding:4px 0;font-size:14px;font-weight:600;color:var(--acc-t)}
 
 .an-fl{position:fixed;left:0;right:0;bottom:0;max-height:75vh;display:flex;flex-direction:column;border-radius:18px 18px 0 0;background:var(--bg);box-shadow:0 -6px 24px rgba(0,0,0,.25);padding-bottom:max(12px,env(safe-area-inset-bottom))}
 .an-fl-topo{display:flex;justify-content:space-between;align-items:center;padding:14px 16px 8px}
@@ -417,12 +446,21 @@ function criarAnalisador(D, P, PA) {
   // entram no seu lado (o mesmo item dos dois lados não é sugerido).
   // fixo = assetId que entra sempre (filtro "Um item seu").
   // Resultados guardados (ofertas repetidas são comuns).
-  function melhorCombinacao(T, minQ, maxQ, lo, hi, alvo, proibidos, fixo) {
-    var chave = [Math.round(T), minQ, maxQ, lo, hi, alvo, Object.keys(proibidos).sort().join(','), fixo || ''].join('|');
-    if (!(chave in memoCombinacao)) memoCombinacao[chave] = calcularCombinacao(T, minQ, maxQ, lo, hi, alvo, proibidos, fixo);
+  // v6.17 (Plano para o inventário), op opcional:
+  //   op.excluir = { uaid: 1 } cópias suas que não podem entrar (já vão no downgrade);
+  //   op.mais = true: prefere usar MAIS itens (depois, o mais perto de alvo).
+  function chaveOp(op) {
+    if (!op) return '';
+    return (op.mais ? 'm' : '') + '~' + Object.keys(op.excluir || {}).sort().join('.');
+  }
+  function melhorCombinacao(T, minQ, maxQ, lo, hi, alvo, proibidos, fixo, op) {
+    var chave = [Math.round(T), minQ, maxQ, lo, hi, alvo, Object.keys(proibidos).sort().join(','), fixo || '', chaveOp(op)].join('|');
+    if (!(chave in memoCombinacao)) memoCombinacao[chave] = calcularCombinacao(T, minQ, maxQ, lo, hi, alvo, proibidos, fixo, op);
     return memoCombinacao[chave];
   }
-  function calcularCombinacao(T, minQ, maxQ, lo, hi, alvo, proibidos, fixo) {
+  function calcularCombinacao(T, minQ, maxQ, lo, hi, alvo, proibidos, fixo, op) {
+    var excluir = (op && op.excluir) || {};
+    var mais = !!(op && op.mais);
     minQ = Math.max(minQ, 1);
     maxQ = Math.min(maxQ, P.maxItens);
     if (!(T > 0) || maxQ < minQ) return null;
@@ -432,7 +470,7 @@ function criarAnalisador(D, P, PA) {
     var soma0 = 0;
     var f = null;
     if (fixo) {
-      f = (A.porAsset[fixo] || [])[0];
+      f = (A.porAsset[fixo] || []).filter(function (c) { return !excluir[c.uaid]; })[0];
       if (!f || !(f.vb > 0) || f.vb > sMax || proibidos[f.id]) return null;
       escolha.push(f);
       soma0 = f.vb;
@@ -441,7 +479,7 @@ function criarAnalisador(D, P, PA) {
     var ordenados = A.meusOrdenados;
     for (var k = 0; k < ordenados.length && pool.length < PA.pool; k++) {
       var x = ordenados[k];
-      if (x === f || proibidos[x.id]) continue;
+      if (x === f || proibidos[x.id] || excluir[x.uaid]) continue;
       if (x.vb > 0 && soma0 + x.vb <= sMax) pool.push(x);
     }
     var melhor = null;
@@ -449,9 +487,12 @@ function criarAnalisador(D, P, PA) {
       if (escolha.length < minQ || soma < sMin) return;
       var p = ((T - soma) / soma) * 100;
       var nota = Math.abs(p - alvo);
-      if (!melhor || nota < melhor.nota - 1e-9 || (Math.abs(nota - melhor.nota) < 1e-9 && escolha.length < melhor.itens.length)) {
-        melhor = { nota: nota, pct: p, itens: escolha.slice() };
-      }
+      var n = escolha.length;
+      var troca;
+      if (!melhor) troca = true;
+      else if (mais && n !== melhor.itens.length) troca = n > melhor.itens.length;
+      else troca = nota < melhor.nota - 1e-9 || (Math.abs(nota - melhor.nota) < 1e-9 && n < melhor.itens.length);
+      if (troca) melhor = { nota: nota, pct: p, itens: escolha.slice() };
     }
     function descer(inicio, soma) {
       testar(soma);
@@ -540,7 +581,10 @@ function criarAnalisador(D, P, PA) {
   // v6.16: dois degraus pelo MESMO item dele: a ABERTURA (a mais perto de pagar
   // PA.upAbertura) e o TETO (a mais perto de PA.upTeto, pagando pelo menos
   // PA.degrauDist pontos a mais que a abertura). Volta { dou, rec, segundo }.
-  function melhorUpgrade(rec, fixo) {
+  // v6.17: op (opcional, do Plano) = { excluir, mais }: a abertura prefere usar
+  // mais itens; o teto só respeita o excluir.
+  function melhorUpgrade(rec, fixo, op) {
+    var mais = !!(op && op.mais);
     var melhor = null;
     for (var k = 0; k < rec.length; k++) {
       var r = rec[k];
@@ -548,15 +592,18 @@ function criarAnalisador(D, P, PA) {
       if (!(vb > 0)) continue;
       var proibidos = {};
       proibidos[r.id] = true;
-      var c = melhorCombinacao(vb, 2, P.maxItens, -PA.upTeto, 0, -PA.upAbertura, proibidos, fixo);
+      var c = melhorCombinacao(vb, 2, P.maxItens, -PA.upTeto, 0, -PA.upAbertura, proibidos, fixo, op);
       if (!c) continue;
       var qtd = c.itens.length + 1;
-      if (!melhor || c.nota < melhor.nota - 1e-9 || (Math.abs(c.nota - melhor.nota) < 1e-9 && qtd < melhor.qtd)) {
-        melhor = { nota: c.nota, qtd: qtd, dou: c.itens, rec: [r], vb: vb, proibidos: proibidos, pct: c.pct };
-      }
+      var troca;
+      if (!melhor) troca = true;
+      else if (mais && qtd !== melhor.qtd) troca = qtd > melhor.qtd;
+      else troca = c.nota < melhor.nota - 1e-9 || (Math.abs(c.nota - melhor.nota) < 1e-9 && qtd < melhor.qtd);
+      if (troca) melhor = { nota: c.nota, qtd: qtd, dou: c.itens, rec: [r], vb: vb, proibidos: proibidos, pct: c.pct };
     }
     if (!melhor) return null;
-    var t = melhorCombinacao(melhor.vb, 2, P.maxItens, -PA.upTeto, melhor.pct - PA.degrauDist, -PA.upTeto, melhor.proibidos, fixo);
+    var opT = op && op.excluir ? { excluir: op.excluir } : null;
+    var t = melhorCombinacao(melhor.vb, 2, P.maxItens, -PA.upTeto, melhor.pct - PA.degrauDist, -PA.upTeto, melhor.proibidos, fixo, opT);
     return { dou: melhor.dou, rec: melhor.rec, segundo: t ? { dou: t.itens, rec: melhor.rec } : null };
   }
 
@@ -566,7 +613,10 @@ function criarAnalisador(D, P, PA) {
   // forma (v6.8, opcional) = 'upgrade' ou 'downgrade' do SEU ponto de vista
   // (filtro da página): a sugestão é montada só nessa forma e o anúncio que pede
   // seus itens só passa se a trade tiver essa forma. Sem forma = como antes.
-  A.analisar = function (ad, fixo, forma) {
+  // op (v6.17, opcional, só o Plano usa) = { excluir: { uaid: 1 }, mais: true }:
+  // essas cópias suas não entram no seu lado, e o seu upgrade prefere mais itens.
+  A.analisar = function (ad, fixo, forma, op) {
+    var excluir = (op && op.excluir) || {};
     var meuId = A.meuId;
     var porAsset = A.porAsset;
     var emHold = A.emHold;
@@ -599,7 +649,7 @@ function criarAnalisador(D, P, PA) {
       var dou = [];
       for (k = 0; k < ad[6].length; k++) {
         var id = ad[6][k];
-        var livres = porAsset[id] || [];
+        var livres = (porAsset[id] || []).filter(function (c) { return !excluir[c.uaid]; });
         var n = usados[id] || 0;
         if (n >= livres.length) {
           return { descarte: emHold[id] && n < livres.length + emHold[id] ? 'pede item seu que está em hold' : 'pede itens que você não tem' };
@@ -645,7 +695,7 @@ function criarAnalisador(D, P, PA) {
     // v6.6: os Robux do dono ficam de fora (a sugestão pede só itens).
     var opcoes = [];
     if (querUp) opcoes.push({ tag: 'upgrade', s: melhorDowngrade(rec, fixo), robux: 0 });
-    if (querDown) opcoes.push({ tag: 'downgrade', s: melhorUpgrade(rec, fixo), robux: 0 });
+    if (querDown) opcoes.push({ tag: 'downgrade', s: melhorUpgrade(rec, fixo, op), robux: 0 });
     // v6.16: cada degrau com as próprias somas e veredito.
     function degrau(dou, rec) {
       var g = { dou: dou, rec: rec };
@@ -860,6 +910,167 @@ function paginaAnuncios(D, P, PA) {
       nItens: nItens, nTags: saida.length - nItens, foraDoFiltro: foraDoFiltro, nRefeitos: nRefeitos,
     };
     desenhar();
+    iniciarPlanos();
+  }
+
+  // ---------- v6.17: Plano para seu inventário ----------
+  // A estratégia do Rafael com vários itens: DOWNGRADE em um item seu (dar 1 e
+  // receber 2–3 médios) e UPGRADE no resto (2 a 4 dos outros por 1), sem item
+  // repetido nas duas trades. Usa só os anúncios que já deram alguma trade em
+  // cada forma (calculadas sem item escolhido) e roda em partes, um item seu
+  // por vez, depois que a lista aparece. Falta de anúncio = "meta" em números.
+  var plano = { lista: [], idx: 0, aberto: null, timer: null, chave: null, meus: null };
+  function nivelDe(r) {
+    return r && r.v && r.v.nivel != null ? r.v.nivel : -2;
+  }
+  function degrausDe(r) {
+    return r.degraus && r.degraus.length ? r.degraus : [r];
+  }
+  // a é melhor que b? Veredito do 2º degrau; no upgrade do resto, depois o que
+  // usa mais itens seus; por fim o maior ganho.
+  function melhorPerna(a, b, contarItens) {
+    if (!b) return true;
+    if (nivelDe(a) !== nivelDe(b)) return nivelDe(a) > nivelDe(b);
+    var na = primeiro(a).dou.length;
+    var nb = primeiro(b).dou.length;
+    if (contarItens && na !== nb) return na > nb;
+    return (a.pct == null ? -1e9 : a.pct) > (b.pct == null ? -1e9 : b.pct);
+  }
+  function analisarPlano(ad, fixo, forma, op) {
+    try {
+      return AN.analisar(ad, fixo, forma, op);
+    } catch (e) {
+      return { descarte: 'erro' };
+    }
+  }
+  function montarPlano(X, meus, adsDown, adsUp) {
+    // 1. Downgrade de X: o seu lado tem só 1 item em todos os degraus.
+    var down = null;
+    adsDown.forEach(function (ad) {
+      var r = analisarPlano(ad, X.id, 'downgrade');
+      if (r.descarte || r.tipo !== 'downgrade') return;
+      if (degrausDe(r).some(function (g) { return g.dou.length !== 1; })) return;
+      if (melhorPerna(r, down, false)) down = r;
+    });
+    var excl = {};
+    if (down) degrausDe(down).forEach(function (g) { g.dou.forEach(function (i) { excl[i.uaid] = 1; }); });
+    else excl[X.uaid] = 1;
+    var resto = meus.filter(function (i) { return !excl[i.uaid]; });
+    if (resto.length < 2) return null;
+    // 2. Upgrade do resto (prefere usar mais itens), noutro anúncio.
+    var up = null;
+    var op = { excluir: excl, mais: true };
+    adsUp.forEach(function (ad) {
+      if (down && ad[0] === down.ad[0]) return;
+      var r = analisarPlano(ad, '', 'upgrade', op);
+      if (r.descarte || r.tipo !== 'upgrade') return;
+      if (degrausDe(r).some(function (g) { return g.dou.some(function (i) { return excl[i.uaid]; }); })) return;
+      if (melhorPerna(r, up, true)) up = r;
+    });
+    if (!down && !up) return null;
+    var p = { x: down ? down.dou[0] : X, down: down, up: up, reais: (down ? 1 : 0) + (up ? 1 : 0) };
+    if (!down) p.metaDown = { de: X.vb * (1 + PA.downMin / 100), ate: X.vb * (1 + PA.downAbertura / 100) };
+    if (!up) {
+      var dou = resto.slice(0, P.maxItens);
+      var s = 0;
+      dou.forEach(function (i) { s += i.vb; });
+      p.metaUp = { dou: dou, de: s * (1 - PA.upTeto / 100), ate: s * (1 - PA.upAbertura / 100) };
+    }
+    return p;
+  }
+  // Primeiro os planos com as duas trades reais; depois o veredito das duas e o
+  // ganho. Plano com uma trade real só: no máximo um por anúncio.
+  function escolherPlanos(l) {
+    function soma(p) { return (p.down ? p.down.pct || 0 : 0) + (p.up ? p.up.pct || 0 : 0); }
+    l.sort(function (a, b) {
+      if (a.reais !== b.reais) return b.reais - a.reais;
+      var na = nivelDe(a.down) + nivelDe(a.up);
+      var nb = nivelDe(b.down) + nivelDe(b.up);
+      if (na !== nb) return nb - na;
+      return soma(b) - soma(a);
+    });
+    var saida = [];
+    var usados = {};
+    l.forEach(function (p) {
+      if (saida.length >= PA.planoMax) return;
+      if (p.reais < 2) {
+        var id = (p.down || p.up).ad[0];
+        if (usados[id]) return;
+        usados[id] = 1;
+      }
+      saida.push(p);
+    });
+    return saida;
+  }
+  function iniciarPlanos() {
+    // As listas de forma só estão completas sem item escolhido.
+    if (estado.item) return;
+    // Mesmos anúncios e mesmo inventário: já está calculado (ou calculando).
+    if (plano.chave === estado.res && plano.meus === AN.meus) return;
+    clearTimeout(plano.timer);
+    var chave = estado.res;
+    plano.chave = chave;
+    plano.meus = AN.meus;
+    plano.lista = [];
+    plano.idx = 0;
+    plano.aberto = null;
+    desenharPlano();
+    var meus = AN.meusOrdenados.filter(function (i) { return i.vb > 0; });
+    if (meus.length < 3) return;
+    var adsDown = [];
+    var adsUp = [];
+    var vistos = {};
+    estado.formas.downgrade.forEach(function (r) {
+      if (!vistos['d' + r.ad[0]]) { vistos['d' + r.ad[0]] = 1; adsDown.push(r.ad); }
+    });
+    estado.formas.upgrade.forEach(function (r) {
+      if (!vistos['u' + r.ad[0]]) { vistos['u' + r.ad[0]] = 1; adsUp.push(r.ad); }
+    });
+    if (!adsDown.length && !adsUp.length) return;
+    var candidatos = [];
+    var porId = {};
+    meus.forEach(function (i) {
+      if (!porId[i.id] && candidatos.length < PA.planoItens) {
+        porId[i.id] = 1;
+        candidatos.push(i);
+      }
+    });
+    var achados = [];
+    var k = 0;
+    var inv = AN.meus;
+    function passo() {
+      // Chegaram anúncios novos ou trocou a conta: outro cálculo assume.
+      if (plano.chave !== chave || plano.meus !== inv) return;
+      var X = candidatos[k++];
+      if (X) {
+        var p = montarPlano(X, meus, adsDown, adsUp);
+        if (p) achados.push(p);
+      }
+      if (k < candidatos.length) {
+        plano.timer = setTimeout(passo, 0);
+        return;
+      }
+      plano.lista = escolherPlanos(achados);
+      desenharPlano();
+      pedirMiniaturas(idsPlano());
+    }
+    plano.timer = setTimeout(passo, 30);
+  }
+  // Itens de todos os planos (miniaturas).
+  function idsPlano() {
+    var ids = [];
+    plano.lista.forEach(function (p) {
+      ids.push(p.x.id);
+      [p.down, p.up].forEach(function (r) { if (r) itensDe(r).forEach(function (i) { ids.push(i.id); }); });
+      if (p.metaUp) p.metaUp.dou.forEach(function (i) { ids.push(i.id); });
+    });
+    return ids;
+  }
+  // A trade do plano aberta agora (para pedir as vendas dos itens dela).
+  function pernaAberta() {
+    var p = plano.lista[plano.idx];
+    if (!p || plano.aberto == null) return null;
+    return plano.aberto === 1 ? p.down : p.up;
   }
 
   // ---------- Desenho ----------
@@ -926,6 +1137,8 @@ function paginaAnuncios(D, P, PA) {
       if (estado.aberto === r.ad[0]) aberto = r;
       quer(principal(primeiro(r).rec));
     });
+    // v6.17: a trade aberta no Plano também conta como cartão aberto.
+    if (!aberto) aberto = pernaAberta();
     // Os do cartão aberto vão primeiro.
     if (aberto) {
       var antes = ids;
@@ -965,7 +1178,10 @@ function paginaAnuncios(D, P, PA) {
     if (!mexeu || !estado.carregou) return;
     // Várias respostas seguidas = um redesenho só.
     clearTimeout(vendasAn.redesenho);
-    vendasAn.redesenho = setTimeout(desenharLista, 300);
+    vendasAn.redesenho = setTimeout(function () {
+      desenharLista();
+      desenharPlano();
+    }, 300);
   };
   function faixaPctAn(l) {
     function c(p) { return String(Math.round(p * 10) / 10).replace('.', ','); }
@@ -1194,6 +1410,56 @@ function paginaAnuncios(D, P, PA) {
       fs[k].querySelector('small').textContent = estado.carregou ? estado.formas[f].length : '';
     }
   }
+  // v6.17: cartão "Plano para seu inventário" (protótipo aprovado). Cada trade
+  // real abre o mesmo cartão da lista; a meta mostra a faixa em números.
+  function pernaReal(k, titulo, r) {
+    var ab = plano.aberto === k;
+    var g0 = primeiro(r);
+    return (
+      '<div class="pl-tr' + (ab ? ' aberto' : '') + '"><button type="button" class="pl-linha" data-pl="' + k + '" aria-expanded="' + ab + '">' +
+      '<span class="pl-num">' + k + '</span><span class="pl-main"><span class="pl-l1"><span class="pl-t">' + esc(titulo) + '</span>' +
+      '<span class="an-tempo">com ' + esc(r.ad[3] || 'jogador ' + r.ad[2]) + '</span></span>' +
+      '<span class="an-l2">' + grupo(g0.dou, 0, 'dou' + (r.modo === 'tag' ? ' sug' : '')) + '<span class="an-tr">⇄</span>' + grupo(g0.rec, r.robux, 'rec') + '</span></span>' +
+      '<span class="an-pct" data-cor="' + corVeredito(r.v) + '"><b>' + pctLinha(r) + '</b><small>' + esc(r.v ? r.v.titulo : '') + '</small></span>' +
+      '<span class="an-chev">›</span></button>' + (ab ? detalhe(r) : '') + '</div>'
+    );
+  }
+  function pernaMeta(k, titulo, dou, texto) {
+    return (
+      '<div class="pl-tr pl-meta"><div class="pl-linha"><span class="pl-num">' + k + '</span><span class="pl-main">' +
+      '<span class="pl-l1"><span class="pl-t">' + esc(titulo) + '</span><span class="an-tempo">meta</span></span>' +
+      '<span class="an-l2">' + grupo(dou, 0, 'dou sug') + '<span class="an-tr">⇄</span>' +
+      '<span class="an-grp rec sug"><span class="thumb pl-q">?</span></span></span>' +
+      '<p class="pl-alvo">' + texto + '</p></span></div></div>'
+    );
+  }
+  function desenharPlano() {
+    var el = $('an-plano');
+    if (!el) return;
+    var p = plano.lista[plano.idx];
+    if (!estado.carregou || estado.item || estado.forma !== 'todos' || !p) {
+      el.innerHTML = '';
+      return;
+    }
+    function n0(v) { return fmtNum(Math.round(v)); }
+    var n = plano.lista.length;
+    var h = '<div class="pl"><div class="pl-cab"><div><b>Plano para seu inventário</b><span>Downgrade em um item, upgrade no resto</span></div>' +
+      (n > 1 ? '<p class="pl-n">' + (plano.idx + 1) + ' de ' + n + '</p>' : '') + '</div>';
+    var tDown = 'Downgrade: ' + p.x.nome;
+    if (p.down) h += pernaReal(1, tDown, p.down);
+    else {
+      h += pernaMeta(1, tDown, [p.x], 'Nenhum anúncio serve agora. Peça 2 ou 3 itens médios (e até ' + PA.addsMax + ' adds) somando <b>' +
+        n0(p.metaDown.de) + ' a ' + n0(p.metaDown.ate) + ' de value</b> (+' + PA.downMin + ' a +' + PA.downAbertura + '%).');
+    }
+    if (p.up) h += pernaReal(2, 'Upgrade do resto', p.up);
+    else {
+      h += pernaMeta(2, 'Upgrade do resto', p.metaUp.dou, 'Nenhum anúncio serve agora. Procure <b>1 item de ' + n0(p.metaUp.de) + ' a ' +
+        n0(p.metaUp.ate) + ' de value</b> por estes ' + p.metaUp.dou.length + ' itens (-' + PA.upAbertura + ' a -' + PA.upTeto + '%).');
+    }
+    h += '<div class="pl-pe"><span class="meta">Nenhum item seu entra nas duas trades.</span>' +
+      (n > 1 ? '<button type="button" class="pl-outro" id="pl-outro">Outro plano ›</button>' : '') + '</div></div>';
+    el.innerHTML = h;
+  }
   function desenharLista() {
     var lista = estado.lista;
     estado.mostrados = [];
@@ -1281,8 +1547,9 @@ function paginaAnuncios(D, P, PA) {
     desenharStatus();
     desenharFiltro();
     desenharLista();
+    desenharPlano();
     desenharDiag();
-    var ids = [];
+    var ids = idsPlano();
     estado.mostrados.forEach(function (r) {
       itensDe(r).forEach(function (i) { ids.push(i.id); });
     });
@@ -1444,6 +1711,21 @@ function paginaAnuncios(D, P, PA) {
       return;
     }
     if (ev.target.closest('a')) return;
+    // v6.17: Plano para seu inventário.
+    if (ev.target.closest('#pl-outro')) {
+      plano.idx = (plano.idx + 1) % plano.lista.length;
+      plano.aberto = null;
+      desenharPlano();
+      return;
+    }
+    var pl = ev.target.closest('.pl-linha[data-pl]');
+    if (pl) {
+      var kp = Number(pl.getAttribute('data-pl'));
+      plano.aberto = plano.aberto === kp ? null : kp;
+      desenharPlano();
+      if (plano.aberto != null) pedirVendasAn();
+      return;
+    }
     var l = ev.target.closest('.an-linha');
     if (!l) return;
     var r = estado.mostrados[Number(l.getAttribute('data-k'))];
