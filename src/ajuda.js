@@ -313,14 +313,13 @@ function capitulo2(cfg) {
   </div>
   <p class="aj-legenda">Na lista, toque na linha para abrir o cartão; toque num item para ver no Rolimon's.</p>
 
-  <h3 id="aj-plano">Plano para seu inventário</h3>
-  <p>Com vários itens, uma boa estratégia é fazer <b>downgrade em um</b> e <b>upgrade no resto</b>. Por exemplo: trocar um item grande por 2 médios e juntar os outros num item só. No topo dos Anúncios (em Todos, sem item escolhido), o app monta esse plano com os anúncios do momento:</p>
+  <h3 id="aj-plano">Aba Plano: o seu próximo degrau</h3>
+  <p>A aba <b>Plano</b> olha para os seus itens fora de hold e diz o que fazer para subir na escadinha. Ela funciona mesmo sem anúncio: cada passo vem com a faixa em números e com itens do catálogo para mirar.</p>
   <ul class="aj-lista">
-    <li><b>1 · Downgrade:</b> 1 item seu por 2 ou 3 médios (e até ${addsMax} adds), com os mesmos degraus das sugestões.</li>
-    <li><b>2 · Upgrade do resto:</b> de 2 a ${max} dos outros itens por 1, preferindo usar mais itens.</li>
-    <li>Nenhum item seu entra nas duas trades, e cada trade é com um jogador diferente.</li>
-    <li>Quando falta anúncio para uma das trades, ela vira uma <b>meta</b> em números: quanto pedir ou que faixa de value procurar.</li>
-    <li>Toque numa trade para abrir o cartão completo. "Outro plano" mostra a próxima opção. O plano precisa de pelo menos 3 itens seus fora de hold.</li>
+    <li><b>Próximo degrau:</b> o passo recomendado vem primeiro. Com 1 item, <b>Descer</b> (1 item por 2 ou 3 médios). Com 2, <b>Subir</b> (juntar os dois em 1). Com 3 ou mais, <b>downgrade em um e upgrade no resto</b>: trocar um item por 2 médios e juntar os outros (de 2 a ${max}) num item só, sem repetir item nas duas trades.</li>
+    <li><b>Serve agora:</b> o melhor anúncio do momento para aquele passo, com os mesmos degraus das sugestões. Toque para abrir o cartão completo. Sem anúncio, o passo fica como <b>meta</b>: quanto pedir ou que faixa de value procurar.</li>
+    <li><b>Alvos no catálogo:</b> até 4 itens do Rolimon's na faixa do passo, com value, demanda Normal ou melhor, sem projected, sem tendência caindo e sem o RAP disparando. Toque para abrir a tela do item. Confira se dá para trocar antes de mirar.</li>
+    <li><b>Escadinha:</b> quanto o seu inventário pode virar em 4 voltas (1 upgrade + 1 downgrade cada) em três cenários: otimista (abrindo pela abertura), provável (o meio) e pessimista (cedendo até o limite). No pessimista você perde um pouco a cada volta: por isso vale negociar.</li>
   </ul>
   ${subir()}
 </section>`;

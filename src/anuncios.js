@@ -177,6 +177,7 @@ function parametros(cfg, meuId) {
     // v6.17: Plano para seu inventário.
     planoItens: cfg.PLANO_ITENS_TESTADOS != null ? cfg.PLANO_ITENS_TESTADOS : 12,
     planoMax: cfg.PLANO_MAX != null ? cfg.PLANO_MAX : 5,
+    planoAlvos: cfg.PLANO_ALVOS != null ? cfg.PLANO_ALVOS : 4,
     maxLista: cfg.ANUNCIOS_MAX_NA_LISTA,
   };
 }
@@ -207,11 +208,23 @@ function secao(cfg, erro) {
     '</div>' +
     '<p class="aviso oculto" id="an-erro"></p>' +
     '<p class="meta oculto" id="an-conta"></p>' +
-    // v6.17: Plano para seu inventário (só em Todos, sem item escolhido).
-    '<div id="an-plano"></div>' +
     '<div id="an-lista"></div>' +
     // v5.4: as regras desta aba ficam na Ajuda (a tag é do dono do anúncio etc.).
     ajuda.link('aj-tags', 'Como as contas funcionam?') +
+    '</div>'
+  );
+}
+
+// v6.18: aba "Plano" (protótipo aprovado). O conteúdo é desenhado pela página
+// (paginaAnuncios), porque usa as mesmas regras, cartões e anúncios desta aba.
+function secaoPlano(erro) {
+  if (erro) {
+    return '<div id="aba-plano" class="aba oculto"><p class="aviso">A aba Plano não pôde ser montada: ' + esc(erro) + '</p></div>';
+  }
+  return (
+    '<div id="aba-plano" class="aba oculto">' +
+    '<div id="pz-corpo" class="pz-corpo"><p class="vazio">Montando o plano...</p></div>' +
+    ajuda.link('aj-plano', 'Como o plano funciona?') +
     '</div>'
   );
 }
@@ -337,15 +350,66 @@ button.an-i:active{background:var(--card2)}
 .dg-caixa small{font-size:13px;font-weight:700;color:var(--c)}
 .dg-caixa .selo{align-self:flex-start;max-width:100%;font-size:12px;padding:4px 10px}
 .dg-dica{margin:0;font-size:12px;color:var(--sub)}
-/* v6.17: Plano para seu inventário (protótipo aprovado). */
-#an-plano:empty{display:none}
-.pl{display:flex;flex-direction:column;border-radius:18px;background:var(--card);border:1px solid var(--card-borda);box-shadow:var(--sombra);overflow:hidden}
-.pl{-webkit-backdrop-filter:var(--vidro);backdrop-filter:var(--vidro)}
-.pl-cab{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:13px 14px 10px}
-.pl-cab b{display:block;font-size:16px;font-weight:700}
-.pl-cab span{display:block;margin-top:2px;font-size:12px;color:var(--sub)}
-.pl-n{flex:none;margin:0;padding:3px 8px;border-radius:999px;background:var(--card2);font-size:12px;font-weight:600;color:var(--sub)}
-.pl-tr{border-top:1px solid var(--borda)}
+/* v6.17/v6.18: aba Plano (protótipos aprovados). As trades do plano combinado
+   usam .pl-*; os passos, .pz-*; a escadinha, .ez. */
+.pz-corpo{display:flex;flex-direction:column;gap:22px}
+.pz-sec{display:flex;flex-direction:column;gap:12px}
+.pz-sec .sec-t{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.pz-sec .sec-t h2{margin:0;font-size:19px;font-weight:700}
+.pz-sec .sec-t span{font-size:12px;color:var(--sub)}
+.pz-res{display:flex;align-items:center;gap:12px;padding:14px;border-radius:18px;background:var(--heroi);color:var(--on-heroi);border:1px solid var(--heroi-borda);box-shadow:var(--sombra)}
+.pz-res .num{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.pz-res small{font-size:12px;opacity:.85}
+.pz-res b{font-size:26px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.pz-res .an-grp{flex-wrap:wrap;justify-content:flex-end;max-width:45%;background:rgba(255,255,255,.14)}
+.pz{display:flex;flex-direction:column;border-radius:18px;background:var(--card);border:1px solid var(--card-borda);box-shadow:var(--sombra);overflow:hidden}
+.pz{-webkit-backdrop-filter:var(--vidro);backdrop-filter:var(--vidro)}
+.pz-cab{display:flex;flex-direction:column;gap:4px;padding:13px 14px 10px}
+.pz-cab .l1{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.pz-cab b{font-size:16px;font-weight:700;overflow-wrap:anywhere}
+.pz-cab .sub{font-size:12px}
+.pz-tag{flex:none;padding:2px 7px;border-radius:6px;font-size:11px;font-weight:700;background:var(--card2);color:var(--sub)}
+.pz-tag.acc{background:var(--acc-fundo);color:var(--on-acc)}
+.pz-troca{display:flex;align-items:center;gap:10px;padding:4px 14px 12px}
+.pz-lado{display:flex;flex-direction:column;gap:4px;min-width:0}
+.pz-lado small{font-size:11px;font-weight:600;color:var(--sub);text-transform:uppercase;letter-spacing:.04em}
+.pz-lado b{font-size:15px;font-variant-numeric:tabular-nums}
+.pz-faixa{flex:1;min-width:0;text-align:right}
+.pz-faixa b{display:block;font-size:17px;font-weight:700;color:var(--acc-t);font-variant-numeric:tabular-nums}
+.pz-faixa span{font-size:12px;color:var(--sub)}
+.pz-ad{display:flex;align-items:center;gap:10px;width:100%;margin:0;padding:11px 14px;border:0;border-top:1px solid var(--borda);background:var(--rec-bg);color:inherit;font:inherit;text-align:left;-webkit-tap-highlight-color:transparent}
+.pz-ad .t{flex:1;min-width:0;font-size:13px;color:var(--sub)}
+.pz-ad .t b{display:block;font-size:14px;color:var(--fg);overflow-wrap:anywhere}
+.pz-ad .p{flex:none;text-align:right;font-size:15px;font-weight:700;color:var(--c);white-space:nowrap}
+.pz-ad .p small{display:block;font-size:11px;font-weight:600}
+.pz-ad[aria-expanded="true"] .an-chev{transform:rotate(90deg)}
+.pz-ad.nada{background:none;font-size:13px;color:var(--sub)}
+.pz-alvos{border-top:1px solid var(--borda);padding-bottom:4px}
+.pz-alvos>p{margin:0;padding:10px 14px 4px;font-size:12px;font-weight:600;color:var(--sub);text-transform:uppercase;letter-spacing:.04em}
+.pz-sem{display:block;padding:4px 14px 8px;font-size:13px;color:var(--sub)}
+.pz-alvo{display:flex;align-items:center;gap:10px;width:100%;margin:0;padding:8px 14px;border:0;background:none;color:inherit;font:inherit;text-align:left;-webkit-tap-highlight-color:transparent}
+.pz-alvo:active{background:var(--card2)}
+.pz-alvo .thumb{width:34px;height:34px;border-radius:9px}
+.pz-alvo .txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.pz-alvo .nome{font-size:14px;font-weight:600;overflow-wrap:anywhere}
+.pz-alvo .det{font-size:12px;color:var(--sub)}
+.pz-alvo .v{flex:none;font-size:15px;font-weight:700;font-variant-numeric:tabular-nums}
+.pz-alvo .v small{margin-left:3px;font-size:11px;font-weight:500;color:var(--sub)}
+.pz-seta{flex:none;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;background:var(--card2);color:var(--acc-t);font-size:12px}
+.ez{border-radius:18px;background:var(--card);border:1px solid var(--card-borda);box-shadow:var(--sombra);overflow:hidden}
+.ez table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+.ez th,.ez td{padding:9px 10px;text-align:right;font-size:14px}
+.ez th{font-size:12px;font-weight:600;color:var(--sub)}
+.ez th:first-child,.ez td:first-child{text-align:left;color:var(--sub);font-weight:600}
+.ez tr+tr td{border-top:1px solid var(--borda)}
+.ez td.o{color:var(--pos);font-weight:700}
+.ez td.p{color:var(--acc-t);font-weight:700}
+.ez td.s{color:var(--neg);font-weight:700}
+.ez-pe{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:10px;border-top:1px solid var(--borda);background:var(--card2)}
+.ez-pe div{display:flex;flex-direction:column;gap:2px;font-size:11px;color:var(--sub)}
+.ez-pe b{font-size:13px}
+.pz-corpo .nota{margin:0;font-size:12px;line-height:1.45;color:var(--sub)}
+.pz .pl-tr,.pl-tr{border-top:1px solid var(--borda)}
 .pl-linha{display:flex;align-items:center;gap:10px;width:100%;padding:11px 14px;border:0;background:none;text-align:left;-webkit-tap-highlight-color:transparent}
 button.pl-linha:active,.pl-tr.aberto>.pl-linha{background:var(--card2)}
 .pl-tr.aberto>.pl-linha .an-chev{transform:rotate(90deg)}
@@ -910,16 +974,19 @@ function paginaAnuncios(D, P, PA) {
       nItens: nItens, nTags: saida.length - nItens, foraDoFiltro: foraDoFiltro, nRefeitos: nRefeitos,
     };
     desenhar();
-    iniciarPlanos();
   }
 
-  // ---------- v6.17: Plano para seu inventário ----------
+  // ---------- v6.17/v6.18: aba Plano ----------
   // A estratégia do Rafael com vários itens: DOWNGRADE em um item seu (dar 1 e
   // receber 2–3 médios) e UPGRADE no resto (2 a 4 dos outros por 1), sem item
-  // repetido nas duas trades. Usa só os anúncios que já deram alguma trade em
-  // cada forma (calculadas sem item escolhido) e roda em partes, um item seu
-  // por vez, depois que a lista aparece. Falta de anúncio = "meta" em números.
-  var plano = { lista: [], idx: 0, aberto: null, timer: null, chave: null, meus: null };
+  // repetido nas duas trades. v6.18: virou a aba "Plano" (protótipo aprovado):
+  // resumo, próximo degrau (o plano combinado, Subir e Descer, com metas em
+  // números, o anúncio que serve agora e alvos do catálogo) e a escadinha.
+  // Só calcula depois que a aba é aberta (plano.ativo), em partes (setTimeout).
+  var plano = {
+    ativo: false, lista: [], idx: 0, aberto: null, timer: null, chave: undefined, meus: null,
+    pronto: false, subir: null, descer: null, alvosSubir: [], alvosDescer: [],
+  };
   function nivelDe(r) {
     return r && r.v && r.v.nivel != null ? r.v.nivel : -2;
   }
@@ -943,40 +1010,103 @@ function paginaAnuncios(D, P, PA) {
       return { descarte: 'erro' };
     }
   }
-  function montarPlano(X, meus, adsDown, adsUp) {
-    // 1. Downgrade de X: o seu lado tem só 1 item em todos os degraus.
+  // Seus itens que podem entrar (fora de hold, com value ou RAP), do maior.
+  function livres() {
+    return AN.meusOrdenados.filter(function (i) { return i.vb > 0; });
+  }
+  function somaVb(l) {
+    var s = 0;
+    l.forEach(function (i) { s += i.vb; });
+    return s;
+  }
+  // Anúncios que podem servir (o analisar decide o resto). Downgrade: pede 1
+  // item seu, ou só tags com "upgrade". Upgrade: pede 2+ itens seus, ou só
+  // tags com "downgrade". Sem anúncios buscados, nenhum.
+  function anunciosDoPlano() {
+    var r = { down: [], up: [] };
+    if (!estado.carregou) return r;
+    ((estado.res && estado.res.lista) || []).forEach(function (ad) {
+      if (AN.meuId && ad[2] === AN.meuId) return;
+      var tags = ad[7] || [];
+      var ped = ad[6] || [];
+      var meusPed = ped.length > 0 && ped.every(function (id) { return AN.porAsset[id]; });
+      if (ped.length ? meusPed && ped.length === 1 : tags.indexOf('upgrade') >= 0) r.down.push(ad);
+      if (ped.length ? meusPed && ped.length >= 2 : tags.indexOf('downgrade') >= 0) r.up.push(ad);
+    });
+    return r;
+  }
+  // Melhor downgrade de X: o seu lado tem só 1 item em todos os degraus.
+  function melhorDown(X, ads) {
     var down = null;
-    adsDown.forEach(function (ad) {
+    ads.down.forEach(function (ad) {
       var r = analisarPlano(ad, X.id, 'downgrade');
       if (r.descarte || r.tipo !== 'downgrade') return;
       if (degrausDe(r).some(function (g) { return g.dou.length !== 1; })) return;
       if (melhorPerna(r, down, false)) down = r;
     });
-    var excl = {};
-    if (down) degrausDe(down).forEach(function (g) { g.dou.forEach(function (i) { excl[i.uaid] = 1; }); });
-    else excl[X.uaid] = 1;
-    var resto = meus.filter(function (i) { return !excl[i.uaid]; });
-    if (resto.length < 2) return null;
-    // 2. Upgrade do resto (prefere usar mais itens), noutro anúncio.
+    return down;
+  }
+  // Melhor upgrade sem as cópias de excl (prefere usar mais itens), fora do
+  // anúncio "evitar" (o do downgrade do mesmo plano).
+  function melhorUp(excl, ads, evitar) {
     var up = null;
     var op = { excluir: excl, mais: true };
-    adsUp.forEach(function (ad) {
-      if (down && ad[0] === down.ad[0]) return;
+    ads.up.forEach(function (ad) {
+      if (evitar && ad[0] === evitar) return;
       var r = analisarPlano(ad, '', 'upgrade', op);
       if (r.descarte || r.tipo !== 'upgrade') return;
       if (degrausDe(r).some(function (g) { return g.dou.some(function (i) { return excl[i.uaid]; }); })) return;
       if (melhorPerna(r, up, true)) up = r;
     });
+    return up;
+  }
+  // Metas em números (as faixas dos degraus) para as trades sem anúncio.
+  function metaDescer(X) {
+    return { de: X.vb * (1 + PA.downMin / 100), ate: X.vb * (1 + PA.downAbertura / 100) };
+  }
+  function metaSubir(dou) {
+    var s = somaVb(dou);
+    return { dou: dou, soma: s, de: s * (1 - PA.upTeto / 100), ate: s * (1 - PA.upAbertura / 100) };
+  }
+  function montarPlano(X, meus, ads, downs) {
+    // 1. Downgrade de X.
+    var down = melhorDown(X, ads);
+    downs[X.uaid] = down;
+    var excl = {};
+    if (down) degrausDe(down).forEach(function (g) { g.dou.forEach(function (i) { excl[i.uaid] = 1; }); });
+    else excl[X.uaid] = 1;
+    var resto = meus.filter(function (i) { return !excl[i.uaid]; });
+    if (resto.length < 2) return null;
+    // 2. Upgrade do resto, noutro anúncio.
+    var up = melhorUp(excl, ads, down && down.ad[0]);
     if (!down && !up) return null;
     var p = { x: down ? down.dou[0] : X, down: down, up: up, reais: (down ? 1 : 0) + (up ? 1 : 0) };
-    if (!down) p.metaDown = { de: X.vb * (1 + PA.downMin / 100), ate: X.vb * (1 + PA.downAbertura / 100) };
-    if (!up) {
-      var dou = resto.slice(0, P.maxItens);
-      var s = 0;
-      dou.forEach(function (i) { s += i.vb; });
-      p.metaUp = { dou: dou, de: s * (1 - PA.upTeto / 100), ate: s * (1 - PA.upAbertura / 100) };
-    }
+    if (!down) p.metaDown = metaDescer(X);
+    if (!up) p.metaUp = metaSubir(resto.slice(0, P.maxItens));
     return p;
+  }
+  // Sem anúncio para nenhuma das trades: o plano só com metas (o maior desce).
+  function planoSoMetas(meus) {
+    var X = meus[0];
+    return { x: X, down: null, up: null, reais: 0, metaDown: metaDescer(X), metaUp: metaSubir(meus.slice(1, 1 + P.maxItens)) };
+  }
+  // Itens do catálogo para mirar: value entre lo e hi, demanda Normal ou melhor,
+  // sem projected nem hyped, tendência que não cai e RAP sem subir demais em
+  // 24h. Ordem: maior demanda, depois o mais perto do meio da faixa.
+  function alvosCatalogo(lo, hi, evitar) {
+    var C = D.catalogo;
+    var meio = (lo + hi) / 2;
+    var l = [];
+    for (var id in C) {
+      var c = C[id];
+      var v = c[3];
+      if (!(v > 0) || v < lo || v > hi || evitar[id]) continue;
+      if (!(c[4] >= 2) || c[5] === 0 || (c[6] & 3)) continue;
+      if (c[7] != null && c[7] >= P.alertaRap24) continue;
+      l.push({ id: id, dem: c[4], d: Math.abs(v - meio) });
+    }
+    l.sort(function (a, b) { return b.dem - a.dem || a.d - b.d; });
+    return l.slice(0, PA.planoAlvos).map(function (x) { return itemDoCatalogo(C, x.id); });
   }
   // Primeiro os planos com as duas trades reais; depois o veredito das duas e o
   // ganho. Plano com uma trade real só: no máximo um por anúncio.
@@ -1003,74 +1133,114 @@ function paginaAnuncios(D, P, PA) {
     return saida;
   }
   function iniciarPlanos() {
-    // As listas de forma só estão completas sem item escolhido.
-    if (estado.item) return;
+    // Só depois que a aba Plano foi aberta (o cálculo pesa um pouco).
+    if (!plano.ativo) return;
     // Mesmos anúncios e mesmo inventário: já está calculado (ou calculando).
     if (plano.chave === estado.res && plano.meus === AN.meus) return;
     clearTimeout(plano.timer);
     var chave = estado.res;
+    var inv = AN.meus;
     plano.chave = chave;
-    plano.meus = AN.meus;
+    plano.meus = inv;
     plano.lista = [];
     plano.idx = 0;
     plano.aberto = null;
-    desenharPlano();
-    var meus = AN.meusOrdenados.filter(function (i) { return i.vb > 0; });
-    if (meus.length < 3) return;
-    var adsDown = [];
-    var adsUp = [];
-    var vistos = {};
-    estado.formas.downgrade.forEach(function (r) {
-      if (!vistos['d' + r.ad[0]]) { vistos['d' + r.ad[0]] = 1; adsDown.push(r.ad); }
-    });
-    estado.formas.upgrade.forEach(function (r) {
-      if (!vistos['u' + r.ad[0]]) { vistos['u' + r.ad[0]] = 1; adsUp.push(r.ad); }
-    });
-    if (!adsDown.length && !adsUp.length) return;
-    var candidatos = [];
-    var porId = {};
-    meus.forEach(function (i) {
-      if (!porId[i.id] && candidatos.length < PA.planoItens) {
-        porId[i.id] = 1;
-        candidatos.push(i);
-      }
-    });
+    plano.subir = null;
+    plano.descer = null;
+    plano.pronto = false;
+    var meus = livres();
+    // Alvos do catálogo (não dependem dos anúncios). Subir: 1 item na faixa do
+    // upgrade dos seus até 4 maiores. Descer: médios (acima de um add) que,
+    // em 2 ou 3, somam a faixa do downgrade do seu maior item.
+    var dou = meus.slice(0, P.maxItens);
+    plano.alvosSubir = [];
+    plano.alvosDescer = [];
+    if (dou.length >= 2) {
+      var ms = metaSubir(dou);
+      var ev = {};
+      dou.forEach(function (i) { ev[i.id] = 1; });
+      plano.alvosSubir = alvosCatalogo(ms.de, ms.ate, ev);
+    }
+    if (meus.length) {
+      var md = metaDescer(meus[0]);
+      var evd = {};
+      evd[meus[0].id] = 1;
+      plano.alvosDescer = alvosCatalogo(Math.max(PA.addMax, md.de / 3), md.ate / 2, evd);
+    }
+    // Anúncios: um passo por vez (cada item seu do plano combinado, depois o
+    // Descer do maior e o Subir dos 4 maiores).
+    var ads = anunciosDoPlano();
+    var tarefas = [];
     var achados = [];
+    var downs = {};
+    if (estado.carregou) {
+      if (meus.length >= 3) {
+        var porId = {};
+        var nCand = 0;
+        meus.forEach(function (X) {
+          if (porId[X.id] || nCand >= PA.planoItens) return;
+          porId[X.id] = 1;
+          nCand++;
+          tarefas.push(function () {
+            var p = montarPlano(X, meus, ads, downs);
+            if (p) achados.push(p);
+          });
+        });
+      }
+      if (meus.length >= 1) {
+        tarefas.push(function () {
+          plano.descer = meus[0].uaid in downs ? downs[meus[0].uaid] : melhorDown(meus[0], ads);
+        });
+      }
+      if (meus.length >= 2) {
+        tarefas.push(function () {
+          var excl = {};
+          meus.forEach(function (i) { if (dou.indexOf(i) < 0) excl[i.uaid] = 1; });
+          plano.subir = melhorUp(excl, ads, null);
+        });
+      }
+    }
     var k = 0;
-    var inv = AN.meus;
     function passo() {
       // Chegaram anúncios novos ou trocou a conta: outro cálculo assume.
       if (plano.chave !== chave || plano.meus !== inv) return;
-      var X = candidatos[k++];
-      if (X) {
-        var p = montarPlano(X, meus, adsDown, adsUp);
-        if (p) achados.push(p);
-      }
-      if (k < candidatos.length) {
+      if (k < tarefas.length) {
+        tarefas[k++]();
         plano.timer = setTimeout(passo, 0);
         return;
       }
       plano.lista = escolherPlanos(achados);
+      plano.pronto = estado.carregou;
       desenharPlano();
       pedirMiniaturas(idsPlano());
     }
+    desenharPlano();
+    pedirMiniaturas(idsPlano());
     plano.timer = setTimeout(passo, 30);
   }
-  // Itens de todos os planos (miniaturas).
+  // Itens da aba Plano (miniaturas).
   function idsPlano() {
     var ids = [];
-    plano.lista.forEach(function (p) {
-      ids.push(p.x.id);
-      [p.down, p.up].forEach(function (r) { if (r) itensDe(r).forEach(function (i) { ids.push(i.id); }); });
-      if (p.metaUp) p.metaUp.dou.forEach(function (i) { ids.push(i.id); });
-    });
+    if (!plano.ativo) return ids;
+    function add(r) {
+      if (r) itensDe(r).forEach(function (i) { ids.push(i.id); });
+    }
+    livres().forEach(function (i) { ids.push(i.id); });
+    plano.lista.forEach(function (p) { add(p.down); add(p.up); });
+    add(plano.subir);
+    add(plano.descer);
+    plano.alvosSubir.concat(plano.alvosDescer).forEach(function (i) { ids.push(i.id); });
     return ids;
   }
-  // A trade do plano aberta agora (para pedir as vendas dos itens dela).
+  // A trade aberta na aba Plano (para pedir as vendas dos itens dela).
   function pernaAberta() {
+    var a = plano.aberto;
+    if (!a) return null;
+    if (a === 's') return plano.subir;
+    if (a === 'd') return plano.descer;
     var p = plano.lista[plano.idx];
-    if (!p || plano.aberto == null) return null;
-    return plano.aberto === 1 ? p.down : p.up;
+    if (!p) return null;
+    return a === 'c1' ? p.down : a === 'c2' ? p.up : null;
   }
 
   // ---------- Desenho ----------
@@ -1410,54 +1580,169 @@ function paginaAnuncios(D, P, PA) {
       fs[k].querySelector('small').textContent = estado.carregou ? estado.formas[f].length : '';
     }
   }
-  // v6.17: cartão "Plano para seu inventário" (protótipo aprovado). Cada trade
-  // real abre o mesmo cartão da lista; a meta mostra a faixa em números.
-  function pernaReal(k, titulo, r) {
-    var ab = plano.aberto === k;
+  // ---------- v6.18: desenho da aba Plano (protótipo aprovado) ----------
+  function n0(v) {
+    return fmtNum(Math.round(v));
+  }
+  function jogador(r) {
+    return r.ad[3] || 'jogador ' + r.ad[2];
+  }
+  // Uma trade real do plano combinado: linha que abre o cartão da lista.
+  function pernaReal(key, n, titulo, r) {
+    var ab = plano.aberto === key;
     var g0 = primeiro(r);
     return (
-      '<div class="pl-tr' + (ab ? ' aberto' : '') + '"><button type="button" class="pl-linha" data-pl="' + k + '" aria-expanded="' + ab + '">' +
-      '<span class="pl-num">' + k + '</span><span class="pl-main"><span class="pl-l1"><span class="pl-t">' + esc(titulo) + '</span>' +
-      '<span class="an-tempo">com ' + esc(r.ad[3] || 'jogador ' + r.ad[2]) + '</span></span>' +
+      '<div class="pl-tr' + (ab ? ' aberto' : '') + '"><button type="button" class="pl-linha" data-pz="' + key + '" aria-expanded="' + ab + '">' +
+      '<span class="pl-num">' + n + '</span><span class="pl-main"><span class="pl-l1"><span class="pl-t">' + esc(titulo) + '</span>' +
+      '<span class="an-tempo">com ' + esc(jogador(r)) + '</span></span>' +
       '<span class="an-l2">' + grupo(g0.dou, 0, 'dou' + (r.modo === 'tag' ? ' sug' : '')) + '<span class="an-tr">⇄</span>' + grupo(g0.rec, r.robux, 'rec') + '</span></span>' +
       '<span class="an-pct" data-cor="' + corVeredito(r.v) + '"><b>' + pctLinha(r) + '</b><small>' + esc(r.v ? r.v.titulo : '') + '</small></span>' +
       '<span class="an-chev">›</span></button>' + (ab ? detalhe(r) : '') + '</div>'
     );
   }
-  function pernaMeta(k, titulo, dou, texto) {
+  // Uma trade sem anúncio: a meta em números.
+  function pernaMeta(n, titulo, dou, nQ, texto) {
+    var q = '';
+    for (var k = 0; k < nQ; k++) q += '<span class="thumb pl-q">?</span>';
     return (
-      '<div class="pl-tr pl-meta"><div class="pl-linha"><span class="pl-num">' + k + '</span><span class="pl-main">' +
+      '<div class="pl-tr pl-meta"><div class="pl-linha"><span class="pl-num">' + n + '</span><span class="pl-main">' +
       '<span class="pl-l1"><span class="pl-t">' + esc(titulo) + '</span><span class="an-tempo">meta</span></span>' +
-      '<span class="an-l2">' + grupo(dou, 0, 'dou sug') + '<span class="an-tr">⇄</span>' +
-      '<span class="an-grp rec sug"><span class="thumb pl-q">?</span></span></span>' +
+      '<span class="an-l2">' + grupo(dou, 0, 'dou sug') + '<span class="an-tr">⇄</span><span class="an-grp rec sug">' + q + '</span></span>' +
       '<p class="pl-alvo">' + texto + '</p></span></div></div>'
     );
   }
+  function txtMetaDescer(m) {
+    return 'Peça 2 ou 3 itens médios (e até ' + PA.addsMax + ' adds) somando <b>' + n0(m.de) + ' a ' + n0(m.ate) +
+      ' de value</b> (+' + PA.downMin + ' a +' + PA.downAbertura + '%).';
+  }
+  function txtMetaSubir(m) {
+    return 'Procure <b>1 item de ' + n0(m.de) + ' a ' + n0(m.ate) + ' de value</b> por estes ' + m.dou.length +
+      ' itens (-' + PA.upAbertura + ' a -' + PA.upTeto + '%).';
+  }
+  // Enquanto os anúncios não chegam (ou estão sendo cruzados), um aviso curto.
+  function statusPlano() {
+    if (!estado.carregou) return estado.carregando ? 'Buscando os anúncios...' : 'Os anúncios ainda não foram buscados.';
+    if (!plano.pronto) return 'Procurando nos anúncios...';
+    return '';
+  }
+  // "Serve agora": o melhor anúncio do momento para o passo (o toque abre o cartão).
+  function serveAgora(key, r) {
+    var st = statusPlano();
+    if (st) return '<div class="pz-ad nada">' + st + '</div>';
+    if (!r) return '<div class="pz-ad nada">Nenhum anúncio serve agora. Use os alvos abaixo para procurar ou anunciar.</div>';
+    var ab = plano.aberto === key;
+    var nomes = primeiro(r).rec.map(function (i) { return i.nome; }).join(' + ');
+    return (
+      '<button type="button" class="pz-ad" data-pz="' + key + '" aria-expanded="' + ab + '"><span class="t"><b>Serve agora: ' + esc(nomes) + '</b>' +
+      'com ' + esc(jogador(r)) + ' · ' + haQuanto(r.ad[1]) + '</span>' +
+      '<span class="p" data-cor="' + corVeredito(r.v) + '">' + pctLinha(r) + '<small>' + esc(r.v ? r.v.titulo : '') + '</small></span>' +
+      '<span class="an-chev">›</span></button>' + (ab ? detalhe(r) : '')
+    );
+  }
+  function linhaAlvo(i) {
+    var d = [];
+    if (i.dem >= 0) d.push('<span class="' + corDem(i.dem) + '">' + esc(P.demandaCurta[i.dem]) + '</span>');
+    if (i.tend >= 0) d.push(esc(P.tendenciaCurta[i.tend]));
+    var ln = LN[i.id];
+    if (ln && ln.tv) d.push('<span class="' + esc(ln.c) + '">' + esc(ln.tv) + '</span>');
+    return (
+      '<button type="button" class="pz-alvo" data-item="' + esc(i.id) + '" data-nome="' + esc(i.nome) + '">' + miniatura(i.id) +
+      '<span class="txt"><span class="nome">' + esc(i.nome) + '</span><span class="det">' + d.join(' · ') + '</span></span>' +
+      '<span class="v">' + fmtNum(valorEfetivo(i)) + '<small>value</small></span><span class="pz-seta" aria-hidden="true">›</span></button>'
+    );
+  }
+  function blocoAlvos(titulo, l) {
+    return (
+      '<div class="pz-alvos"><p>' + titulo + '</p>' +
+      (l.length ? l.map(linhaAlvo).join('') : '<span class="pz-sem">Nenhum item do catálogo nessa faixa com demanda Normal ou melhor.</span>') +
+      '</div>'
+    );
+  }
+  function etiquetas(rec, forma) {
+    return '<span class="l1">' + (rec ? '<span class="pz-tag acc">Recomendado</span>' : '') + '<span class="pz-tag">' + forma + '</span></span>';
+  }
+  function cartaoCombinado(meus, rec) {
+    var p = plano.lista[plano.idx] || planoSoMetas(meus);
+    var n = plano.lista.length;
+    var h = '<div class="pz"><div class="pz-cab">' + etiquetas(rec, '2 trades') + '<b>Downgrade em um, upgrade no resto</b>' +
+      '<span class="sub">Nenhum item seu entra nas duas trades.</span></div>';
+    var tD = 'Descer: ' + p.x.nome;
+    h += p.down ? pernaReal('c1', 1, tD, p.down) : pernaMeta(1, tD, [p.x], 2, txtMetaDescer(p.metaDown));
+    h += p.up ? pernaReal('c2', 2, 'Subir o resto', p.up) : pernaMeta(2, 'Subir o resto', p.metaUp.dou, 1, txtMetaSubir(p.metaUp));
+    var st = statusPlano();
+    if (st) h += '<div class="pz-ad nada">' + st + '</div>';
+    if (n > 1) h += '<div class="pl-pe"><span class="meta">Plano ' + (plano.idx + 1) + ' de ' + n + '</span><button type="button" class="pl-outro" id="pl-outro">Outro plano ›</button></div>';
+    return h + '</div>';
+  }
+  function cartaoSubir(dou, rec) {
+    var m = metaSubir(dou);
+    return (
+      '<div class="pz"><div class="pz-cab">' + etiquetas(rec, 'upgrade') +
+      '<b>Subir: junte ' + (dou.length === 2 ? 'os 2 itens' : dou.length + ' itens') + ' em 1</b>' +
+      '<span class="sub">Você paga de ' + PA.upAbertura + '% a ' + PA.upTeto + '% a mais (abertura → teto).</span></div>' +
+      '<div class="pz-troca"><span class="pz-lado"><small>Dou</small>' + grupo(dou, 0, 'dou') + '<b>' + n0(m.soma) + '</b></span>' +
+      '<span class="an-tr">⇄</span><span class="pz-lado"><small>Recebo</small><span class="an-grp rec sug"><span class="thumb pl-q">?</span></span></span>' +
+      '<span class="pz-faixa"><span>1 item de</span><b>' + n0(m.de) + ' a ' + n0(m.ate) + '</b><span>de value</span></span></div>' +
+      serveAgora('s', plano.subir) + blocoAlvos('Alvos no catálogo · demanda Normal+', plano.alvosSubir) + '</div>'
+    );
+  }
+  function cartaoDescer(X, rec) {
+    var m = metaDescer(X);
+    return (
+      '<div class="pz"><div class="pz-cab">' + etiquetas(rec, 'downgrade') +
+      '<b>Descer: ' + esc(X.nome) + ' em 2 ou 3 médios</b>' +
+      '<span class="sub">Você pede de +' + PA.downMin + '% a +' + PA.downAbertura + '% a mais (mínimo → abertura).</span></div>' +
+      '<div class="pz-troca"><span class="pz-lado"><small>Dou</small>' + grupo([X], 0, 'dou') + '<b>' + n0(X.vb) + '</b></span>' +
+      '<span class="an-tr">⇄</span><span class="pz-lado"><small>Recebo</small><span class="an-grp rec sug"><span class="thumb pl-q">?</span><span class="thumb pl-q">?</span></span></span>' +
+      '<span class="pz-faixa"><span>2–3 médios somando</span><b>' + n0(m.de) + ' a ' + n0(m.ate) + '</b><span>de value</span></span></div>' +
+      serveAgora('d', plano.descer) +
+      blocoAlvos('Médios bons para pedir · ~' + n0(Math.max(PA.addMax, m.de / 3)) + ' a ' + n0(m.ate / 2) + ' cada', plano.alvosDescer) + '</div>'
+    );
+  }
+  // Escadinha: cada volta = 1 upgrade + 1 downgrade, nos três cenários dos degraus.
+  function escadinhaPlano(inicio) {
+    var C = [
+      ['o', 'Otimista', PA.upAbertura, PA.downAbertura],
+      ['p', 'Provável', (PA.upAbertura + PA.upTeto) / 2, (PA.downAbertura + PA.downMin) / 2],
+      ['s', 'Pessimista', PA.upTeto, PA.downMin],
+    ];
+    function f(c) { return (1 - c[2] / 100) * (1 + c[3] / 100); }
+    function pc(x) { return String(Math.round(x * 10) / 10).replace('.', ','); }
+    var h = '<div class="ez"><table><tr><th>Volta</th>' + C.map(function (c) { return '<th>' + c[1] + '</th>'; }).join('') + '</tr>';
+    for (var v = 0; v <= 4; v++) {
+      h += '<tr><td>' + (v ? v + 'ª' : 'Hoje') + '</td>' + C.map(function (c) {
+        return '<td class="' + (v ? c[0] : '') + '">' + n0(inicio * Math.pow(f(c), v)) + '</td>';
+      }).join('') + '</tr>';
+    }
+    h += '</table><div class="ez-pe">' + C.map(function (c) {
+      var pv = (f(c) - 1) * 100;
+      return '<div><b class="' + (pv >= 0 ? 'pos' : 'neg') + '">' + (pv >= 0 ? '+' : '') + pc(pv) + '% por volta</b>paga ' + pc(c[2]) + '% · pede ' + pc(c[3]) + '%</div>';
+    }).join('') + '</div></div>';
+    return h;
+  }
   function desenharPlano() {
-    var el = $('an-plano');
-    if (!el) return;
-    var p = plano.lista[plano.idx];
-    if (!estado.carregou || estado.item || estado.forma !== 'todos' || !p) {
-      el.innerHTML = '';
+    var el = $('pz-corpo');
+    if (!el || !plano.ativo) return;
+    var meus = livres();
+    var nHold = 0;
+    for (var a in AN.emHold) nHold += AN.emHold[a];
+    if (!meus.length) {
+      el.innerHTML = '<p class="vazio">Nenhum item seu fora de hold agora' + (nHold ? ' (' + nHold + ' em hold)' : '') +
+        '. O plano aparece quando eles saírem do hold.</p>';
       return;
     }
-    function n0(v) { return fmtNum(Math.round(v)); }
-    var n = plano.lista.length;
-    var h = '<div class="pl"><div class="pl-cab"><div><b>Plano para seu inventário</b><span>Downgrade em um item, upgrade no resto</span></div>' +
-      (n > 1 ? '<p class="pl-n">' + (plano.idx + 1) + ' de ' + n + '</p>' : '') + '</div>';
-    var tDown = 'Downgrade: ' + p.x.nome;
-    if (p.down) h += pernaReal(1, tDown, p.down);
-    else {
-      h += pernaMeta(1, tDown, [p.x], 'Nenhum anúncio serve agora. Peça 2 ou 3 itens médios (e até ' + PA.addsMax + ' adds) somando <b>' +
-        n0(p.metaDown.de) + ' a ' + n0(p.metaDown.ate) + ' de value</b> (+' + PA.downMin + ' a +' + PA.downAbertura + '%).');
-    }
-    if (p.up) h += pernaReal(2, 'Upgrade do resto', p.up);
-    else {
-      h += pernaMeta(2, 'Upgrade do resto', p.metaUp.dou, 'Nenhum anúncio serve agora. Procure <b>1 item de ' + n0(p.metaUp.de) + ' a ' +
-        n0(p.metaUp.ate) + ' de value</b> por estes ' + p.metaUp.dou.length + ' itens (-' + PA.upAbertura + ' a -' + PA.upTeto + '%).');
-    }
-    h += '<div class="pl-pe"><span class="meta">Nenhum item seu entra nas duas trades.</span>' +
-      (n > 1 ? '<button type="button" class="pl-outro" id="pl-outro">Outro plano ›</button>' : '') + '</div></div>';
+    var total = somaVb(meus);
+    var h = '<div class="pz-res"><span class="num"><small>' + meus.length + (meus.length === 1 ? ' item' : ' itens') + ' fora de hold' +
+      (nHold ? ' · ' + nHold + ' em hold' : '') + '</small><b>' + n0(total) + '</b><small>value somado (RAP nos itens sem value)</small></span>' +
+      grupo(meus.slice(0, 6), 0, '') + '</div>';
+    // O recomendado vem primeiro: 1 item = Descer; 2 = Subir; 3 ou mais = o combinado.
+    h += '<div class="pz-sec"><div class="sec-t"><h2>Próximo degrau</h2></div>';
+    if (meus.length >= 3) h += cartaoCombinado(meus, true);
+    if (meus.length >= 2) h += cartaoSubir(meus.slice(0, P.maxItens), meus.length === 2);
+    h += cartaoDescer(meus[0], meus.length === 1);
+    h += '</div>';
+    h += '<div class="pz-sec"><div class="sec-t"><h2>Escadinha</h2><span>começando em ' + n0(total) + '</span></div>' + escadinhaPlano(total) +
+      '<p class="nota">Cada volta é 1 upgrade + 1 downgrade. A conta supõe que os values não mudam. No pessimista você cede até o limite nos dois lados: por isso vale abrir pela oferta de abertura.</p></div>';
     el.innerHTML = h;
   }
   function desenharLista() {
@@ -1547,6 +1832,8 @@ function paginaAnuncios(D, P, PA) {
     desenharStatus();
     desenharFiltro();
     desenharLista();
+    // v6.18: refaz o plano se mudaram os anúncios ou o inventário (já aberto).
+    iniciarPlanos();
     desenharPlano();
     desenharDiag();
     var ids = idsPlano();
@@ -1586,6 +1873,14 @@ function paginaAnuncios(D, P, PA) {
   };
   window.thAbrirAnuncios = function () {
     if (!estado.carregou && !estado.carregando) pedir(false);
+  };
+  // v6.18: aba Plano. Monta na hora com os seus itens (metas, alvos e escadinha)
+  // e busca os anúncios, se ainda não buscou, para o "Serve agora".
+  window.thAbrirPlano = function () {
+    plano.ativo = true;
+    if (!estado.carregou && !estado.carregando) pedir(false);
+    iniciarPlanos();
+    desenharPlano();
   };
   // v5.2: troca o inventário cruzado com os anúncios.
   // dados = { inventario, meuId, chave, nome } da conta 2, ou null para voltar à sua.
@@ -1711,21 +2006,6 @@ function paginaAnuncios(D, P, PA) {
       return;
     }
     if (ev.target.closest('a')) return;
-    // v6.17: Plano para seu inventário.
-    if (ev.target.closest('#pl-outro')) {
-      plano.idx = (plano.idx + 1) % plano.lista.length;
-      plano.aberto = null;
-      desenharPlano();
-      return;
-    }
-    var pl = ev.target.closest('.pl-linha[data-pl]');
-    if (pl) {
-      var kp = Number(pl.getAttribute('data-pl'));
-      plano.aberto = plano.aberto === kp ? null : kp;
-      desenharPlano();
-      if (plano.aberto != null) pedirVendasAn();
-      return;
-    }
     var l = ev.target.closest('.an-linha');
     if (!l) return;
     var r = estado.mostrados[Number(l.getAttribute('data-k'))];
@@ -1734,11 +2014,37 @@ function paginaAnuncios(D, P, PA) {
     desenharLista();
   });
   $('an-atualizar').addEventListener('click', function () { pedir(true); });
+  // v6.18: toques da aba Plano: item (tela do item), "Outro plano" e as trades
+  // (abrem e fecham o cartão completo, como na lista).
+  if ($('aba-plano')) {
+    $('aba-plano').addEventListener('click', function (ev) {
+      var bi = ev.target.closest('[data-item]');
+      if (bi) {
+        abrirItem(bi);
+        return;
+      }
+      if (ev.target.closest('a')) return;
+      if (ev.target.closest('#pl-outro')) {
+        plano.idx = (plano.idx + 1) % Math.max(1, plano.lista.length);
+        plano.aberto = null;
+        desenharPlano();
+        return;
+      }
+      var b = ev.target.closest('[data-pz]');
+      if (b) {
+        var key = b.getAttribute('data-pz');
+        plano.aberto = plano.aberto === key ? null : key;
+        desenharPlano();
+        if (plano.aberto) pedirVendasAn();
+      }
+    });
+  }
 
   // ---------- Início ----------
   desenhar();
   // Se o painel abriu direto nesta aba (aba lembrada), já busca.
   if (!$('aba-anuncios').classList.contains('oculto')) pedir(false);
+  if ($('aba-plano') && !$('aba-plano').classList.contains('oculto')) window.thAbrirPlano();
 }
 
 // <script> da aba. Vem depois do script do avaliador (usa TH_D, TH_P e as funções dele).
@@ -1753,4 +2059,4 @@ function script(cfg, meuId) {
   );
 }
 
-module.exports = { TAGS, lerAnuncio, carregar, parametros, criarAnalisador, secao, folha, css, script };
+module.exports = { TAGS, lerAnuncio, carregar, parametros, criarAnalisador, secao, secaoPlano, folha, css, script };

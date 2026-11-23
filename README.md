@@ -5,6 +5,7 @@ Painel de Limiteds do Roblox para iPhone, feito para rodar no app **[Scriptable]
 - 📦 **Inventário**: value e RAP totais, seus itens logo de primeira, com etiquetas de alerta e setas de 24h, mais o **Diário de trades**
 - ⚖️ **Avaliar trade**: monte "dou X, recebo Y" (com Robux) e veja o veredito, que depende da **forma** da trade (upgrade, downgrade ou sidegrade)
 - 📣 **Anúncios**: cruza os Trade Ads recentes do Rolimon's com os seus itens e sugere combinações
+- 🧭 **Plano**: o próximo degrau da escadinha para os seus itens (subir, descer ou os dois), com o anúncio que serve agora, alvos do catálogo e a escadinha projetada
 - 🔀 **Conta 2**: acompanhe outra conta (itens e anúncios) com um toque
 - 🎨 **13 temas**, ❓ **Ajuda** para iniciantes e 🔔 **notificações** pelo widget
 - 🖤 Widgets pequeno, médio e grande (tema OLED) e da tela bloqueada
@@ -174,16 +175,27 @@ O que entra na lista:
   - Cada degrau tem a própria combinação. No cartão aberto, o lado que não muda aparece uma vez e o que muda aparece por degrau; embaixo ficam duas caixas com a %, o R$ e o veredito de cada degrau.
   - Na linha fechada aparece a faixa (ex.: "-2 a -8%") com o veredito do **2º degrau** (o pior caso). "Maior ganho" e o filtro de forma também usam o 2º degrau.
   - Quando só uma combinação cabe, fica **uma oferta só** e o 2º degrau vira o **limite em número** (v6.16.1): "dê no máximo X de value" (teto do seu upgrade) ou "aceite a partir de X de value" (mínimo do seu downgrade), para julgar uma contraproposta. Se a oferta já estiver a menos de 2 pontos do limite, a caixa não aparece.
-- **Plano para seu inventário** (v6.17): cartão no topo da lista (só em **Todos**, sem item escolhido) com a estratégia "**downgrade em um, upgrade no resto**":
-  1. **Downgrade** de 1 item seu por 2–3 médios (+ até 2 adds), com os mesmos degraus das sugestões;
-  2. **Upgrade do resto**: de 2 a 4 dos outros itens por 1, preferindo usar mais itens, noutro anúncio.
-  - Nenhum item entra nas duas trades. Testa os seus `PLANO_ITENS_TESTADOS` (12) maiores itens e guarda até `PLANO_MAX` (5) planos ("Outro plano ›"): primeiro os que têm as duas trades em anúncios reais.
-  - Sem anúncio para uma das trades, ela vira uma **meta** em números (quanto pedir no downgrade, ou a faixa de value do item a procurar no upgrade).
-  - Tocar numa trade abre o mesmo cartão da lista. Precisa de pelo menos 3 itens seus fora de hold. A conta roda em partes, depois que a lista aparece.
+- O "Plano para seu inventário" da v6.17 saiu daqui e virou a [aba Plano](#-plano) (v6.18).
 - Entre várias trades possíveis, fica a mais perto da abertura (empate: menos itens). Quando a sugestão pede só uma parte da oferta, os **Robux** do dono ficam de fora.
 - Ficam de fora anúncios que oferecem item **projected**, com **demanda terrível**, com o **RAP subindo mais de 15% em 24h** ou fora do catálogo do Rolimon's, além dos seus próprios anúncios.
 - **Mesmo item dos dois lados**: só aparece se você não perder value.
 - As outras tags (demand, rap, adds...) não geram sugestões. A contagem de tags vistas fica no **Diagnóstico**.
+
+## 🧭 Plano
+
+A 4ª aba (v6.18, no lugar do cartão da v6.17 nos Anúncios) diz o **próximo degrau da escadinha** para os seus itens **fora de hold**. Funciona mesmo sem anúncio. O botão "Avaliar trade" virou só **"Avaliar"** para as 4 abas caberem.
+
+1. **Resumo**: quantos itens fora de hold (e em hold), o value somado e as miniaturas.
+2. **Próximo degrau** (o recomendado primeiro):
+   - **1 item → Descer**: 1 item por 2–3 médios, pedindo de **+7% a +14%**.
+   - **2 itens → Subir**: os dois (até 4, os maiores) por 1 item, pagando de **2% a 9%**.
+   - **3 ou mais → "Downgrade em um, upgrade no resto"**: descer 1 item e subir o resto (2 a 4 itens) noutro anúncio, sem repetir item. Testa os seus `PLANO_ITENS_TESTADOS` (12) maiores itens e guarda até `PLANO_MAX` (5) planos ("Outro plano ›"), primeiro os que têm as duas trades em anúncios reais. Depois vêm também o Subir e o Descer sozinhos.
+   - Cada passo mostra a **faixa em números** (a meta), o **"Serve agora"** (o melhor anúncio do momento, que abre o cartão completo com degraus) e os **alvos do catálogo**.
+3. **Alvos do catálogo** (`PLANO_ALVOS`, 4): itens com **value**, demanda **Normal ou melhor**, sem projected/hyped, sem tendência **caindo** e sem RAP subindo mais de 15% em 24h, ordenados pela demanda e pela distância ao meio da faixa. No Descer, a faixa é a de **cada médio** (soma ÷ 3 a soma ÷ 2, acima de um add). Isso evita a maioria dos UGC não tradeáveis, mas não garante: confira antes de mirar.
+4. **Escadinha**: 4 voltas (1 upgrade + 1 downgrade) em três cenários: **otimista** (paga 2%, pede 14%), **provável** (5,5% e 10,5%) e **pessimista** (paga 9%, pede 7%: perde ~2,6% por volta). Supõe values parados.
+
+- Os anúncios são os mesmos da aba Anúncios (abrir o Plano busca, se ainda não buscou). O cruzamento roda em partes, depois que a aba aparece.
+- Funciona nas duas contas (o ⇄ troca os itens).
 
 ---
 
@@ -248,7 +260,7 @@ Ficam em [`src/config.js`](src/config.js):
 | `ANUNCIO_SEU_UPGRADE_ABERTURA_PCT` / `TETO` | 2 / 9 | Dono pede downgrade (seu upgrade): quanto (%) a mais a abertura paga e o teto (o máximo que você paga) |
 | `ANUNCIO_SEU_DOWNGRADE_MIN_PCT` / `MAX` / `ABERTURA` | 7 / 16 / 14 | Dono pede upgrade (seu downgrade): o mínimo que você aceita (2º degrau), o máximo e o ponto da abertura (%) |
 | `ANUNCIO_DEGRAU_DISTANCIA_PCT` | 2 | Distância mínima (pontos de %) entre a abertura e o 2º degrau |
-| `PLANO_ITENS_TESTADOS` / `PLANO_MAX` | 12 / 5 | Plano para seu inventário: quantos dos seus maiores itens são testados para o downgrade e quantos planos ficam |
+| `PLANO_ITENS_TESTADOS` / `PLANO_MAX` / `PLANO_ALVOS` | 12 / 5 / 4 | Aba Plano: quantos dos seus maiores itens são testados para o downgrade, quantos planos ficam e quantos alvos do catálogo cada passo mostra |
 | `ANUNCIO_ADD_MAX_VALUE` | 500 | Até esse value, o item conta como add (ovos e itens pequenos) |
 | `ANUNCIO_ADDS_MAX` | 2 | Quantos adds você aceita receber no seu downgrade |
 | `ANUNCIO_SEU_DOWNGRADE_MIN_MEDIOS` | 2 | Mínimo de itens médios que você recebe no seu downgrade |

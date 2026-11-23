@@ -506,8 +506,9 @@ ${temas.ceu()}
 
 <nav class="seg abas" id="abas">
   <button data-aba="inv" class="on">Inventário</button>
-  <button data-aba="avaliar">Avaliar trade</button>
+  <button data-aba="avaliar">Avaliar</button>
   <button data-aba="anuncios">Anúncios</button>
+  <button data-aba="plano">Plano</button>
 </nav>
 
 <div class="faixa-conta oculto" id="faixa-conta"><span class="av c2" id="fc-ini"></span><span id="fc-txt"></span><button type="button" class="voltar" id="fc-voltar">Voltar</button></div>
@@ -523,6 +524,7 @@ ${inv.html}
 
 ${avaliador.secao(cfg, av.base, av.erro)}
 ${anuncios.secao(cfg, av.erro ? 'os dados do avaliador não foram preparados (' + av.erro + ')' : null)}
+${anuncios.secaoPlano(av.erro ? 'os dados do avaliador não foram preparados (' + av.erro + ')' : null)}
 
 <details class="diag">
   <summary>Diagnóstico</summary>
@@ -578,8 +580,9 @@ ${ajuda.secao(cfg)}
   var c2 = { nome: ${avaliador.serializar(r.conta2 ? r.conta2.nome : null)}, carregada: false, carregando: false, erro: null, anuncios: null, timer: null };
   var abaAtual = 'inv';
 
-  // Abas (Inventário / Avaliar trade / Anúncios). Na conta 2 o Avaliar some.
-  var TITULOS = { inv: 'Inventário', avaliar: 'Avaliar trade', anuncios: 'Anúncios' };
+  // Abas (Inventário / Avaliar trade / Anúncios / Plano). Na conta 2 o Avaliar some.
+  // v6.18: aba Plano (o botão do Avaliar ficou só "Avaliar" para as 4 caberem).
+  var TITULOS = { inv: 'Inventário', avaliar: 'Avaliar trade', anuncios: 'Anúncios', plano: 'Plano' };
   function aba(x){
     if (!TITULOS[x] || (conta === 2 && x === 'avaliar')) x = 'inv';
     abaAtual = x;
@@ -600,6 +603,8 @@ ${ajuda.secao(cfg)}
     try { localStorage.setItem('aba', x); } catch (e) {}
     // A aba Anúncios só busca os anúncios quando é aberta.
     if (x === 'anuncios' && !esperando && window.thAbrirAnuncios) window.thAbrirAnuncios();
+    // v6.18: a aba Plano usa os mesmos anúncios (busca se ainda não buscou).
+    if (x === 'plano' && !esperando && window.thAbrirPlano) { try { window.thAbrirPlano(); } catch (e) {} }
     // v6.12: o Avaliar pede as vendas/dia dos itens da proposta quando é aberto.
     if (x === 'avaliar' && window.thAbrirAvaliar) { try { window.thAbrirAvaliar(); } catch (e) {} }
   }
