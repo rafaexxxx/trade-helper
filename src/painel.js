@@ -124,7 +124,7 @@ async function executar(ctx) {
     store.gravar('ajustes', ajustes);
   }
 
-  const dados = await api.carregarTudo(store, ajustes);
+  const dados = await api.carregarTudo(store, ajustes, { widget: noWidget });
   const { itens, fonte, divergencia } = analise.montarItens(dados);
   const totais = analise.calcularTotais(itens);
   const agora = Date.now();

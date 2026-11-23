@@ -241,7 +241,9 @@ async function carregarJogador(store, conta, minutos) {
   return { usuario: { id: conta.userId, nome }, jogador: j.dados, origem: j.origem, avisos };
 }
 
-async function carregarTudo(store, ajustes) {
+// opcoes.widget = true quando roda no widget (v6.13.1: widget mais leve).
+async function carregarTudo(store, ajustes, opcoes) {
+  const noWidget = !!(opcoes && opcoes.widget);
   const avisos = [];
 
   if (await garantirId(ajustes)) store.gravar('ajustes', ajustes);
@@ -260,13 +262,21 @@ async function carregarTudo(store, ajustes) {
   } catch (e) {
     erroJogador = e;
   }
-  try {
-    roblox = await comCache(
-      store, 'cache_inventario_' + usuario.id, cfg.CACHE_INVENTARIO_MIN,
-      () => buscarInventario(usuario.id), avisos, 'o inventário no Roblox'
-    );
-  } catch (e) {
-    erroRoblox = e;
+  // v6.13.1: no widget, com os itens do Rolimon's em mãos, o inventário do Roblox
+  // não é baixado (são várias páginas): usa o que o painel salvou, de qualquer
+  // idade, só para completar os holds. Sem Rolimon's, busca normalmente (reserva).
+  const salvoRoblox = noWidget && jogador ? store.ler('cache_inventario_' + usuario.id) : null;
+  if (salvoRoblox && salvoRoblox.dados) {
+    roblox = { dados: salvoRoblox.dados, origem: 'cache-widget' };
+  } else {
+    try {
+      roblox = await comCache(
+        store, 'cache_inventario_' + usuario.id, cfg.CACHE_INVENTARIO_MIN,
+        () => buscarInventario(usuario.id), avisos, 'o inventário no Roblox'
+      );
+    } catch (e) {
+      erroRoblox = e;
+    }
   }
   if (!jogador && !roblox) throw erroJogador || erroRoblox;
   if (!jogador) avisos.push("Rolimon's indisponível (" + erroJogador.message + '). Itens vindos só do Roblox.');

@@ -569,7 +569,7 @@ ${S} .faixa::after{content:"";position:absolute;right:14px;top:16px;bottom:44px;
 // Cores iguais às de antes (o Chromecore foi refeito como cromo tribal); mudam a forma,
 // o fundo animado (camadas body>.ceu>span.k1..k5) e a reação ao toque. Os temas de
 // vidro perderam o backdrop-filter (o fundo agora se mexe). Keyframes com prefixo p.
-const CSS_TODOS = `n/* ===== P1: os 13 temas viram temáticos (cores iguais; forma, fundo e toque novos) ===== */
+const CSS_TODOS = `/* ===== P1: os 13 temas viram temáticos (cores iguais; forma, fundo e toque novos) ===== */
 @property --p-orb{syntax:'<angle>';inherits:false;initial-value:0deg}
 body>.ceu>span{position:absolute;display:block;pointer-events:none}
 /* Clássicos não tinham fundo decorado: o degradê de sempre vai para a camada do fundo. */
