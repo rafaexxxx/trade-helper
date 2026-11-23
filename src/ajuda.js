@@ -138,8 +138,16 @@ function capitulo1(cfg) {
 function capitulo2(cfg) {
   const ru = cfg.VEREDITO_UPGRADE_PCT;
   const rd = cfg.VEREDITO_DOWNGRADE_PCT;
-  const upAlvo = cfg.ANUNCIO_SEU_UPGRADE_PAGAR_ALVO_PCT;
-  const downAlvo = cfg.ANUNCIO_SEU_DOWNGRADE_ALVO_PCT;
+  // v6.16: a sugestão dos Anúncios vem em degraus (abertura + teto/mínimo).
+  // Padrões se o config.js for antigo.
+  const def = (v, p) => (v != null ? v : p);
+  const upAb = def(cfg.ANUNCIO_SEU_UPGRADE_ABERTURA_PCT, 2);
+  const upTeto = def(cfg.ANUNCIO_SEU_UPGRADE_TETO_PCT, 9);
+  const downAb = def(cfg.ANUNCIO_SEU_DOWNGRADE_ABERTURA_PCT, 14);
+  const downMin = def(cfg.ANUNCIO_SEU_DOWNGRADE_MIN_PCT, 7);
+  // A escadinha usa o meio de cada faixa (entre a abertura e o limite).
+  const upAlvo = (upAb + upTeto) / 2;
+  const downAlvo = (downAb + downMin) / 2;
   const max = cfg.MAX_ITENS_POR_LADO;
   // v6.6: forma da sugestão dos Anúncios (padrões se o config.js for antigo).
   const addMax = cfg.ANUNCIO_ADD_MAX_VALUE != null ? cfg.ANUNCIO_ADD_MAX_VALUE : 500;
@@ -275,8 +283,10 @@ function capitulo2(cfg) {
   </div>
   <p>Por isso a etiqueta das linhas na aba Anúncios já vem traduzida: "seu upgrade", "seu downgrade" ou "sidegrade". Quando o anúncio só pede uma tag, o app monta uma sugestão (o lado Dou fica tracejado) no formato que costuma ser aceito, e pode pedir <b>só uma parte</b> do que ele oferece:</p>
   <ul class="aj-lista">
-    <li><b>Seu downgrade</b> (tag upgrade): você dá <b>1 item só</b> e pede pelo menos ${minMedios} itens médios dele, mirando ganhar perto de ${pct(downAlvo)}.</li>
-    <li><b>Seu upgrade</b> (tag downgrade): você dá vários itens (de 2 a ${max}) por <b>1 item só</b> dele, pagando perto de ${pct(upAlvo)} a mais.</li>
+    <li><b>Seu downgrade</b> (tag upgrade): você dá <b>1 item só</b> e pede pelo menos ${minMedios} itens médios dele.</li>
+    <li><b>Seu upgrade</b> (tag downgrade): você dá vários itens (de 2 a ${max}) por <b>1 item só</b> dele.</li>
+    <li><b>Em degraus</b>, como fazem os traders experientes: comece pela pior oferta que ainda não faz o outro te ignorar e vá cedendo. A <b>abertura</b> é a primeira oferta que você manda: no seu upgrade, paga perto de ${pct(upAb)} a mais; no seu downgrade, pede perto de ${pct(downAb)} a mais. Se ele recusar, o 2º degrau é o seu limite: o <b>teto</b> do upgrade (até ${pct(upTeto)} a mais) ou o <b>mínimo</b> do downgrade (pelo menos ${pct(downMin)}). Cada degrau traz a própria combinação de itens.</li>
+    <li>Na linha fechada aparece a faixa (por exemplo, "-2 a -8%") com o veredito do 2º degrau, o pior caso para você. "Maior ganho" também ordena por ele. Quando só uma combinação cabe na faixa, o cartão mostra uma oferta só.</li>
     <li><b>Adds</b>: itens de até ${num(addMax)} de value (ovos e itens pequenos). No seu downgrade entram no máximo ${addsMax}, e só como complemento: os itens médios sozinhos já têm que fechar a conta.</li>
     <li><b>Tag any</b> (sidegrade): o app não sugere, porque quase ninguém aceita. Um anúncio que só tem essa tag fica de fora.</li>
     <li>A sugestão nunca põe o mesmo item dos dois lados.</li>
@@ -293,9 +303,9 @@ function capitulo2(cfg) {
         <span class="an-chev">›</span>
       </div>
       <div class="an-det">
-        <p class="an-nota">Ele quer downgrade, então para você é upgrade: você dá 3 itens e pede o item dele, pagando perto do menor overpay que ele deve aceitar.</p>
+        <p class="an-nota">Ele quer downgrade, então para você é upgrade: você dá vários itens seus e pede o item dele. Só uma combinação sua cabe na faixa, então é uma oferta só.</p>
         <div class="an-lado rec"><div class="an-lcab"><span>Recebo</span><span>Valor</span></div>${anItem('vh', alta, 27500)}<div class="an-tot"><span>Total</span><span class="an-val">27.500<small></small></span></div></div>
-        <div class="an-lado dou"><div class="an-lcab"><span>Dou (sugestão)</span><span>Valor</span></div>${anItem('sf', alta, 12000)}${anItem('ch', normal, 9500)}${anItem('bh', normal, 7000)}<div class="an-tot"><span>Total</span><span class="an-val">28.500<small></small></span></div></div>
+        <div class="an-lado dou"><div class="an-lcab"><span>Dou (oferta)</span><span>Valor</span></div>${anItem('sf', alta, 12000)}${anItem('ch', normal, 9500)}${anItem('bh', normal, 7000)}<div class="an-tot"><span>Total</span><span class="an-val">28.500<small></small></span></div></div>
         <div class="an-pe" data-cor="${vUp[1]}"><span class="selo">${vUp[0]} · ${wflUp}</span><span class="an-ganho"><b>${pctS(pUp)}</b><small>−1.000 R$</small></span></div>
       </div>
     </div>

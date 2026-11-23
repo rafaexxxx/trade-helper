@@ -81,15 +81,21 @@ module.exports = {
   ANUNCIOS_MAX_GUARDADOS: 3000,
   // Combinações sugeridas para anúncios que pedem só tags. A tag é do ponto de
   // vista do DONO do anúncio; os nomes abaixo são do SEU ponto de vista.
+  // v6.16: a sugestão vem em DEGRAUS (o trader veterano: "comece pela pior oferta
+  // que ainda não faz o outro te ignorar e vá subindo"):
+  //   1. ABERTURA = a combinação mais perto de ABERTURA (dentro da faixa toda);
+  //   2. TETO = a mais perto do limite, pelo menos DEGRAU_DISTANCIA pontos pior
+  //      para você que a abertura. Sem ela, fica um degrau só ("Oferta").
   // Dono pede "downgrade" = SEU UPGRADE (você dá mais itens): você paga de 0 até
-  // MAX (%) a mais, e a sugestão mira ALVO (o menor overpay que ele deve aceitar).
-  ANUNCIO_SEU_UPGRADE_PAGAR_MAX_PCT: 9,
-  ANUNCIO_SEU_UPGRADE_PAGAR_ALVO_PCT: 5,
-  // Dono pede "upgrade" = SEU DOWNGRADE (você recebe mais itens): ganho de MIN a
-  // MAX (%), mirando ALVO (lucro sem pesar a mão).
-  ANUNCIO_SEU_DOWNGRADE_MIN_PCT: 5,
-  ANUNCIO_SEU_DOWNGRADE_MAX_PCT: 12,
-  ANUNCIO_SEU_DOWNGRADE_ALVO_PCT: 9,
+  // TETO (%) a mais; a abertura paga perto de ABERTURA.
+  ANUNCIO_SEU_UPGRADE_ABERTURA_PCT: 2,
+  ANUNCIO_SEU_UPGRADE_TETO_PCT: 9,
+  // Dono pede "upgrade" = SEU DOWNGRADE (você recebe mais itens): ganho de MIN
+  // (o mínimo que você aceita, 2º degrau) a MAX (%); a abertura pede perto de ABERTURA.
+  ANUNCIO_SEU_DOWNGRADE_MIN_PCT: 7,
+  ANUNCIO_SEU_DOWNGRADE_MAX_PCT: 16,
+  ANUNCIO_SEU_DOWNGRADE_ABERTURA_PCT: 14,
+  ANUNCIO_DEGRAU_DISTANCIA_PCT: 2,
   // v6.6: forma da sugestão (regra do Rafael).
   // Seu downgrade: você dá 1 item só e pede uma PARTE da oferta dele, com pelo
   // menos MIN_MEDIOS itens médios e no máximo ADDS_MAX adds (até 4 itens).

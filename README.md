@@ -162,13 +162,19 @@ O que entra na lista:
 | Tipo | Quando o anúncio aparece | O que você daria |
 |---|---|---|
 | **Pede seus itens** | Ele pede itens que você tem (todos, em cópias sem hold) e o veredito é **"Vale a pena"** ou melhor | Os itens pedidos |
-| **Tag upgrade** (do dono) = **seu downgrade** | Ele dá mais itens e quer receber menos | **1 item seu só**, pedindo **uma parte** da oferta dele: pelo menos **2 itens médios** + no máximo **2 adds**, ganhando de **+5% a +12%** (mira +9%) |
-| **Tag downgrade** (do dono) = **seu upgrade** | Ele dá menos itens (geralmente 1 maior) | **De 2 a 4 itens seus** por **1 item só** dele, pagando **até 9%** a mais (mira 5%, o menor overpay que ele deve aceitar) |
+| **Tag upgrade** (do dono) = **seu downgrade** | Ele dá mais itens e quer receber menos | **1 item seu só**, pedindo **uma parte** da oferta dele: pelo menos **2 itens médios** + no máximo **2 adds**, ganhando de **+7% a +16%**, em degraus: **abertura** perto de **+14%** e **mínimo** perto de **+7%** |
+| **Tag downgrade** (do dono) = **seu upgrade** | Ele dá menos itens (geralmente 1 maior) | **De 2 a 4 itens seus** por **1 item só** dele, pagando **até 9%** a mais, em degraus: **abertura** perto de **2%** e **teto** perto de **9%** |
 | **Tag any** | Ele aceita qualquer item | **Nada** (v6.6): sidegrade não é sugerido, porque quase ninguém aceita. Anúncio só com "any" fica de fora |
 
 - As tags do Rolimon's são do ponto de vista do **dono do anúncio**; o app traduz para o seu lado.
-- **Adds** (v6.6) = itens de value até **500** (ovos e itens pequenos). No seu downgrade, os itens médios sozinhos já têm que ganhar pelo menos +5%; os adds só complementam. Do seu lado, no seu upgrade, não há limite de adds.
-- Entre várias trades possíveis, fica a mais perto do alvo (empate: menos itens). Quando a sugestão pede só uma parte da oferta, os **Robux** do dono ficam de fora.
+- **Adds** (v6.6) = itens de value até **500** (ovos e itens pequenos). No seu downgrade, os itens médios sozinhos já têm que ganhar pelo menos +7%; os adds só complementam. Do seu lado, no seu upgrade, não há limite de adds.
+- **Degraus** (v6.16): a sugestão traz duas ofertas, como ensina um trader veterano ("comece pela pior oferta que ainda não faz o outro te ignorar e vá subindo"):
+  1. **Abertura**: a combinação mais perto do ponto de abertura (dentro da faixa toda). É a 1ª oferta que você manda.
+  2. **Teto** (seu upgrade) ou **Mínimo** (seu downgrade): a mais perto do limite, pelo menos **2 pontos** pior para você que a abertura. É até onde você cede.
+  - Cada degrau tem a própria combinação. No cartão aberto, o lado que não muda aparece uma vez e o que muda aparece por degrau; embaixo ficam duas caixas com a %, o R$ e o veredito de cada degrau.
+  - Na linha fechada aparece a faixa (ex.: "-2 a -8%") com o veredito do **2º degrau** (o pior caso). "Maior ganho" e o filtro de forma também usam o 2º degrau.
+  - Quando só uma combinação cabe, fica **uma oferta só**.
+- Entre várias trades possíveis, fica a mais perto da abertura (empate: menos itens). Quando a sugestão pede só uma parte da oferta, os **Robux** do dono ficam de fora.
 - Ficam de fora anúncios que oferecem item **projected**, com **demanda terrível**, com o **RAP subindo mais de 15% em 24h** ou fora do catálogo do Rolimon's, além dos seus próprios anúncios.
 - **Mesmo item dos dois lados**: só aparece se você não perder value.
 - As outras tags (demand, rap, adds...) não geram sugestões. A contagem de tags vistas fica no **Diagnóstico**.
@@ -233,8 +239,9 @@ Ficam em [`src/config.js`](src/config.js):
 | `RETRATO_CATALOGO_HORAS` | 30 | Por quantas horas guardar os retratos do catálogo (24h dos itens que você não tem) |
 | `ANUNCIOS_CACHE_MIN` | 3 | Intervalo mínimo (min) entre buscas de anúncios |
 | `ANUNCIOS_GUARDAR_HORAS` | 2 | Por quantas horas guardar os anúncios já vistos |
-| `ANUNCIO_SEU_UPGRADE_PAGAR_MAX_PCT` / `ALVO` | 9 / 5 | Dono pede downgrade (seu upgrade): até quanto (%) você paga a mais e o ponto preferido |
-| `ANUNCIO_SEU_DOWNGRADE_MIN_PCT` / `MAX` / `ALVO` | 5 / 12 / 9 | Dono pede upgrade (seu downgrade): faixa de ganho (%) e o ponto preferido |
+| `ANUNCIO_SEU_UPGRADE_ABERTURA_PCT` / `TETO` | 2 / 9 | Dono pede downgrade (seu upgrade): quanto (%) a mais a abertura paga e o teto (o máximo que você paga) |
+| `ANUNCIO_SEU_DOWNGRADE_MIN_PCT` / `MAX` / `ABERTURA` | 7 / 16 / 14 | Dono pede upgrade (seu downgrade): o mínimo que você aceita (2º degrau), o máximo e o ponto da abertura (%) |
+| `ANUNCIO_DEGRAU_DISTANCIA_PCT` | 2 | Distância mínima (pontos de %) entre a abertura e o 2º degrau |
 | `ANUNCIO_ADD_MAX_VALUE` | 500 | Até esse value, o item conta como add (ovos e itens pequenos) |
 | `ANUNCIO_ADDS_MAX` | 2 | Quantos adds você aceita receber no seu downgrade |
 | `ANUNCIO_SEU_DOWNGRADE_MIN_MEDIOS` | 2 | Mínimo de itens médios que você recebe no seu downgrade |

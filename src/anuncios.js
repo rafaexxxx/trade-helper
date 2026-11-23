@@ -162,11 +162,13 @@ function parametros(cfg, meuId) {
     meuId: Number(meuId) || 0,
     horas: cfg.ANUNCIOS_GUARDAR_HORAS,
     // Do SEU ponto de vista (a tag do anúncio é do dono).
-    upPagarMax: cfg.ANUNCIO_SEU_UPGRADE_PAGAR_MAX_PCT,
-    upPagarAlvo: cfg.ANUNCIO_SEU_UPGRADE_PAGAR_ALVO_PCT,
-    downMin: cfg.ANUNCIO_SEU_DOWNGRADE_MIN_PCT,
-    downMax: cfg.ANUNCIO_SEU_DOWNGRADE_MAX_PCT,
-    downAlvo: cfg.ANUNCIO_SEU_DOWNGRADE_ALVO_PCT,
+    // v6.16: degraus (abertura + teto). Padrões se o config.js for antigo.
+    upTeto: cfg.ANUNCIO_SEU_UPGRADE_TETO_PCT != null ? cfg.ANUNCIO_SEU_UPGRADE_TETO_PCT : 9,
+    upAbertura: cfg.ANUNCIO_SEU_UPGRADE_ABERTURA_PCT != null ? cfg.ANUNCIO_SEU_UPGRADE_ABERTURA_PCT : 2,
+    downMin: cfg.ANUNCIO_SEU_DOWNGRADE_MIN_PCT != null ? cfg.ANUNCIO_SEU_DOWNGRADE_MIN_PCT : 7,
+    downMax: cfg.ANUNCIO_SEU_DOWNGRADE_MAX_PCT != null ? cfg.ANUNCIO_SEU_DOWNGRADE_MAX_PCT : 16,
+    downAbertura: cfg.ANUNCIO_SEU_DOWNGRADE_ABERTURA_PCT != null ? cfg.ANUNCIO_SEU_DOWNGRADE_ABERTURA_PCT : 14,
+    degrauDist: cfg.ANUNCIO_DEGRAU_DISTANCIA_PCT != null ? cfg.ANUNCIO_DEGRAU_DISTANCIA_PCT : 2,
     // v6.6: forma da sugestão (o padrão vale se o config.js for antigo).
     addMax: cfg.ANUNCIO_ADD_MAX_VALUE != null ? cfg.ANUNCIO_ADD_MAX_VALUE : 500,
     addsMax: cfg.ANUNCIO_ADDS_MAX != null ? cfg.ANUNCIO_ADDS_MAX : 2,
@@ -318,6 +320,18 @@ button.an-i:active{background:var(--card2)}
 .an-acoes{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .an-acoes .btn{display:block;padding:10px 8px;font-size:14px;text-align:center;text-decoration:none}
 .an-mais{margin:8px 0 0;font-size:13px;color:var(--sub)}
+/* v6.16: degraus (abertura + teto/mínimo), do protótipo aprovado. */
+.an-pct b{white-space:nowrap}
+.dg-n{display:inline-grid;place-items:center;width:20px;height:20px;margin-right:6px;border-radius:50%;background:var(--dou-bg);color:var(--acc-t);font-size:11px;font-weight:700;vertical-align:1px}
+.an-lado.rec .dg-n{background:var(--rec-bg);color:var(--pos)}
+.an-lcab .dg-p{font-size:14px;font-weight:700;color:var(--c)}
+.dg-pe{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.dg-caixa{display:flex;flex-direction:column;gap:8px;min-width:0;padding:10px 12px;border-radius:14px;background:var(--card)}
+.dg-caixa .rot{font-size:12px;font-weight:600;color:var(--sub)}
+.dg-caixa b{font-size:24px;font-weight:700;line-height:1;letter-spacing:-.02em;color:var(--c)}
+.dg-caixa small{font-size:13px;font-weight:700;color:var(--c)}
+.dg-caixa .selo{align-self:flex-start;max-width:100%;font-size:12px;padding:4px 10px}
+.dg-dica{margin:0;font-size:12px;color:var(--sub)}
 
 .an-fl{position:fixed;left:0;right:0;bottom:0;max-height:75vh;display:flex;flex-direction:column;border-radius:18px 18px 0 0;background:var(--bg);box-shadow:0 -6px 24px rgba(0,0,0,.25);padding-bottom:max(12px,env(safe-area-inset-bottom))}
 .an-fl-topo{display:flex;justify-content:space-between;align-items:center;padding:14px 16px 8px}
@@ -457,8 +471,11 @@ function criarAnalisador(D, P, PA) {
   // v6.6: SEU DOWNGRADE (tag "upgrade" do dono). Você dá 1 item só e pede uma
   // PARTE da oferta: pelo menos PA.minMedios itens médios (value acima de
   // PA.addMax) e no máximo PA.addsMax adds, até P.maxItens itens. O núcleo (só
-  // os médios) já tem que ganhar PA.downMin; o total fica até PA.downMax, o mais
-  // perto de PA.downAlvo. Empate: menos itens. fixo = o item que você dá.
+  // os médios) já tem que ganhar PA.downMin; o total fica até PA.downMax.
+  // v6.16: dois degraus com o MESMO item seu: a ABERTURA (a mais perto de
+  // PA.downAbertura) e o MÍNIMO (a mais perto de PA.downMin, pelo menos
+  // PA.degrauDist pontos abaixo da abertura). Empate: menos itens.
+  // fixo = o item que você dá. Volta { dou, rec, segundo: { dou, rec } | null }.
   function melhorDowngrade(rec, fixo) {
     var ofertas = [];
     var n = Math.min(rec.length, 8);
@@ -485,31 +502,44 @@ function criarAnalisador(D, P, PA) {
       ofertas.push({ itens: itens, ids: ids, soma: soma, nucleo: nucleo });
     }
     if (!ofertas.length) return null;
+    // A parte da oferta que dá para pedir pelo item x, com o ganho até hi%, a
+    // mais perto de alvo%.
+    function escolher(x, alvo, hi) {
+      var m = null;
+      for (var j2 = 0; j2 < ofertas.length; j2++) {
+        var o = ofertas[j2];
+        var pN = ((o.nucleo - x.vb) / x.vb) * 100;
+        var p = ((o.soma - x.vb) / x.vb) * 100;
+        if (pN < PA.downMin || p > hi + 1e-9) continue;
+        // v6.6: o mesmo item nunca vai dos dois lados numa sugestão.
+        if (o.ids[x.id]) continue;
+        var nota = Math.abs(p - alvo);
+        var qtd = o.itens.length + 1;
+        if (!m || nota < m.nota - 1e-9 || (Math.abs(nota - m.nota) < 1e-9 && qtd < m.qtd)) {
+          m = { nota: nota, qtd: qtd, x: x, rec: o.itens, p: p };
+        }
+      }
+      return m;
+    }
     var dar = fixo ? (A.porAsset[fixo] || []).slice(0, 1) : A.meusOrdenados;
     var melhor = null;
     for (var k = 0; k < dar.length; k++) {
       var x = dar[k];
       if (!(x.vb > 0)) continue;
-      for (j = 0; j < ofertas.length; j++) {
-        var o = ofertas[j];
-        var pN = ((o.nucleo - x.vb) / x.vb) * 100;
-        var p = ((o.soma - x.vb) / x.vb) * 100;
-        if (pN < PA.downMin || p > PA.downMax) continue;
-        // v6.6: o mesmo item nunca vai dos dois lados numa sugestão.
-        if (o.ids[x.id]) continue;
-        var nota = Math.abs(p - PA.downAlvo);
-        var qtd = o.itens.length + 1;
-        if (!melhor || nota < melhor.nota - 1e-9 || (Math.abs(nota - melhor.nota) < 1e-9 && qtd < melhor.qtd)) {
-          melhor = { nota: nota, qtd: qtd, dou: [x], rec: o.itens };
-        }
-      }
+      var a = escolher(x, PA.downAbertura, PA.downMax);
+      if (a && (!melhor || a.nota < melhor.nota - 1e-9 || (Math.abs(a.nota - melhor.nota) < 1e-9 && a.qtd < melhor.qtd))) melhor = a;
     }
-    return melhor;
+    if (!melhor) return null;
+    var t = escolher(melhor.x, PA.downMin, melhor.p - PA.degrauDist);
+    return { dou: [melhor.x], rec: melhor.rec, segundo: t ? { dou: [melhor.x], rec: t.rec } : null };
   }
 
   // v6.6: SEU UPGRADE (tag "downgrade" do dono). Você pede 1 item só da oferta e
   // dá de 2 a P.maxItens itens seus (sem limite de adds do seu lado), pagando de
-  // 0 a PA.upPagarMax a mais, o mais perto de PA.upPagarAlvo. Empate: menos itens.
+  // 0 a PA.upTeto a mais. Empate: menos itens.
+  // v6.16: dois degraus pelo MESMO item dele: a ABERTURA (a mais perto de pagar
+  // PA.upAbertura) e o TETO (a mais perto de PA.upTeto, pagando pelo menos
+  // PA.degrauDist pontos a mais que a abertura). Volta { dou, rec, segundo }.
   function melhorUpgrade(rec, fixo) {
     var melhor = null;
     for (var k = 0; k < rec.length; k++) {
@@ -518,14 +548,16 @@ function criarAnalisador(D, P, PA) {
       if (!(vb > 0)) continue;
       var proibidos = {};
       proibidos[r.id] = true;
-      var c = melhorCombinacao(vb, 2, P.maxItens, -PA.upPagarMax, 0, -PA.upPagarAlvo, proibidos, fixo);
+      var c = melhorCombinacao(vb, 2, P.maxItens, -PA.upTeto, 0, -PA.upAbertura, proibidos, fixo);
       if (!c) continue;
       var qtd = c.itens.length + 1;
       if (!melhor || c.nota < melhor.nota - 1e-9 || (Math.abs(c.nota - melhor.nota) < 1e-9 && qtd < melhor.qtd)) {
-        melhor = { nota: c.nota, qtd: qtd, dou: c.itens, rec: [r] };
+        melhor = { nota: c.nota, qtd: qtd, dou: c.itens, rec: [r], vb: vb, proibidos: proibidos, pct: c.pct };
       }
     }
-    return melhor;
+    if (!melhor) return null;
+    var t = melhorCombinacao(melhor.vb, 2, P.maxItens, -PA.upTeto, melhor.pct - PA.degrauDist, -PA.upTeto, melhor.proibidos, fixo);
+    return { dou: melhor.dou, rec: melhor.rec, segundo: t ? { dou: t.itens, rec: melhor.rec } : null };
   }
 
   // ---------- Análise de um anúncio ----------
@@ -612,24 +644,34 @@ function criarAnalisador(D, P, PA) {
     //   vários (paga o menor overpay que ele deve aceitar).
     // v6.6: os Robux do dono ficam de fora (a sugestão pede só itens).
     var opcoes = [];
-    var s;
-    if (querUp) {
-      s = melhorDowngrade(rec, fixo);
-      opcoes.push({ tag: 'upgrade', dou: s && s.dou, rec: s && s.rec, robux: 0 });
-    }
-    if (querDown) {
-      s = melhorUpgrade(rec, fixo);
-      opcoes.push({ tag: 'downgrade', dou: s && s.dou, rec: s && s.rec, robux: 0 });
+    if (querUp) opcoes.push({ tag: 'upgrade', s: melhorDowngrade(rec, fixo), robux: 0 });
+    if (querDown) opcoes.push({ tag: 'downgrade', s: melhorUpgrade(rec, fixo), robux: 0 });
+    // v6.16: cada degrau com as próprias somas e veredito.
+    function degrau(dou, rec) {
+      var g = { dou: dou, rec: rec };
+      g.tr = somarLado(rec, 0, true, P);
+      g.td = somarLado(dou, 0, false, P);
+      g.tipo = tipoTrocaLados(g.td, g.tr);
+      g.v = calcularVeredito(dou, rec, g.td, g.tr, g.tipo, 0, P);
+      g.pct = ganho(g.td, g.tr);
+      return g;
     }
     // Entre as tags aceitas, fica a opção de melhor veredito (empate: maior ganho).
+    // v6.16: o que vale é o ÚLTIMO degrau (teto/mínimo, o pior caso para você):
+    // veredito, %, ordem "Maior ganho", filtro de forma e notificações.
     var melhor = null;
     opcoes.forEach(function (o) {
-      if (!o.dou) return;
-      o.tr = somarLado(o.rec, o.robux, true, P);
-      o.td = somarLado(o.dou, 0, false, P);
-      o.tipo = tipoTrocaLados(o.td, o.tr);
-      o.v = calcularVeredito(o.dou, o.rec, o.td, o.tr, o.tipo, o.robux, P);
-      o.p = ganho(o.td, o.tr);
+      if (!o.s) return;
+      o.degraus = [degrau(o.s.dou, o.s.rec)];
+      if (o.s.segundo) o.degraus.push(degrau(o.s.segundo.dou, o.s.segundo.rec));
+      var u = o.degraus[o.degraus.length - 1];
+      o.dou = u.dou;
+      o.rec = u.rec;
+      o.tr = u.tr;
+      o.td = u.td;
+      o.tipo = u.tipo;
+      o.v = u.v;
+      o.p = u.pct;
       o.nivel = o.v && o.v.nivel != null ? o.v.nivel : -2;
       if (!melhor || o.nivel > melhor.nivel || (o.nivel === melhor.nivel && (o.p == null ? -1e9 : o.p) > (melhor.p == null ? -1e9 : melhor.p))) melhor = o;
     });
@@ -646,20 +688,27 @@ function criarAnalisador(D, P, PA) {
     v = melhor.v;
     p = melhor.p;
     // v6.6: a nota diz a forma e o que você pede; a % fica só no rodapé do cartão.
-    var pede = rec2.length === kq ?
+    // v6.16: "o que você pede" pela abertura (a 1ª oferta que você manda); o
+    // passo a passo dos degraus fica na dica embaixo das caixas.
+    var nRec = melhor.degraus[0].rec.length;
+    var pede = nRec === kq ?
       (kq === 1 ? 'pede o item dele' : 'pede os ' + kq + ' itens que ele oferece') :
-      'pede só ' + rec2.length + ' dos ' + kq + ' itens que ele oferece';
+      'pede só ' + nRec + ' dos ' + kq + ' itens que ele oferece';
     var semRobux = ad[5] && !melhor.robux ? ' Os Robux dele ficam de fora.' : '';
+    var unica = melhor.degraus.length < 2 ? ' Só uma combinação sua cabe na faixa, então é uma oferta só.' : '';
     var nota;
     if (melhor.tag === 'upgrade') {
-      nota = 'Ele quer upgrade, então para você é downgrade: você dá 1 item e ' + pede + '.' + semRobux;
+      nota = 'Ele quer upgrade, então para você é downgrade: você dá 1 item e ' + pede + '.' + unica + semRobux;
     } else {
-      nota = 'Ele quer downgrade, então para você é upgrade: você dá ' + dou2.length + ' itens e ' + pede +
-        (p < 0 ? ', pagando perto do menor overpay que ele deve aceitar.' : ', sem pagar nada a mais.') + semRobux;
+      nota = 'Ele quer downgrade, então para você é upgrade: você dá vários itens seus e ' + pede + '.' + unica + semRobux;
     }
+    var mesmoS = [];
+    melhor.degraus.forEach(function (g) {
+      repetidos(g.dou, g.rec).forEach(function (n) { if (mesmoS.indexOf(n) < 0) mesmoS.push(n); });
+    });
     return {
       modo: 'tag', tag: melhor.tag, ad: ad, dou: dou2, rec: rec2, robux: melhor.robux, td: td, tr: melhor.tr, tipo: tipo, v: v, pct: p,
-      mesmo: repetidos(dou2, rec2), nota: nota,
+      degraus: melhor.degraus, mesmo: mesmoS, nota: nota,
     };
   };
 
@@ -839,8 +888,20 @@ function paginaAnuncios(D, P, PA) {
   }
   // Selo da linha fechada: "gira" a partir de 1 venda por dia (Normal na escala
   // da demanda), "parado" abaixo disso, "…" enquanto as vendas não chegam.
+  // v6.16: a linha fechada mostra a abertura (o 1º degrau); sem degraus, a oferta.
+  function primeiro(r) {
+    return r.degraus && r.degraus.length ? r.degraus[0] : r;
+  }
+  // Todos os itens do anúncio (todos os degraus), sem repetir o mesmo objeto.
+  function itensDe(r) {
+    var l = [];
+    (r.degraus && r.degraus.length ? r.degraus : [r]).forEach(function (g) {
+      g.rec.concat(g.dou).forEach(function (i) { if (l.indexOf(i) < 0) l.push(i); });
+    });
+    return l;
+  }
   function seloGiro(r) {
-    var i = principal(r.rec);
+    var i = principal(primeiro(r).rec);
     if (!i) return '';
     var ln = LN[i.id];
     if (ln && ln.v != null) {
@@ -863,13 +924,13 @@ function paginaAnuncios(D, P, PA) {
     var aberto = null;
     estado.mostrados.forEach(function (r) {
       if (estado.aberto === r.ad[0]) aberto = r;
-      quer(principal(r.rec));
+      quer(principal(primeiro(r).rec));
     });
     // Os do cartão aberto vão primeiro.
     if (aberto) {
       var antes = ids;
       ids = [];
-      aberto.rec.concat(aberto.dou).forEach(quer);
+      itensDe(aberto).forEach(quer);
       antes.forEach(function (id) { if (ids.indexOf(id) < 0) ids.push(id); });
     }
     if (!ids.length) return;
@@ -964,8 +1025,9 @@ function paginaAnuncios(D, P, PA) {
     });
   }
   // Um lado (Recebo ou Dou) com a linha Total (value base, Robux já incluídos).
-  function blocoLado(classe, rotulo, itens, robux, recebe, t) {
-    var h = '<div class="an-lado ' + classe + '"><div class="an-lcab"><span>' + rotulo + '</span><span>Valor</span></div>';
+  // rotulo e direita são HTML (v6.16: direita = % do degrau no lugar de "Valor").
+  function blocoLado(classe, rotulo, itens, robux, recebe, t, direita) {
+    var h = '<div class="an-lado ' + classe + '"><div class="an-lcab"><span>' + rotulo + '</span>' + (direita || '<span>Valor</span>') + '</div>';
     h += itens.map(function (i) { return linhaItem(i, classe); }).join('');
     if (robux) {
       var liquido = recebe ? Math.floor(robux * (1 - P.taxaRobux)) : robux;
@@ -986,18 +1048,50 @@ function paginaAnuncios(D, P, PA) {
   }
   // Cartão aberto: nota, aviso do mesmo item, Recebo, Dou, veredito com a % e o
   // ganho em R$ (value base), e os botões do jogador e do trade.
+  // v6.16: chave de um lado (para saber se ele muda entre os degraus).
+  function chaveLado(l) {
+    return l.map(function (i) { return i.id + ':' + (i.uaid || ''); }).join(',');
+  }
   function detalhe(r) {
     var ad = r.ad;
+    var d = r.degraus || [];
     var h = '<div class="an-det">';
     if (r.nota) h += '<p class="an-nota">' + esc(r.nota) + '</p>';
     if (r.mesmo && r.mesmo.length) {
       h += '<p class="an-aviso">Tem <b>' + esc(r.mesmo.join(', ')) + '</b> dos dois lados. Continua na lista porque o ganho não é negativo.</p>';
     }
-    h += blocoLado('rec', 'Recebo', r.rec, r.robux, true, r.tr);
-    h += blocoLado('dou', r.modo === 'tag' ? 'Dou (sugestão)' : 'Dou', r.dou, 0, false, r.td);
-    var dif = r.tr.value - r.td.value;
-    h += '<div class="an-pe" data-cor="' + corVeredito(r.v) + '"><span class="selo">' + esc(r.v ? tituloWFL(r.v) : '') + '</span>' +
-      '<span class="an-ganho"><b>' + pctTxt(r.pct) + '</b><small>' + (dif > 0 ? '+' : '') + fmtNum(dif) + ' R$</small></span></div>';
+    if (d.length < 2) {
+      h += blocoLado('rec', 'Recebo', r.rec, r.robux, true, r.tr);
+      h += blocoLado('dou', r.modo === 'tag' ? 'Dou (oferta)' : 'Dou', r.dou, 0, false, r.td);
+      var dif = r.tr.value - r.td.value;
+      h += '<div class="an-pe" data-cor="' + corVeredito(r.v) + '"><span class="selo">' + esc(r.v ? tituloWFL(r.v) : '') + '</span>' +
+        '<span class="an-ganho"><b>' + pctTxt(r.pct) + '</b><small>' + (dif > 0 ? '+' : '') + fmtNum(dif) + ' R$</small></span></div>';
+    } else {
+      // v6.16 (protótipo aprovado): o lado que não muda aparece uma vez; o que
+      // muda aparece em cada degrau, com a % do degrau no cabeçalho. No seu
+      // downgrade o 2º degrau é o "Mínimo" (o menor ganho que você aceita).
+      var nomes = r.tipo === 'downgrade' ? ['Abertura', 'Mínimo'] : ['Abertura', 'Teto'];
+      var recFixo = chaveLado(d[0].rec) === chaveLado(d[1].rec);
+      var douFixo = chaveLado(d[0].dou) === chaveLado(d[1].dou);
+      if (recFixo) h += blocoLado('rec', 'Recebo', d[0].rec, 0, true, d[0].tr);
+      if (douFixo) h += blocoLado('dou', 'Dou', d[0].dou, 0, false, d[0].td);
+      var caixas = '';
+      d.forEach(function (g, k) {
+        var cor = corVeredito(g.v);
+        var dir = '<span class="dg-p" data-cor="' + cor + '">' + pctTxt(g.pct) + '</span>';
+        var cab = '<span class="dg-n">' + (k + 1) + '</span>' + nomes[k];
+        if (!recFixo) h += blocoLado('rec', 'Recebo · ' + cab, g.rec, 0, true, g.tr, douFixo ? dir : '');
+        if (!douFixo) h += blocoLado('dou', 'Dou · ' + cab, g.dou, 0, false, g.td, dir);
+        var dg = g.tr.value - g.td.value;
+        caixas += '<div class="dg-caixa" data-cor="' + cor + '"><span class="rot">' + (k + 1) + ' · ' + nomes[k] + '</span>' +
+          '<b>' + pctTxt(g.pct) + '</b><small>' + (dg > 0 ? '+' : '') + fmtNum(dg) + ' R$</small>' +
+          '<span class="selo">' + esc(g.v ? tituloWFL(g.v) : '') + '</span></div>';
+      });
+      h += '<div class="dg-pe">' + caixas + '</div>';
+      h += '<p class="dg-dica">' + (r.tipo === 'downgrade'
+        ? 'Mande a 1. Se ele recusar ou fizer contraproposta, desça até a 2 e não aceite menos.'
+        : 'Mande a 1. Se ele recusar ou fizer contraproposta, suba até a 2 e não passe dela.') + '</p>';
+    }
     h += '<div class="an-acoes">' +
       '<a class="btn sec" href="https://www.rolimons.com/player/' + ad[2] + '">Ver jogador</a>' +
       '<a class="btn" href="https://www.roblox.com/users/' + ad[2] + '/trade">Abrir trade</a></div>';
@@ -1013,20 +1107,32 @@ function paginaAnuncios(D, P, PA) {
   }
   // Linha curta: jogador, etiqueta do tipo, tempo, miniaturas dos dois lados e a %.
   // O toque abre/fecha o cartão completo logo abaixo.
+  // v6.16: com dois degraus, a linha mostra a faixa em números inteiros
+  // ("-2 a -8%"); o veredito ao lado é o do teto/mínimo (r.v).
+  function pctLinha(r) {
+    var d = r.degraus;
+    if (!d || d.length < 2) return pctTxt(r.pct);
+    function n(p) {
+      var x = Math.round(p);
+      return (x > 0 ? '+' : '') + (x === 0 ? 0 : x);
+    }
+    return n(d[0].pct) + ' a ' + n(d[1].pct) + '%';
+  }
   function linha(r, k) {
     var ad = r.ad;
     var aberto = estado.aberto === ad[0];
     var sug = r.modo === 'tag';
     var cor = corVeredito(r.v);
+    var g0 = primeiro(r);
     return (
       '<div class="an-it' + (aberto ? ' aberto' : '') + '">' +
       '<button type="button" class="an-linha" data-k="' + k + '" aria-expanded="' + aberto + '">' +
       '<span class="an-main"><span class="an-l1"><b>' + esc(ad[3] || 'Jogador ' + ad[2]) + '</b>' +
       '<span class="an-etq' + (sug ? '' : ' seus') + '">' + esc(etiqueta(r)) + '</span>' +
       '<span class="an-tempo">' + haQuanto(ad[1]) + '</span></span>' +
-      '<span class="an-l2">' + grupo(r.rec, r.robux, 'rec') + seloGiro(r) + '<span class="an-tr">⇄</span>' +
-      grupo(r.dou, 0, 'dou' + (sug ? ' sug' : '')) + '</span></span>' +
-      '<span class="an-pct" data-cor="' + cor + '"><b>' + pctTxt(r.pct) + '</b><small>' + esc(r.v ? r.v.titulo : '') + '</small></span>' +
+      '<span class="an-l2">' + grupo(g0.rec, r.robux, 'rec') + seloGiro(r) + '<span class="an-tr">⇄</span>' +
+      grupo(g0.dou, 0, 'dou' + (sug ? ' sug' : '')) + '</span></span>' +
+      '<span class="an-pct" data-cor="' + cor + '"><b>' + pctLinha(r) + '</b><small>' + esc(r.v ? r.v.titulo : '') + '</small></span>' +
       '<span class="an-chev">›</span></button>' +
       (aberto ? detalhe(r) : '') + '</div>'
     );
@@ -1148,7 +1254,7 @@ function paginaAnuncios(D, P, PA) {
     desenharDiag();
     var ids = [];
     estado.mostrados.forEach(function (r) {
-      r.rec.concat(r.dou).forEach(function (i) { ids.push(i.id); });
+      itensDe(r).forEach(function (i) { ids.push(i.id); });
     });
     if (estado.item) ids.push(estado.item);
     pedirMiniaturas(ids);
