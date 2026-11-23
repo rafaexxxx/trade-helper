@@ -101,41 +101,63 @@ function seta(p, lim) {
   return '<small class="seta ' + (p > 0 ? 'pos' : 'neg') + '">' + (p > 0 ? '▲ ' : '▼ ') + a.fmtPct(Math.abs(p)) + '</small>';
 }
 
-// Linha pequena embaixo do nome: demanda · tendência · detalhes.
+// Linha pequena embaixo do nome: demanda · tendência · vendas/dia · detalhes.
 // "projected" não entra aqui: ele sempre vira a etiqueta vermelha da linha.
+// v6.11: devolve as partes de antes e de depois das vendas/dia (que chegam
+// depois, pela fila, num lugar fixo: o .ln-v).
 function detalhes(i) {
-  const d = [];
-  if (i.demanda >= 0) d.push('<span class="' + corDemanda(i.demanda) + '">' + esc(a.demandaCurta(i.demanda)) + '</span>');
-  if (i.tendencia >= 0) d.push('<span class="' + corTendencia(i.tendencia) + '">' + esc(a.tendenciaCurta(i.tendencia)) + '</span>');
-  if (i.serial) d.push('#' + esc(i.serial));
-  if (i.hyped) d.push('hyped');
-  if (i.rare) d.push('rare');
-  if (i.hold) d.push('<span class="warn">hold</span>');
-  if (i.value == null && !i.semRolimons) d.push('sem value');
-  if (i.semRolimons) d.push("fora do Rolimon's");
-  return d.join(' · ');
+  const antes = [];
+  const depois = [];
+  if (i.demanda >= 0) antes.push('<span class="' + corDemanda(i.demanda) + '">' + esc(a.demandaCurta(i.demanda)) + '</span>');
+  if (i.tendencia >= 0) antes.push('<span class="' + corTendencia(i.tendencia) + '">' + esc(a.tendenciaCurta(i.tendencia)) + '</span>');
+  if (i.serial) depois.push('#' + esc(i.serial));
+  if (i.hyped) depois.push('hyped');
+  if (i.rare) depois.push('rare');
+  if (i.hold) depois.push('<span class="warn">hold</span>');
+  if (i.value == null && !i.semRolimons) depois.push('sem value');
+  if (i.semRolimons) depois.push("fora do Rolimon's");
+  return { antes, depois };
 }
 
-// Uma linha da lista. "motivos" são os alertas do item; "vari" a variação em 24h.
-function linhaItem(i, miniatura, motivos, vari, lim) {
+// v6.11: o pedaço das vendas/dia com os " · " certos em volta (a = tem algo
+// antes, d = tem algo depois). A página usa a mesma regra (textoVendas).
+function slotVendas(a1, d1, ln) {
+  if (!ln || !ln.tv) return a1 && d1 ? ' · ' : '';
+  return (a1 ? ' · ' : '') + '<span class="' + esc(ln.c) + '">' + esc(ln.tv) + '</span>' + (d1 ? ' · ' : '');
+}
+
+// Uma linha da lista. "motivos" são os alertas do item; "vari" a variação em 24h;
+// "ln" (v6.11) as vendas/dia e o Best Price guardados (cartao.linha) ou null.
+function linhaItem(i, miniatura, motivos, vari, lim, ln) {
   const det = detalhes(i);
+  const a1 = det.antes.length > 0;
+  const d1 = det.depois.length > 0;
+  const temVendas = !!(ln && ln.tv);
+  const texto = det.antes.join(' · ') +
+    '<span class="ln-v" data-a="' + (a1 ? 1 : 0) + '" data-d="' + (d1 ? 1 : 0) + '">' + slotVendas(a1, d1, ln) + '</span>' +
+    det.depois.join(' · ');
   const tag = etiqueta(motivos);
+  const temTexto = a1 || d1 || temVendas;
   const img = miniatura
     ? '<img class="thumb" src="' + esc(miniatura) + '" alt="">'
     : '<span class="thumb"></span>';
   const setaV = i.value != null ? seta(vari && vari.v, lim) : '';
   const setaR = seta(vari && vari.r, lim);
+  const temBest = !!(ln && ln.tb);
   return (
     '<div class="item" data-uaid="' + esc(i.uaid) + '" data-asset="' + esc(i.assetId) + '" data-titulo="' + esc(i.nome) +
     '" data-nome="' + esc((i.nome + ' ' + i.sigla).toLowerCase()) +
     '" data-value="' + i.valorEfetivo + '" data-rap="' + i.rap +
     '" data-dem="' + i.demanda + '" data-tend="' + i.tendencia +
+    '" data-vendas="' + (ln && ln.v != null ? ln.v : -1) +
     '" data-alerta="' + (motivos && motivos.length ? '1' : '0') + '">' +
     img +
     '<div class="item-txt"><span class="nome">' + esc(i.nome) + '</span>' +
-    (tag || det ? '<span class="det">' + tag + (det ? '<span>' + det + '</span>' : '') + '</span>' : '') + '</div>' +
+    '<span class="det' + (tag || temTexto ? '' : ' oculto') + '">' + tag +
+    '<span class="det-t' + (temTexto ? '' : ' oculto') + '">' + texto + '</span></span></div>' +
     '<div class="item-num"><span class="v">' + (i.value != null ? setaV + a.fmtNum(i.value) : '<span class="sub">—</span>') + '</span>' +
-    '<span class="r">' + setaR + '<small>RAP</small>' + a.fmtNum(i.rap) + '</span></div>' +
+    '<span class="r">' + setaR + '<small>RAP</small>' + a.fmtNum(i.rap) + '</span>' +
+    '<span class="b' + (temBest ? '' : ' oculto') + '"><small>Best</small><span class="b-n">' + (temBest ? esc(ln.tb) : '') + '</span></span></div>' +
     '</div>'
   );
 }
@@ -274,6 +296,7 @@ input[type=search]::placeholder{color:var(--sub)}
 .item-num{flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:5px;text-align:right;white-space:nowrap}
 .item-num .v{font-size:18px;font-weight:700;line-height:1}
 .item-num .r{font-size:16px;font-weight:600;line-height:1;color:var(--rap)}
+.item-num .b{font-size:14px;font-weight:600;line-height:1;color:var(--fg)}
 .item-num small{margin-right:5px;font-size:13px;font-weight:500;color:var(--sub)}
 .item-num .v small.tag{margin:0 0 0 5px}
 .total{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:14px 16px;border-top:1px solid var(--borda);background:var(--card2);font-weight:700}
@@ -341,7 +364,8 @@ body.c2ativa{--acc:var(--c2);--acc-fundo:var(--c2-fundo);--acc-press:var(--c2-pr
 // Bloco do Inventário de uma conta (faixa de totais, busca, chips e lista).
 // v5.2: o mesmo bloco serve para a conta 2, montado no Scriptable e enviado
 // pela ponte. Sem ids: o script da página liga cada bloco pelas classes.
-// r = { itens, totais, riscos, comparacoes: { dia }, miniaturas, avisos, agora }.
+// r = { itens, totais, riscos, comparacoes: { dia }, miniaturas, linhas, avisos, agora }.
+// v6.11: linhas = { assetId: cartao.linha } (vendas/dia e Best guardados).
 function inventario(r, cfg) {
   const t = r.totais;
   // v5.1: o Inventário compara sempre com 24h atrás (sem seletor de período).
@@ -357,8 +381,9 @@ function inventario(r, cfg) {
   const lim = cfg.LIMITE_MUDANCA_PCT;
   const alertas = alertasPorUaid(r.riscos, per);
   const comAlerta = Object.keys(alertas).length;
+  const lns = r.linhas || {};
   const linhas = r.itens
-    .map((i) => linhaItem(i, r.miniaturas[String(i.assetId)], alertas[i.uaid], variacaoItem(i, d.base), lim))
+    .map((i) => linhaItem(i, r.miniaturas[String(i.assetId)], alertas[i.uaid], variacaoItem(i, d.base), lim, lns[String(i.assetId)] || null))
     .join('');
 
   const html = `<div class="faixa">
@@ -380,6 +405,7 @@ function inventario(r, cfg) {
     <button class="chip" data-campo="rap">RAP</button>
     <button class="chip" data-campo="dem">Demanda</button>
     <button class="chip" data-campo="tend">Tendência</button>
+    <button class="chip" data-campo="vendas">Vendas</button>
     <button class="chip" data-campo="nome">Nome</button>
     ${comAlerta ? '<button class="chip filtro inv-so-alerta">Com alerta · ' + comAlerta + '</button>' : ''}
   </div>
@@ -501,6 +527,7 @@ ${anuncios.secao(cfg, av.erro ? 'os dados do avaliador não foram preparados (' 
   <p id="diag-ponte"></p>
   <p id="diag-anuncios"></p>
   <p id="diag-cartao">Tela do item: nenhum item aberto ainda</p>
+  <p id="diag-linhas">Linhas: a busca por trás começa uns segundos depois de abrir</p>
   <p id="diag-conta2">Conta 2: ${r.conta2 ? 'salva, ainda não aberta nesta abertura' : 'nenhuma'}</p>
   <p id="diag-diario">Diário: ${esc(r.diario && r.diario.erro ? 'erro ao montar (' + r.diario.erro + ')' : (r.diag && r.diag.diario) || '')}</p>
   <textarea readonly>${esc(JSON.stringify(r.diag, null, 2))}</textarea>
@@ -534,7 +561,7 @@ ${ajuda.secao(cfg)}
 <script>
 (function(){
   var PONTE = ${avaliador.serializar(avaliador.PONTE)};
-  var ROTULOS = { value: 'Value', rap: 'RAP', dem: 'Demanda', tend: 'Tendência', nome: 'Nome' };
+  var ROTULOS = { value: 'Value', rap: 'RAP', dem: 'Demanda', tend: 'Tendência', vendas: 'Vendas', nome: 'Nome' };
   function $(id){ return document.getElementById(id); }
   function textoSeguro(s){
     return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; });
@@ -624,6 +651,8 @@ ${ajuda.secao(cfg)}
       var linhas = Array.prototype.slice.call(lista.children);
       linhas.sort(function(x, y){
         var p = x.getAttribute('data-' + campo), q = y.getAttribute('data-' + campo);
+        // v6.11: item ainda sem vendas/dia (-1) fica sempre no fim.
+        if (campo === 'vendas' && (Number(p) < 0 || Number(q) < 0)) return (Number(p) < 0 ? 1 : 0) - (Number(q) < 0 ? 1 : 0);
         var c = campo === 'nome' ? p.localeCompare(q) : Number(p) - Number(q);
         return estado.dir === 'asc' ? c : -c;
       });
@@ -684,6 +713,51 @@ ${ajuda.secao(cfg)}
     });
   }
   ligarInventario($('inv-1'), ${avaliador.serializar(menu)}, ${avaliador.serializar(tituloMud)});
+
+  // ---------- v6.11: vendas/dia e Best Price na linha ----------
+  // Pede a fila ao Scriptable uns segundos depois de a tela abrir (a conta 2
+  // pede quando os itens dela chegam). Cada item atualizado volta por receberLinhas.
+  function pedirLinhas(conta){
+    try {
+      var f = document.createElement('iframe');
+      f.style.display = 'none';
+      f.src = PONTE + 'linhas?conta=' + conta + '&t=' + Date.now();
+      document.body.appendChild(f);
+      setTimeout(function(){ if (f.parentNode) f.parentNode.removeChild(f); }, 5000);
+    } catch (e) {}
+  }
+  // Mesma regra do slotVendas (html.js): " · " só onde há algo antes/depois.
+  function textoVendas(el, ln){
+    var a = el.getAttribute('data-a') === '1', d = el.getAttribute('data-d') === '1';
+    if (!ln || !ln.tv) { el.textContent = a && d ? ' · ' : ''; return; }
+    el.innerHTML = (a ? ' · ' : '') + '<span class="' + textoSeguro(ln.c) + '">' + textoSeguro(ln.tv) + '</span>' + (d ? ' · ' : '');
+  }
+  window.receberLinhas = function(mapa, diag){
+    var dl = $('diag-linhas');
+    if (dl && diag) dl.textContent = diag;
+    for (var id in mapa || {}) {
+      if (!/^\\d+$/.test(id)) continue;
+      var ln = mapa[id];
+      var its = document.querySelectorAll('.inv-lista .item[data-asset="' + id + '"]');
+      for (var k = 0; k < its.length; k++) {
+        var it = its[k];
+        it.setAttribute('data-vendas', ln && ln.v != null ? ln.v : -1);
+        var slot = it.querySelector('.ln-v');
+        if (slot && ln && ln.tv) {
+          textoVendas(slot, ln);
+          var dt = it.querySelector('.det-t'), de = it.querySelector('.det');
+          if (dt) dt.classList.remove('oculto');
+          if (de) de.classList.remove('oculto');
+        }
+        var b = it.querySelector('.item-num .b');
+        if (b && ln && ln.tb) {
+          b.querySelector('.b-n').textContent = ln.tb;
+          b.classList.remove('oculto');
+        }
+      }
+    }
+  };
+  setTimeout(function(){ pedirLinhas(1); }, ${Number(cfg.CARTAO_LINHA_ESPERA_MS) || 2500});
 
   // ---------- Alternador de conta (v5.2) ----------
   function inicial(s){ return String(s || '?').charAt(0).toUpperCase(); }
@@ -786,6 +860,7 @@ ${ajuda.secao(cfg)}
     var raiz = $('inv-2');
     raiz.innerHTML = res.html;
     ligarInventario(raiz, res.menu || {}, res.titulo || 'Mudanças');
+    pedirLinhas(2);
     if (conta === 2) mostrarConta(2);
     else mostrarBotoesConta();
   };

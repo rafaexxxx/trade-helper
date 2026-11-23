@@ -113,6 +113,19 @@ module.exports = {
   // do upgrade; pedir = o "Vale a pena" do downgrade) e é multiplicada pela
   // demanda do item no Rolimon's (0 terrível .. 4 incrível; sem dado = 1).
   CARTAO_OP_DEMANDA_MULT: { 0: 0.6, 1: 0.8, 2: 1, 3: 1.2, 4: 1.4 },
+  // v6.11: vendas/dia e Best Price na linha de cada item do Inventário (as duas
+  // contas). Buscados POR TRÁS, depois que a tela abriu, um item por vez, do
+  // maior value para o menor, e guardados no iPhone (dados/cartoes.json).
+  // A página do Rolimon's (~850 KB, traz as vendas/dia) vale por X horas;
+  // o Best Price do Roblox (leve) vale por Y minutos.
+  CARTAO_LINHA_PAGINA_H: 24,
+  CARTAO_LINHA_BEST_MIN: 30,
+  // Pausa entre duas páginas do Rolimon's (para não ser bloqueado).
+  CARTAO_LINHA_PAUSA_MS: 1500,
+  // Espera depois de a tela abrir antes de começar a fila.
+  CARTAO_LINHA_ESPERA_MS: 2500,
+  // Item que não aparece há X dias sai do arquivo guardado.
+  CARTAO_LINHA_GUARDA_DIAS: 7,
   // Quantos dos seus itens entram na busca de combinações (mais = mais lento).
   ANUNCIO_COMBINACAO_MAX_ITENS: 25,
   // Quantos cartões cada bloco da aba mostra.

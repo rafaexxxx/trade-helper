@@ -39,17 +39,35 @@ Pronto! Das próximas vezes é só abrir o script. Ele confere sozinho se há ve
 ## 📦 Inventário
 
 - **Faixa de totais** no topo: value total, RAP total e a variação de 24h.
-- **Seus itens** logo abaixo, com miniatura, busca e ordenação (value, RAP, demanda, tendência, nome).
+- **Seus itens** logo abaixo, com miniatura, busca e ordenação (value, RAP, demanda, tendência, vendas, nome).
+- **Vendas/dia e Best Price na linha** (v6.11): `15/dia` na linha de baixo, depois da demanda e da tendência (colorido pela escala da demanda), e `Best 3.850` embaixo do RAP. Veja [como são buscados](#-vendasdia-e-best-price-na-linha-v611).
 - **Cada informação num lugar só** (v6.3): a etiqueta aparece só para o que não está em outro lugar da linha (projected, RAP longe do value); queda de preço fica na seta; demanda e tendência, coloridas embaixo do nome. O chip "Com alerta" filtra todo item com algum risco.
 - **Tocar no item** abre a **tela do item**, com os alertas (como o item é), as mudanças em 24h (antes → depois) e os links para o Rolimon's e o Roblox.
 - **Setas ▲ ▼**: variação de value/RAP do item nas últimas 24h (a partir de `LIMITE_MUDANCA_PCT`).
 - O histórico de 24h é montado com 1 retrato por hora (painel e widget), guardado por 48h no iPhone.
 
+### 📈 Vendas/dia e Best Price na linha (v6.11)
+
+**Nada novo na abertura:** a linha é desenhada com o que está guardado no iPhone (`dados/cartoes.json`). Uns segundos depois de a tela abrir (`CARTAO_LINHA_ESPERA_MS`), a página pede pela ponte (`PONTE + 'linhas?conta=1'`; a conta 2 pede quando os itens dela chegam) e o Scriptable atualiza **por trás**, um item por vez, do maior value para o menor:
+
+| Dado | Fonte | Vale por | Peso |
+|---|---|---|---|
+| **Vendas/dia** | Página do item no Rolimon's (traz o Best Price junto) | `CARTAO_LINHA_PAGINA_H` (24h) | ~850 KB por item |
+| **Best Price** | Roblox `economy.roblox.com/v2/assets/{id}/details` | `CARTAO_LINHA_BEST_MIN` (30 min) | ~1 KB por item |
+
+- Pausa de `CARTAO_LINHA_PAUSA_MS` (1,5 s) entre duas páginas do Rolimon's.
+- **Falha:** fica o último valor guardado (mesmo velho). Item que nunca teve dado fica como antes. HTTP 429/403 ou 3 falhas seguidas **param aquela fonte** nesta abertura.
+- Quando o Roblox responde **sem preço** (item clássico ou ninguém vendendo), ele não é consultado de novo por 24h, e o Best da linha fica o da página do Rolimon's.
+- Cada item atualizado é gravado na hora: fechar o app no meio não perde nada. Item que não aparece há `CARTAO_LINHA_GUARDA_DIAS` (7 dias) sai do arquivo.
+- A **tela do item** usa a mesma página guardada se ela tiver até `CARTAO_CACHE_MIN` (10 min) e abre na hora. O que a tela buscar atualiza a linha também. As duas nunca buscam o mesmo item juntas.
+- O **Diagnóstico** ganhou a linha "Linhas" (quantas páginas, quantos Best, falhas e pausas).
+- Chip **Vendas**: os itens ainda sem dado ficam sempre no fim.
+
 ### 🃏 Tela do item (v6.10; o card nasceu na v6.9)
 
 Abre em **tela cheia** ao tocar num item no **Inventário** (nas duas contas) e no **Avaliar**. O botão **‹ Voltar** fica fixo **embaixo** (v6.10.1: no topo ele ficava colado no "Close" do Scriptable).
 
-**Cores** (v6.10.1): 🟠 laranja = o que você paga (OP para dar) · 🟢 verde = o que você ganha ou o que sobe (OP para pedir, ▲ no RAP, maior RAP, vendas e demanda boas) · 🔴 vermelho = o que desce ou não gira. Os dados são buscados **só nesse toque**, na página do item no Rolimon's (~850 KB), e ficam guardados por `CARTAO_CACHE_MIN` (10 min). Nada é buscado ao abrir o app.
+**Cores** (v6.10.1): 🟠 laranja = o que você paga (OP para dar) · 🟢 verde = o que você ganha ou o que sobe (OP para pedir, ▲ no RAP, maior RAP, vendas e demanda boas) · 🔴 vermelho = o que desce ou não gira. Os dados vêm da página do item no Rolimon's (~850 KB), buscada nesse toque, ou da que a busca por trás do Inventário guardou há até `CARTAO_CACHE_MIN` (10 min). Nada é buscado ao abrir o app.
 
 Ordem da tela:
 
@@ -212,6 +230,12 @@ Ficam em [`src/config.js`](src/config.js):
 | `SILENCIO_INICIO_H` / `SILENCIO_FIM_H` | 0 / 8 | Horário sem notificações (números iguais = sem silêncio) |
 | `NOTIF_ANUNCIO_IDADE_MAX_MIN` | 60 | Só avisa de anúncios criados há no máximo X min |
 | `NOTIF_TEMPO_MAX_S` | 8 | Tempo máximo (s) da análise de anúncios dentro do widget |
+| `CARTAO_CACHE_MIN` | 10 | Tela do item: por quantos minutos a página do item vale |
+| `CARTAO_LINHA_PAGINA_H` | 24 | Linha do item: por quantas horas valem as vendas/dia (página do Rolimon's) |
+| `CARTAO_LINHA_BEST_MIN` | 30 | Linha do item: por quantos minutos vale o Best Price (Roblox) |
+| `CARTAO_LINHA_PAUSA_MS` | 1500 | Pausa entre duas páginas do Rolimon's na busca por trás |
+| `CARTAO_LINHA_ESPERA_MS` | 2500 | Espera depois de a tela abrir antes da busca por trás |
+| `CARTAO_LINHA_GUARDA_DIAS` | 7 | Item que não aparece há X dias sai do arquivo guardado |
 
 **Trocar o username principal:** no script do Scriptable, mude `TROCAR_USERNAME` para `true`, rode uma vez e volte para `false` (a conta 2 e o tema continuam). A **conta 2** se troca pelo menu **⋯**.
 
@@ -238,6 +262,8 @@ src/anuncios.js      → aba "Anúncios" (Trade Ads: leitura, análise e combina
 src/diario.js        → Diário de trades (detecção, perguntas e lucro até hoje)
 src/notificacoes.js  → notificação-resumo do widget
 src/ajuda.js         → tela de Ajuda
+src/cartao.js        → tela do item e vendas/dia + Best Price da linha (página do Rolimon's, arquivo guardado)
+src/temas.js         → temas do painel
 src/html.js          → página do painel (abas, conta 2, temas, menu ⋯)
 src/widget.js        → widgets (tema OLED)
 src/painel.js        → ponto de entrada e ponte página ↔ Scriptable
@@ -253,6 +279,8 @@ src/painel.js        → ponto de entrada e ponte página ↔ Scriptable
 | Value, RAP, demanda, tendência, projected, hyped, rare | `api.rolimons.com/items/v2/itemdetails` (inclui itens novos/UGC); a v1, só com limiteds clássicos, fica de reserva |
 | Anúncios de trade recentes | `api.rolimons.com/tradeads/v1/getrecentads` |
 | Miniaturas | `thumbnails.roblox.com` |
+| Vendas/dia, histórico do RAP e Best Price (tela e linha do item) | Página `www.rolimons.com/item/{id}` (não é API oficial) |
+| Best Price (linha do item, e reserva da tela) | `economy.roblox.com/v2/assets/{id}/details` |
 
 Quando o Rolimon's e o Roblox discordam sobre quais itens você tem, a diferença fica registrada no Diagnóstico (campo `divergencia`). Se o Rolimon's falhar, a lista vem só do Roblox.
 

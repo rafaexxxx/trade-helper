@@ -247,6 +247,16 @@ async function executar(ctx) {
   // Só o painel grava o retrato da "última consulta".
   hist.gravarSnapshot(store, atual);
 
+  // v6.11: vendas/dia e Best Price na linha do item, do que ficou guardado no
+  // iPhone (nada de rede aqui). A fila por trás atualiza depois que a tela abre.
+  let guardados;
+  try {
+    guardados = cartao.lerGuardados(store);
+  } catch (e) {
+    guardados = { v: 1, itens: {} };
+  }
+  resultado.linhas = cartao.linhas(guardados, itens);
+
   // Avaliador de trade: catálogo enxuto + variação de 24h + miniaturas conhecidas.
   // Se algo falhar aqui, só a aba do avaliador mostra o erro; o inventário segue.
   let baseCatalogo = null;
@@ -330,6 +340,9 @@ async function executar(ctx) {
     });
   }
 
+  // v6.11: itens da conta 2 (para a fila das linhas), depois de montados.
+  let itensConta2 = null;
+
   // v5.2: itens da conta 2, montados aqui com o mesmo catálogo já baixado.
   // As setas e quedas de 24h usam o retrato do catálogo (analise.baseDoCatalogo).
   async function montarConta2() {
@@ -343,12 +356,14 @@ async function executar(ctx) {
     const base2 = analise.baseDoCatalogo(itens2, baseCatalogo, montado.fonte);
     const dia2 = comparar(itens2, totais2, base2);
     const thumbs2 = await api.buscarMiniaturas(store, itens2.map((i) => String(i.assetId)));
+    itensConta2 = itens2;
     const bloco = html.inventario({
       itens: itens2,
       totais: totais2,
       riscos: analise.encontrarRiscos(itens2, base2, cfg),
       comparacoes: { dia: dia2 },
       miniaturas: thumbs2,
+      linhas: cartao.linhas(guardados, itens2),
       avisos: j.avisos,
       agora: agora2,
     }, cfg);
@@ -473,31 +488,204 @@ async function executar(ctx) {
     });
   }
 
-  // v6.9: card do item. PONTE + 'cartao?id=<assetId>' busca a página do item no
-  // Rolimon's SÓ nesse toque; o card fica guardado por CARTAO_CACHE_MIN (só se a
-  // página respondeu). Fora da filaPonte: não segura as miniaturas.
-  const cartoes = {};
-  const cartoesEmCurso = {};
+  // v6.11: o arquivo guardado (dados/cartoes.json) é gravado a cada mudança
+  // (se o app fechar no meio da fila, nada do que já veio se perde).
+  function gravarGuardados() {
+    try {
+      cartao.gravarGuardados(store, guardados);
+    } catch (e) {
+      // segue só na memória desta abertura
+    }
+  }
+
+  // Página do item no Rolimon's, uma busca por item de cada vez (a tela do item
+  // e a fila das linhas nunca buscam o mesmo item juntas). Guarda se respondeu.
+  const paginasEmCurso = {};
+  function buscarPagina(id) {
+    if (!paginasEmCurso[id]) {
+      paginasEmCurso[id] = cartao.lerPagina(id)
+        .catch((e) => ({ id, em: Date.now(), paginaOk: false, status: e.status || 0, erroPagina: e.message || String(e), diag: [], faltou: [] }))
+        .then((pag) => {
+          delete paginasEmCurso[id];
+          if (pag.paginaOk) {
+            cartao.guardarPagina(guardados, pag);
+            gravarGuardados();
+          }
+          return pag;
+        });
+    }
+    return paginasEmCurso[id];
+  }
+
+  // Manda a linha nova de um item para a página (as duas contas; a página acha
+  // as linhas pelo data-asset) e o resumo da fila para o Diagnóstico.
+  async function enviarLinha(id) {
+    const mapa = {};
+    const l = cartao.linha(guardados, id);
+    if (l) mapa[id] = l;
+    try {
+      await wv.evaluateJavaScript(
+        'window.receberLinhas && window.receberLinhas(' + avaliador.serializar(mapa) + ',' + avaliador.serializar(resumoFila()) + ')',
+        false
+      );
+    } catch (e) {
+      // página fechada ou sem a função: ignora
+    }
+  }
+
+  // v6.9: card do item. PONTE + 'cartao?id=<assetId>'. v6.11: usa a página que a
+  // fila das linhas guardou há até CARTAO_CACHE_MIN; senão, busca agora. O que
+  // vier atualiza também a linha do item. Fora da filaPonte: não segura as miniaturas.
   function atenderCartao(url) {
     const m = /[?&]id=(\d+)/.exec(url);
     if (!m) return;
     const id = m[1];
     (async () => {
-      let res = cartoes[id];
-      if (!res || Date.now() - res.em > cfg.CARTAO_CACHE_MIN * 60000) {
-        if (!cartoesEmCurso[id]) {
-          cartoesEmCurso[id] = cartao.carregar(id, dados.rolimons).catch((e) => ({ id, em: Date.now(), erro: e.message || String(e) }));
+      let res;
+      try {
+        let pag = cartao.paginaGuardada(guardados, id, cfg.CARTAO_CACHE_MIN);
+        if (!pag) pag = await buscarPagina(id);
+        res = await cartao.carregar(id, dados.rolimons, pag);
+        if (res.best && res.bestFonte === 'Roblox') {
+          cartao.guardarBest(guardados, id, res.best, 'Roblox');
+          gravarGuardados();
         }
-        res = await cartoesEmCurso[id];
-        delete cartoesEmCurso[id];
-        if (res.paginaOk) cartoes[id] = res;
+      } catch (e) {
+        res = { id, em: Date.now(), erro: e.message || String(e) };
       }
       try {
         await wv.evaluateJavaScript('window.receberCartao && window.receberCartao(' + avaliador.serializar(res) + ')', false);
       } catch (e) {
         // página fechada ou sem a função: ignora
       }
+      enviarLinha(id);
     })();
+  }
+
+  // ---------- v6.11: fila das linhas (vendas/dia e Best Price) ----------
+  // A página pede PONTE + 'linhas?conta=1' uns segundos depois de abrir (e
+  // 'conta=2' quando os itens da conta 2 chegam). Um item por vez, do maior value
+  // para o menor: página do Rolimon's se as vendas guardadas tiverem mais de
+  // CARTAO_LINHA_PAGINA_H; senão, só o Best do Roblox se tiver mais de
+  // CARTAO_LINHA_BEST_MIN. Recusa (429/403) ou 3 falhas seguidas param aquela
+  // fonte nesta abertura. Falha = fica o último guardado.
+  const fila = {
+    ids: [],
+    vistos: {},
+    rodando: false,
+    pausaRol: null,
+    pausaRbx: null,
+    falhasRol: 0,
+    falhasRbx: 0,
+    n: { pagina: 0, best: 0, guardado: 0, semRbx: 0, falhas: 0 },
+    ultimoErro: null,
+  };
+
+  function resumoFila() {
+    const n = fila.n;
+    const p = [];
+    if (n.pagina) p.push(n.pagina + (n.pagina === 1 ? " página do Rolimon's" : " páginas do Rolimon's"));
+    if (n.best) p.push(n.best + ' Best pelo Roblox');
+    if (n.guardado) p.push(n.guardado + ' já guardados');
+    if (n.semRbx) p.push(n.semRbx + " sem preço no Roblox (usam o Best do Rolimon's)");
+    if (n.falhas) p.push(n.falhas + ' falharam (último: ' + fila.ultimoErro + ')');
+    if (fila.pausaRol) p.push("Rolimon's pausado (" + fila.pausaRol + ')');
+    if (fila.pausaRbx) p.push('Roblox pausado (' + fila.pausaRbx + ')');
+    p.push(fila.rodando ? 'na fila: ' + (fila.ids.length + 1) : 'terminado');
+    return 'Linhas: ' + p.join(' · ');
+  }
+
+  function falhou(fonte, e) {
+    const st = (e && e.status) || 0;
+    const msg = (e && (e.message || e.erroPagina)) || String(e);
+    fila.n.falhas++;
+    fila.ultimoErro = (fonte === 'rol' ? "Rolimon's " : 'Roblox ') + msg;
+    const k = fonte === 'rol' ? 'falhasRol' : 'falhasRbx';
+    fila[k]++;
+    if (st === 429 || st === 403 || fila[k] >= 3) {
+      fila[fonte === 'rol' ? 'pausaRol' : 'pausaRbx'] = st ? 'HTTP ' + st : fila[k] + ' falhas seguidas';
+    }
+  }
+
+  function esperarMs(ms) {
+    return new Promise((resolve) => Timer.schedule(ms, false, resolve));
+  }
+
+  async function atualizarLinha(id) {
+    const agora = Date.now();
+    const e0 = guardados.itens[id] || {};
+    const paginaVelha = !e0.p || agora - e0.p.em > cfg.CARTAO_LINHA_PAGINA_H * 3600000;
+    let mudou = false;
+    if (paginaVelha && !fila.pausaRol) {
+      const pag = await buscarPagina(id);
+      if (pag.paginaOk) {
+        fila.n.pagina++;
+        fila.falhasRol = 0;
+        mudou = true;
+      } else {
+        falhou('rol', { status: pag.status, message: pag.erroPagina });
+      }
+      await esperarMs(cfg.CARTAO_LINHA_PAUSA_MS);
+    }
+    const e = guardados.itens[id] || {};
+    const bestVelho = !e.b || Date.now() - e.b.em > cfg.CARTAO_LINHA_BEST_MIN * 60000;
+    // Roblox sem preço para este item (clássico ou ninguém vendendo): não pergunta
+    // de novo por CARTAO_LINHA_PAGINA_H; o Best fica o do Rolimon's.
+    const semRbx = e.semRbx && Date.now() - e.semRbx < cfg.CARTAO_LINHA_PAGINA_H * 3600000;
+    if (bestVelho && semRbx) fila.n.semRbx++;
+    if (bestVelho && !semRbx && !fila.pausaRbx) {
+      try {
+        const r = await api.buscarMenorPreco(id);
+        cartao.guardarBest(guardados, id, r.preco, 'Roblox');
+        delete cartao.entrada(guardados, id).semRbx;
+        fila.n.best++;
+        fila.falhasRbx = 0;
+        mudou = true;
+      } catch (err) {
+        if (err && err.status === 200) {
+          // respondeu, mas sem preço
+          cartao.entrada(guardados, id).semRbx = Date.now();
+          fila.n.semRbx++;
+          mudou = true;
+        } else {
+          falhou('rbx', err);
+        }
+      }
+    }
+    if (!mudou && !paginaVelha && !bestVelho) fila.n.guardado++;
+    if (mudou) {
+      gravarGuardados();
+      await enviarLinha(id);
+    }
+  }
+
+  async function rodarFila() {
+    if (fila.rodando) return;
+    fila.rodando = true;
+    while (fila.ids.length) {
+      const id = fila.ids.shift();
+      try {
+        await atualizarLinha(id);
+      } catch (e) {
+        fila.n.falhas++;
+        fila.ultimoErro = e.message || String(e);
+      }
+    }
+    fila.rodando = false;
+    await enviarLinha('0');
+  }
+
+  function atenderLinhas(url) {
+    const lista = /conta=2/.test(url) ? itensConta2 : itens;
+    if (!lista) return;
+    // A lista já vem do maior value para o menor (analise.montarItens).
+    for (const i of lista) {
+      const id = String(i.assetId);
+      if (fila.vistos[id]) continue;
+      fila.vistos[id] = true;
+      fila.ids.push(id);
+    }
+    rodarFila();
   }
 
   // Links do menu de toque abrem fora do painel (Safari ou app do Roblox).
@@ -505,6 +693,10 @@ async function executar(ctx) {
     const url = (req && req.url) || '';
     if (url.indexOf(avaliador.PONTE + 'cartao') === 0) {
       atenderCartao(url);
+      return false;
+    }
+    if (url.indexOf(avaliador.PONTE + 'linhas') === 0) {
+      atenderLinhas(url);
       return false;
     }
     if (url.indexOf(avaliador.PONTE + 'diario') === 0) {

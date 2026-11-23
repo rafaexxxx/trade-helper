@@ -400,12 +400,15 @@ function capitulo4(cfg) {
     <li><b>Faixa de totais:</b> a soma do value e do RAP dos seus itens e quanto mudou em 24h.</li>
     <li><b>Setas ▲ ▼:</b> aparecem no número quando o value ou o RAP do item mudou ${pct(cfg.LIMITE_MUDANCA_PCT)} ou mais em 24h.</li>
     <li><b>Etiqueta colorida:</b> só para o que não aparece em outro lugar da linha (Projected, RAP longe do value). Queda de preço fica na seta vermelha; demanda e tendência, coloridas na linha de baixo. O chip "Com alerta" mostra todos os itens com algum risco, com ou sem etiqueta.</li>
-    <li><b>Chips de ordem:</b> Value, RAP, Demanda, Tendência e Nome. Toque de novo para inverter.</li>
+    <li><b>Vendas por dia (ex.: 15/dia):</b> na linha de baixo, depois da demanda e da tendência. É a média de 30 dias, colorida pela mesma escala da demanda: verde gira bem, vermelho quase não vende.</li>
+    <li><b>Best:</b> embaixo do RAP, o menor preço à venda agora.</li>
+    <li><b>De onde vêm:</b> os dois são buscados por trás, uns segundos depois de a tela abrir, um item por vez, do mais valioso para o menos valioso (nas duas contas). Ficam guardados no iPhone: as vendas por ${cfg.CARTAO_LINHA_PAGINA_H}h (página do item no Rolimon's) e o Best por ${cfg.CARTAO_LINHA_BEST_MIN} min (Roblox). Se a busca falhar, fica o último valor guardado; item que nunca teve dado fica sem eles. O Diagnóstico mostra como foi a busca.</li>
+    <li><b>Chips de ordem:</b> Value, RAP, Demanda, Tendência, Vendas e Nome. Toque de novo para inverter. Em Vendas, os itens ainda sem dado ficam no fim.</li>
     <li><b>Toque no item:</b> abre a tela do item, com os alertas (como o item é), as mudanças em 24h (o que mudou, com antes → depois) e os links para o Rolimon's e o Roblox. ${ir('aj-cartao', 'Ver a tela do item')}</li>
   </ul>
 
   <h3 id="aj-cartao">Tela do item</h3>
-  <p>Abre ao tocar num item no Inventário e no Avaliar. O botão "‹ Voltar", fixo embaixo, fecha. Os dados vêm da página do item no Rolimon's, buscada só nesse toque e guardada por ${cfg.CARTAO_CACHE_MIN} min.</p>
+  <p>Abre ao tocar num item no Inventário e no Avaliar. O botão "‹ Voltar", fixo embaixo, fecha. Os dados vêm da página do item no Rolimon's, buscada nesse toque e guardada por ${cfg.CARTAO_CACHE_MIN} min. Se a busca por trás do Inventário acabou de trazer a página, a tela abre na hora.</p>
   <ul class="aj-lista">
     <li><b>Cores:</b> laranja é o que você paga; verde é o que você ganha ou o que sobe; vermelho é o que desce ou não gira.</li>
     <li><b>Gráfico:</b> o RAP dos últimos ${cfg.CARTAO_DIAS} dias, com 1 ponto por dia. Embaixo: o maior (verde) e o menor (vermelho) RAP do período, o de hoje e quanto ele mudou.</li>

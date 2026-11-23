@@ -1,8 +1,11 @@
 // Tela do item (v6.10; o card nasceu na v6.9), no estilo dos bots de trade do Discord.
 // Ao tocar num item (Inventário, das duas contas, e Avaliar), abre uma tela cheia
 // só dele. A página pede os dados pela ponte (PONTE + 'cartao?id=<assetId>'); o
-// Scriptable busca a página do item no Rolimon's (SÓ nesse toque, guardada por
-// CARTAO_CACHE_MIN), faz as contas aqui e devolve tudo pronto. A página só desenha.
+// Scriptable busca a página do item no Rolimon's (no toque, ou usa a que a fila
+// da linha buscou há até CARTAO_CACHE_MIN), faz as contas aqui e devolve tudo
+// pronto. A página só desenha.
+// v6.11: a fila do painel.js busca as páginas por trás para a linha do
+// Inventário (vendas/dia e Best Price) e guarda no iPhone (lerGuardados...).
 //
 // Ordem da tela (aprovada pelo Rafael):
 // 1. Gráfico do RAP dos últimos CARTAO_DIAS dias (1 ponto por dia).
@@ -151,9 +154,59 @@ function kb(texto) {
   return Math.round((texto.length / 1024) * 10) / 10;
 }
 
+// v6.11: a parte que sai da página do Rolimon's, separada para servir também a
+// linha do Inventário (e ser guardada no iPhone). Nunca lança erro.
+// { id, em, paginaOk, status, erroPagina, best, vendasDia, serie, diag, faltou }
+async function lerPagina(assetId) {
+  const id = String(assetId);
+  const pag = { id, em: Date.now(), paginaOk: false, status: 0, erroPagina: null, best: null, vendasDia: null, serie: null, diag: [], faltou: [] };
+  let texto = null;
+  try {
+    const p = await api.buscarPaginaItem(id);
+    texto = p.texto;
+    pag.paginaOk = true;
+    pag.status = p.status;
+    pag.diag.push("Rolimon's HTTP " + p.status + ' · ' + kb(texto) + ' KB · ' + p.ms + ' ms');
+  } catch (e) {
+    pag.status = e.status || 0;
+    pag.erroPagina = e.message || String(e);
+    pag.diag.push("Rolimon's: " + pag.erroPagina);
+    return pag;
+  }
+
+  const hist = extrairVar(texto, 'history_data');
+  const det = extrairVar(texto, 'item_details_data');
+  const vend = extrairVar(texto, 'avg_daily_sales_volume_30_days');
+
+  // Best price: item_details_data, depois o "best_price": N da página, depois o histórico.
+  let best = det && typeof det === 'object' && !Array.isArray(det) ? Number(det.best_price) : NaN;
+  if (!(best > 0)) {
+    const m = /"best_price"\s*:\s*(\d+)/.exec(texto);
+    best = m ? Number(m[1]) : NaN;
+  }
+  if (!(best > 0)) best = ultimoBest(hist) || NaN;
+  if (best > 0) pag.best = best;
+
+  if (typeof vend === 'number' && vend >= 0) pag.vendasDia = Math.round(vend * 100) / 100;
+  else pag.faltou.push('vendas/dia (' + (vend === undefined ? 'variável sumiu' : 'formato: ' + String(vend).slice(0, 30)) + ')');
+
+  const serie = serieDoHistorico(hist);
+  if (serie && serie.length >= 2) {
+    const dias = porDia(serie);
+    pag.serie = recortar(dias, cfg.CARTAO_DIAS);
+    pag.diag.push('histórico ' + serie.length + ' pontos, ' + dias.length + ' dias (' + pag.serie.length + ' no gráfico)');
+  } else {
+    const chaves = hist && typeof hist === 'object' ? Object.keys(hist).slice(0, 12).join(', ') : String(hist);
+    pag.faltou.push('histórico (' + (hist === undefined ? 'variável sumiu' : 'campos: ' + chaves) + ')');
+  }
+  return pag;
+}
+
 // Monta os dados da tela de um item. Nunca lança erro: o que faltar vai em
 // `faltou` (a tela mostra "sem dado" naquele bloco) e o resumo vai em `diag`.
-async function carregar(assetId, rolimons) {
+// v6.11: `pag` = o que lerPagina devolveu (buscado agora ou guardado); sem ele,
+// a página é buscada aqui.
+async function carregar(assetId, rolimons, pag) {
   const id = String(assetId);
   const linha = rolimons ? rolimons[id] : null;
   const rap = Array.isArray(linha) && typeof linha[2] === 'number' && linha[2] >= 0 ? linha[2] : null;
@@ -181,47 +234,17 @@ async function carregar(assetId, rolimons) {
     paginaOk: false,
   };
 
-  let texto = null;
-  try {
-    const p = await api.buscarPaginaItem(id);
-    texto = p.texto;
-    res.paginaOk = true;
-    res.diag.push("Rolimon's HTTP " + p.status + ' · ' + kb(texto) + ' KB · ' + p.ms + ' ms');
-  } catch (e) {
-    res.erroPagina = e.message || String(e);
-    res.diag.push("Rolimon's: " + res.erroPagina);
+  if (!pag) pag = await lerPagina(id);
+  res.paginaOk = !!pag.paginaOk;
+  if (pag.erroPagina) res.erroPagina = pag.erroPagina;
+  res.diag = res.diag.concat(pag.diag || []);
+  res.faltou = res.faltou.concat(pag.faltou || []);
+  if (pag.best > 0) {
+    res.best = pag.best;
+    res.bestFonte = "Rolimon's";
   }
-
-  if (texto) {
-    const hist = extrairVar(texto, 'history_data');
-    const det = extrairVar(texto, 'item_details_data');
-    const vend = extrairVar(texto, 'avg_daily_sales_volume_30_days');
-
-    // Best price: item_details_data, depois o "best_price": N da página, depois o histórico.
-    let best = det && typeof det === 'object' && !Array.isArray(det) ? Number(det.best_price) : NaN;
-    if (!(best > 0)) {
-      const m = /"best_price"\s*:\s*(\d+)/.exec(texto);
-      best = m ? Number(m[1]) : NaN;
-    }
-    if (!(best > 0)) best = ultimoBest(hist) || NaN;
-    if (best > 0) {
-      res.best = best;
-      res.bestFonte = "Rolimon's";
-    }
-
-    if (typeof vend === 'number' && vend >= 0) res.vendasDia = Math.round(vend * 100) / 100;
-    else res.faltou.push('vendas/dia (' + (vend === undefined ? 'variável sumiu' : 'formato: ' + String(vend).slice(0, 30)) + ')');
-
-    const serie = serieDoHistorico(hist);
-    if (serie && serie.length >= 2) {
-      const dias = porDia(serie);
-      res.serie = recortar(dias, cfg.CARTAO_DIAS);
-      res.diag.push('histórico ' + serie.length + ' pontos, ' + dias.length + ' dias (' + res.serie.length + ' no gráfico)');
-    } else {
-      const chaves = hist && typeof hist === 'object' ? Object.keys(hist).slice(0, 12).join(', ') : String(hist);
-      res.faltou.push('histórico (' + (hist === undefined ? 'variável sumiu' : 'campos: ' + chaves) + ')');
-    }
-  }
+  if (typeof pag.vendasDia === 'number') res.vendasDia = pag.vendasDia;
+  if (pag.serie && pag.serie.length >= 2) res.serie = pag.serie;
 
   // Reserva do Best Price: Roblox.
   if (!res.best) {
@@ -250,6 +273,99 @@ async function carregar(assetId, rolimons) {
 
   if (res.faltou.length) res.diag.push('faltou: ' + res.faltou.join('; '));
   return res;
+}
+
+// ---------- v6.11: o que fica guardado no iPhone (dados/cartoes.json) ----------
+// { v: 1, itens: { <assetId>: { p, b, semRbx } } }
+// p = a página do Rolimon's lida (lerPagina, só quando respondeu);
+// b = { em, preco, fonte } = o último Best Price (do Rolimon's ou do Roblox);
+// semRbx = quando o Roblox respondeu sem preço (item clássico ou ninguém vendendo).
+const ARQ = 'cartoes';
+
+function lerGuardados(store) {
+  let g = null;
+  try {
+    g = store.ler(ARQ);
+  } catch (e) {
+    g = null;
+  }
+  if (!g || g.v !== 1 || !g.itens || typeof g.itens !== 'object') g = { v: 1, itens: {} };
+  // Tira o que não aparece há CARTAO_LINHA_GUARDA_DIAS (itens trocados).
+  const limite = Date.now() - cfg.CARTAO_LINHA_GUARDA_DIAS * 86400000;
+  for (const id of Object.keys(g.itens)) {
+    const e = g.itens[id] || {};
+    const ultimo = Math.max((e.p && e.p.em) || 0, (e.b && e.b.em) || 0, e.semRbx || 0);
+    if (ultimo < limite) delete g.itens[id];
+  }
+  return g;
+}
+
+function gravarGuardados(store, g) {
+  store.gravar(ARQ, g);
+}
+
+function entrada(g, id) {
+  id = String(id);
+  if (!g.itens[id]) g.itens[id] = {};
+  return g.itens[id];
+}
+
+// Guarda a página lida (só quando respondeu). O Best dela vira o Best da linha.
+function guardarPagina(g, pag) {
+  if (!pag || !pag.paginaOk) return;
+  const e = entrada(g, pag.id);
+  e.p = { id: pag.id, em: pag.em, paginaOk: true, status: pag.status, best: pag.best, vendasDia: pag.vendasDia, serie: pag.serie, diag: pag.diag, faltou: pag.faltou };
+  if (pag.best > 0) e.b = { em: pag.em, preco: pag.best, fonte: "Rolimon's" };
+}
+
+function guardarBest(g, id, preco, fonte) {
+  if (!(preco > 0)) return;
+  entrada(g, id).b = { em: Date.now(), preco, fonte };
+}
+
+// A página guardada, se tiver até `maxMin` minutos (para a tela do item abrir na hora).
+function paginaGuardada(g, id, maxMin) {
+  const e = g.itens[String(id)];
+  const p = e && e.p;
+  if (!p || Date.now() - p.em > maxMin * 60000) return null;
+  const min = Math.max(0, Math.round((Date.now() - p.em) / 60000));
+  return Object.assign({}, p, { diag: ['página guardada há ' + min + ' min (' + ((p.diag || [])[0] || '') + ')'].concat((p.diag || []).slice(1)) });
+}
+
+// "15/dia", "2,5/dia", "0,25/dia".
+function fmtVendas(v) {
+  const casas = v >= 10 ? 0 : v >= 1 ? 1 : 2;
+  return String(Number(v.toFixed(casas))).replace('.', ',') + '/dia';
+}
+
+// O que a linha do Inventário mostra. Usa o último guardado, mesmo velho
+// (decisão do Rafael); sem nada guardado = null (a linha fica como antes).
+// c = cor pela mesma escala da demanda (0 terrível .. 4 incrível).
+function linha(g, id) {
+  const e = g.itens[String(id)];
+  if (!e) return null;
+  const v = e.p && typeof e.p.vendasDia === 'number' ? e.p.vendasDia : null;
+  const b = e.b && e.b.preco > 0 ? e.b.preco : null;
+  if (v == null && b == null) return null;
+  const n = v != null ? demandaPorVendas(v) : -1;
+  return {
+    v,
+    c: n === 0 ? 'neg' : n === 1 ? 'warn' : n >= 3 ? 'pos' : '',
+    tv: v != null ? fmtVendas(v) : null,
+    tb: b != null ? a.fmtNum(b) : null,
+  };
+}
+
+// Mapa { assetId: linha } dos itens de uma lista (para desenhar na abertura).
+function linhas(g, itens) {
+  const r = {};
+  for (const i of itens || []) {
+    const id = String(i.assetId);
+    if (id in r) continue;
+    const l = linha(g, id);
+    if (l) r[id] = l;
+  }
+  return r;
 }
 
 // ---------- Página ----------
@@ -505,4 +621,7 @@ function script(ponteJson) {
   return '<script>\n(' + paginaItem.toString() + ')(' + ponteJson + ');\n</script>';
 }
 
-module.exports = { carregar, tela, css, script, extrairVar, serieDoHistorico, porDia, demandaPorVendas };
+module.exports = {
+  carregar, lerPagina, tela, css, script, extrairVar, serieDoHistorico, porDia, demandaPorVendas,
+  lerGuardados, gravarGuardados, entrada, guardarPagina, guardarBest, paginaGuardada, linha, linhas,
+};
