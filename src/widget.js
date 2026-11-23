@@ -119,9 +119,13 @@ function direita(pilha, conteudo, fonte, cor) {
 
 function detalhe(i) {
   if (i.projected) return { t: 'projected', cor: CORES.neg };
-  if (i.value == null) return { t: 'sem value', cor: CORES.apagado };
+  // v6.14.1: "sem value" saiu (o "—" no value já diz isso). Item sem demanda e
+  // sem tendência no Rolimon's fica sem esta parte.
+  const partes = [];
+  if (i.demanda >= 0) partes.push(a.demandaCurta(i.demanda));
+  if (i.tendencia >= 0) partes.push(a.tendenciaCurta(i.tendencia));
   const cor = i.demanda === 0 || i.tendencia === 0 ? CORES.warn : CORES.apagado;
-  return { t: a.demandaCurta(i.demanda) + ' · ' + a.tendenciaCurta(i.tendencia), cor };
+  return { t: partes.join(' · '), cor };
 }
 
 // Variação do RAP deste item em relação ao retrato base (~24h). null se não houver.
@@ -200,7 +204,7 @@ function linhaItem(pilha, i, img, op) {
     linhaDet.spacing = 4;
     // v6.2.3: item em hold ganha a etiqueta amarela antes dos detalhes.
     if (i.hold) texto(linhaDet, 'HOLD', Font.boldSystemFont(10), CORES.warn, 0.8);
-    texto(linhaDet, d.t, Font.systemFont(10), d.cor, 0.8);
+    if (d.t) texto(linhaDet, d.t, Font.systemFont(10), d.cor, 0.8);
     if (vr != null) texto(linhaDet, 'RAP ' + a.fmtPctSinal(vr), Font.semiboldSystemFont(10), corVar(vr), 0.8);
   }
   s.addSpacer();

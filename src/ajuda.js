@@ -110,7 +110,7 @@ function capitulo1(cfg) {
   <div class="aj-dica"><b>Value base.</b> Alguns itens ainda não têm value. Nesse caso o app usa o RAP no lugar e escreve "RAP" ao lado do número, para você saber que é uma conta menos segura.</div>
 
   <span class="aj-exemplo">Exemplo · item sem value no Avaliar trade</span>
-  <div class="grupo aj-grupo"><div class="item"><span class="thumb aj-mini">?</span><div class="item-txt"><span class="nome">Item recém-lançado</span><span class="det"><span>sem value</span></span></div><div class="item-num"><span class="v">8.900<small class="tag sub">RAP</small></span><span class="r"><small>RAP</small>8.900</span></div></div></div>
+  <div class="grupo aj-grupo"><div class="item"><span class="thumb aj-mini">?</span><div class="item-txt"><span class="nome">Item recém-lançado</span></div><div class="item-num"><span class="v">8.900<small class="tag sub">RAP</small></span><span class="r"><small>RAP</small>8.900</span></div></div></div>
 
   <h3 id="aj-robux">Robux numa trade</h3>
   <p>Dá para colocar Robux junto dos itens. Só que o Roblox fica com <b>${taxa}%</b> de quem recebe. O app já desconta isso nas contas.</p>
@@ -343,7 +343,7 @@ function capitulo3(cfg) {
     <div><dt><span class="tag warn">Hyped</span></dt><dd>Subida passageira por moda. O preço pode cair quando a moda passar.</dd></div>
     <div><dt><span class="tag neg">RAP disparando</span></dt><dd>RAP subindo mais de ${pct(cfg.ALERTA_RAP_24H_PCT)} em 24h pode ser manipulação. No Avaliar, vira "Cuidado".</dd></div>
     <div><dt><span class="tag warn">Hold</span></dt><dd>Item recém-chegado fica travado e não pode ser trocado: 2 dias depois de uma trade, 7 dias depois de comprar no catálogo do Roblox. Seus itens em hold não entram nas sugestões dos Anúncios.</dd></div>
-    <div><dt><span class="tag sub">Sem value</span></dt><dd>O app usa o RAP no lugar, que é uma conta menos segura.</dd></div>
+    <div><dt><span class="tag sub">Sem value</span></dt><dd>O app usa o RAP no lugar, que é uma conta menos segura. No Inventário e no widget o value aparece como "—"; no Avaliar, o número ganha o selo "RAP".</dd></div>
     <div><dt><span class="tag sub">Rare</span></dt><dd>Para o Rolimon's, item com até 100 cópias existentes. Raridade sozinha não garante valor: sem procura, um item raro também fica parado.</dd></div>
   </dl>
 

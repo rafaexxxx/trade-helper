@@ -117,7 +117,7 @@ function detalhes(i) {
   if (i.hyped) depois.push('hyped');
   if (i.rare) depois.push('rare');
   if (i.hold) depois.push('<span class="warn">hold</span>');
-  if (i.value == null && !i.semRolimons) depois.push('sem value');
+  // v6.14.1: "sem value" saiu. O "—" no lugar do value já diz isso.
   if (i.semRolimons) depois.push("fora do Rolimon's");
   return { antes, depois };
 }

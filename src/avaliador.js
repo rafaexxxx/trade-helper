@@ -579,7 +579,7 @@ function paginaAvaliador(D, P) {
     if (i.hyped) d.push('hyped');
     if (i.rare) d.push('rare');
     if (i.hold) d.push('<span class="neg">hold</span>');
-    if (i.value == null && !i.foraRolimons) d.push('sem value');
+    // v6.14.1: "sem value" saiu. O selo "RAP" ao lado do número já diz isso.
     if (i.foraRolimons) d.push("fora do Rolimon's");
     if (lado === 'dou' && !i.doInventario) d.push('<span class="warn">simulação</span>');
     return d.join(' · ');
