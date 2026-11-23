@@ -695,7 +695,7 @@ function criarAnalisador(D, P, PA) {
       (kq === 1 ? 'pede o item dele' : 'pede os ' + kq + ' itens que ele oferece') :
       'pede só ' + nRec + ' dos ' + kq + ' itens que ele oferece';
     var semRobux = ad[5] && !melhor.robux ? ' Os Robux dele ficam de fora.' : '';
-    var unica = melhor.degraus.length < 2 ? ' Só uma combinação sua cabe na faixa, então é uma oferta só.' : '';
+    var unica = melhor.degraus.length < 2 ? ' Só uma combinação sua cabe na faixa.' : '';
     var nota;
     if (melhor.tag === 'upgrade') {
       nota = 'Ele quer upgrade, então para você é downgrade: você dá 1 item e ' + pede + '.' + unica + semRobux;
@@ -1052,6 +1052,20 @@ function paginaAnuncios(D, P, PA) {
   function chaveLado(l) {
     return l.map(function (i) { return i.id + ':' + (i.uaid || ''); }).join(',');
   }
+  // v6.16.1: sugestão com uma combinação só: o 2º degrau vira o LIMITE em
+  // número (Rafael). Seu upgrade: o máximo de value que você dá (teto);
+  // seu downgrade: o mínimo que você aceita receber. Sem a caixa quando a
+  // oferta já está a menos de PA.degrauDist pontos do limite.
+  function limite(r) {
+    if (r.modo !== 'tag' || r.pct == null) return null;
+    if (r.tipo === 'upgrade' && r.tr.value > 0 && r.pct + PA.upTeto >= PA.degrauDist) {
+      return { nome: 'Teto', pct: -PA.upTeto, txt: 'dê no máximo ' + fmtNum(Math.floor(r.tr.value / (1 - PA.upTeto / 100))) + ' de value' };
+    }
+    if (r.tipo === 'downgrade' && r.td.value > 0 && r.pct - PA.downMin >= PA.degrauDist) {
+      return { nome: 'Mínimo', pct: PA.downMin, txt: 'aceite a partir de ' + fmtNum(Math.ceil(r.td.value * (1 + PA.downMin / 100))) + ' de value' };
+    }
+    return null;
+  }
   function detalhe(r) {
     var ad = r.ad;
     var d = r.degraus || [];
@@ -1060,7 +1074,23 @@ function paginaAnuncios(D, P, PA) {
     if (r.mesmo && r.mesmo.length) {
       h += '<p class="an-aviso">Tem <b>' + esc(r.mesmo.join(', ')) + '</b> dos dois lados. Continua na lista porque o ganho não é negativo.</p>';
     }
-    if (d.length < 2) {
+    var lim = d.length < 2 ? limite(r) : null;
+    if (lim) {
+      // v6.16.1: uma combinação só. A 1ª caixa é a oferta e a 2ª, o limite em
+      // número (até onde você cede numa contraproposta).
+      h += blocoLado('rec', 'Recebo', r.rec, r.robux, true, r.tr);
+      h += blocoLado('dou', 'Dou (oferta)', r.dou, 0, false, r.td);
+      var dl = r.tr.value - r.td.value;
+      var corL = corVeredito(r.v);
+      h += '<div class="dg-pe">' +
+        '<div class="dg-caixa" data-cor="' + corL + '"><span class="rot">1 · Oferta</span><b>' + pctTxt(r.pct) + '</b>' +
+        '<small>' + (dl > 0 ? '+' : '') + fmtNum(dl) + ' R$</small><span class="selo">' + esc(r.v ? tituloWFL(r.v) : '') + '</span></div>' +
+        '<div class="dg-caixa" data-cor="justa"><span class="rot">2 · ' + lim.nome + '</span><b>' + pctTxt(lim.pct) + '</b>' +
+        '<small>' + esc(lim.txt) + '</small></div></div>';
+      h += '<p class="dg-dica">' + (r.tipo === 'downgrade'
+        ? 'Mande a 1. Se ele fizer contraproposta, aceite só a partir do mínimo da 2.'
+        : 'Mande a 1. Se ele fizer contraproposta, ceda só até o teto da 2.') + '</p>';
+    } else if (d.length < 2) {
       h += blocoLado('rec', 'Recebo', r.rec, r.robux, true, r.tr);
       h += blocoLado('dou', r.modo === 'tag' ? 'Dou (oferta)' : 'Dou', r.dou, 0, false, r.td);
       var dif = r.tr.value - r.td.value;

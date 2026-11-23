@@ -286,7 +286,7 @@ function capitulo2(cfg) {
     <li><b>Seu downgrade</b> (tag upgrade): você dá <b>1 item só</b> e pede pelo menos ${minMedios} itens médios dele.</li>
     <li><b>Seu upgrade</b> (tag downgrade): você dá vários itens (de 2 a ${max}) por <b>1 item só</b> dele.</li>
     <li><b>Em degraus</b>, como fazem os traders experientes: comece pela pior oferta que ainda não faz o outro te ignorar e vá cedendo. A <b>abertura</b> é a primeira oferta que você manda: no seu upgrade, paga perto de ${pct(upAb)} a mais; no seu downgrade, pede perto de ${pct(downAb)} a mais. Se ele recusar, o 2º degrau é o seu limite: o <b>teto</b> do upgrade (até ${pct(upTeto)} a mais) ou o <b>mínimo</b> do downgrade (pelo menos ${pct(downMin)}). Cada degrau traz a própria combinação de itens.</li>
-    <li>Na linha fechada aparece a faixa (por exemplo, "-2 a -8%") com o veredito do 2º degrau, o pior caso para você. "Maior ganho" também ordena por ele. Quando só uma combinação cabe na faixa, o cartão mostra uma oferta só.</li>
+    <li>Na linha fechada aparece a faixa (por exemplo, "-2 a -8%") com o veredito do 2º degrau, o pior caso para você. "Maior ganho" também ordena por ele. Quando só uma combinação cabe na faixa, o cartão mostra essa oferta e, no 2º degrau, o limite em número: quanto você dá no máximo (upgrade) ou aceita receber no mínimo (downgrade) numa contraproposta.</li>
     <li><b>Adds</b>: itens de até ${num(addMax)} de value (ovos e itens pequenos). No seu downgrade entram no máximo ${addsMax}, e só como complemento: os itens médios sozinhos já têm que fechar a conta.</li>
     <li><b>Tag any</b> (sidegrade): o app não sugere, porque quase ninguém aceita. Um anúncio que só tem essa tag fica de fora.</li>
     <li>A sugestão nunca põe o mesmo item dos dois lados.</li>
@@ -303,10 +303,11 @@ function capitulo2(cfg) {
         <span class="an-chev">›</span>
       </div>
       <div class="an-det">
-        <p class="an-nota">Ele quer downgrade, então para você é upgrade: você dá vários itens seus e pede o item dele. Só uma combinação sua cabe na faixa, então é uma oferta só.</p>
+        <p class="an-nota">Ele quer downgrade, então para você é upgrade: você dá vários itens seus e pede o item dele. Só uma combinação sua cabe na faixa.</p>
         <div class="an-lado rec"><div class="an-lcab"><span>Recebo</span><span>Valor</span></div>${anItem('vh', alta, 27500)}<div class="an-tot"><span>Total</span><span class="an-val">27.500<small></small></span></div></div>
         <div class="an-lado dou"><div class="an-lcab"><span>Dou (oferta)</span><span>Valor</span></div>${anItem('sf', alta, 12000)}${anItem('ch', normal, 9500)}${anItem('bh', normal, 7000)}<div class="an-tot"><span>Total</span><span class="an-val">28.500<small></small></span></div></div>
-        <div class="an-pe" data-cor="${vUp[1]}"><span class="selo">${vUp[0]} · ${wflUp}</span><span class="an-ganho"><b>${pctS(pUp)}</b><small>−1.000 R$</small></span></div>
+        <div class="dg-pe"><div class="dg-caixa" data-cor="${vUp[1]}"><span class="rot">1 · Oferta</span><b>${pctS(pUp)}</b><small>−1.000 R$</small><span class="selo">${vUp[0]} · ${wflUp}</span></div><div class="dg-caixa" data-cor="justa"><span class="rot">2 · Teto</span><b>${pctS(-upTeto)}</b><small>dê no máximo ${num(Math.floor(27500 / (1 - upTeto / 100)))} de value</small></div></div>
+        <p class="dg-dica">Mande a 1. Se ele fizer contraproposta, ceda só até o teto da 2.</p>
       </div>
     </div>
   </div>

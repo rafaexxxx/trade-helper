@@ -173,7 +173,7 @@ O que entra na lista:
   2. **Teto** (seu upgrade) ou **Mínimo** (seu downgrade): a mais perto do limite, pelo menos **2 pontos** pior para você que a abertura. É até onde você cede.
   - Cada degrau tem a própria combinação. No cartão aberto, o lado que não muda aparece uma vez e o que muda aparece por degrau; embaixo ficam duas caixas com a %, o R$ e o veredito de cada degrau.
   - Na linha fechada aparece a faixa (ex.: "-2 a -8%") com o veredito do **2º degrau** (o pior caso). "Maior ganho" e o filtro de forma também usam o 2º degrau.
-  - Quando só uma combinação cabe, fica **uma oferta só**.
+  - Quando só uma combinação cabe, fica **uma oferta só** e o 2º degrau vira o **limite em número** (v6.16.1): "dê no máximo X de value" (teto do seu upgrade) ou "aceite a partir de X de value" (mínimo do seu downgrade), para julgar uma contraproposta. Se a oferta já estiver a menos de 2 pontos do limite, a caixa não aparece.
 - Entre várias trades possíveis, fica a mais perto da abertura (empate: menos itens). Quando a sugestão pede só uma parte da oferta, os **Robux** do dono ficam de fora.
 - Ficam de fora anúncios que oferecem item **projected**, com **demanda terrível**, com o **RAP subindo mais de 15% em 24h** ou fora do catálogo do Rolimon's, além dos seus próprios anúncios.
 - **Mesmo item dos dois lados**: só aparece se você não perder value.
