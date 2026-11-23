@@ -103,9 +103,12 @@ module.exports = {
   // v6.9: card do item (ao tocar no item no Inventário e no Avaliar). Os dados
   // vêm da página do item no Rolimon's, buscada SÓ no toque e guardada por X min.
   CARTAO_CACHE_MIN: 10,
-  // Período do gráfico do RAP (dias) e quantos pontos entram no RSI.
+  // Período do gráfico do RAP (dias; 1 ponto por dia). v6.10: o RSI saiu.
   CARTAO_DIAS: 90,
-  CARTAO_RSI: 21,
+  // v6.10: sem demanda no Rolimon's (item sem value), a demanda é estimada pelas
+  // vendas por dia: a partir de cada número = Baixa, Normal, Alta, Incrível
+  // (abaixo do primeiro = Terrível).
+  CARTAO_DEMANDA_VENDAS: [0.3, 1, 3, 10],
   // OP do card: a base sai das réguas do veredito (dar = de 0 até o "Vale muito"
   // do upgrade; pedir = o "Vale a pena" do downgrade) e é multiplicada pela
   // demanda do item no Rolimon's (0 terrível .. 4 incrível; sem dado = 1).

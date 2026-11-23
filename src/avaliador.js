@@ -386,16 +386,8 @@ function folhas() {
     '<div class="seg mini" id="fb-ordem"><button data-o="value" class="on">Por value</button><button data-o="rap">Por RAP</button></div>' +
     '<p class="fb-info" id="fb-info"></p>' +
     '<div class="fb-lista" id="fb-lista"></div>' +
-    '</div>' +
-    '<div id="av-fundo" class="fundo oculto"></div>' +
-    '<div id="av-folha" class="folha oculto">' +
-    '<p id="av-folha-nome"></p>' +
-    // v6.9: lugar do card do item (o mesmo de cartao.lugar; preenchido pelo cartao.js).
-    '<div id="av-cartao" class="folha-bloco cartao oculto"></div>' +
-    '<button id="av-remover" class="remover">Remover da proposta</button>' +
-    '<a id="av-link" href="#">Ver no Rolimon\'s</a>' +
-    '<button id="av-cancelar" class="cancelar">Cancelar</button>' +
     '</div>'
+    // v6.10: o menu do item da proposta virou a tela do item (cartao.js).
   );
 }
 
@@ -847,24 +839,22 @@ function paginaAvaliador(D, P) {
     $('fb-folha').classList.add('oculto');
   }
 
-  // ---------- Menu do item da proposta ----------
-  var selecionado = null;
+  // ---------- Item da proposta: tela do item (v6.10, cartao.js) ----------
+  // Os dados do item são buscados só neste toque. "Remover da proposta" fica no fim da tela.
   function abrirMenu(lado, k) {
     var e = proposta[lado][k];
     var i = e && resolver(e);
-    if (!i) return;
-    selecionado = { lado: lado, k: k };
-    $('av-folha-nome').textContent = i.nome;
-    $('av-link').href = 'https://www.rolimons.com/item/' + i.id;
-    // v6.9: card do item (buscado só agora, neste toque).
-    if (window.thCartao) window.thCartao.abrir(i.id, $('av-cartao'));
-    $('av-fundo').classList.remove('oculto');
-    $('av-folha').classList.remove('oculto');
-  }
-  function fecharMenu() {
-    selecionado = null;
-    $('av-fundo').classList.add('oculto');
-    $('av-folha').classList.add('oculto');
+    if (!i || !window.thItem) return;
+    window.thItem.abrir({
+      id: i.id,
+      nome: i.nome,
+      thumb: THUMBS[i.id] || null,
+      remover: function () {
+        var pos = proposta[lado].indexOf(e);
+        if (pos >= 0) proposta[lado].splice(pos, 1);
+        atualizar();
+      },
+    });
   }
 
   // ---------- Ponte de miniaturas (página -> Scriptable -> página) ----------
@@ -967,14 +957,6 @@ function paginaAvaliador(D, P) {
   $('fb-fechar').addEventListener('click', fecharBusca);
   $('fb-fundo').addEventListener('click', fecharBusca);
 
-  $('av-remover').addEventListener('click', function () {
-    if (selecionado) proposta[selecionado.lado].splice(selecionado.k, 1);
-    fecharMenu();
-    atualizar();
-  });
-  $('av-cancelar').addEventListener('click', fecharMenu);
-  $('av-fundo').addEventListener('click', fecharMenu);
-  $('av-link').addEventListener('click', function () { setTimeout(fecharMenu, 300); });
 
   // Limpar pede um segundo toque (sem confirm(), que pode não existir no Scriptable).
   var limparArmado = null;

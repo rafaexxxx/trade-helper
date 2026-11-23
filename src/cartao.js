@@ -1,14 +1,16 @@
-// Card do item (v6.9), no estilo dos bots de trade do Discord.
-// Ao tocar num item (folha do Inventário e do Avaliar), a página pede pela ponte
-// (PONTE + 'cartao?id=<assetId>'); o Scriptable busca a página do item no
-// Rolimon's (SÓ nesse toque, guardada por CARTAO_CACHE_MIN), faz as contas aqui
-// e devolve tudo pronto. A página só desenha.
+// Tela do item (v6.10; o card nasceu na v6.9), no estilo dos bots de trade do Discord.
+// Ao tocar num item (Inventário, das duas contas, e Avaliar), abre uma tela cheia
+// só dele. A página pede os dados pela ponte (PONTE + 'cartao?id=<assetId>'); o
+// Scriptable busca a página do item no Rolimon's (SÓ nesse toque, guardada por
+// CARTAO_CACHE_MIN), faz as contas aqui e devolve tudo pronto. A página só desenha.
 //
-// Blocos (cada informação num lugar só: RAP, value e demanda já estão na linha):
-// - OP para dar / OP para pedir: réguas do veredito × demanda do item.
-// - Best Price e Depois da venda: RAP + (Best − RAP) / 10 (regra do Roblox).
-// - Vendas por dia (média de 30 dias) e RSI-21 do RAP.
-// - Gráfico do RAP dos últimos CARTAO_DIAS dias, com o RSI embaixo.
+// Ordem da tela (aprovada pelo Rafael):
+// 1. Gráfico do RAP dos últimos CARTAO_DIAS dias (1 ponto por dia).
+// 2. OP para dar | OP para pedir: réguas do veredito × demanda do item.
+// 3. Best Price | Depois da venda: RAP + (Best − RAP) / 10 (regra do Roblox).
+// 4. Vendas por dia | Demanda (do Rolimon's ou, sem ela, estimada pelas vendas).
+// 5. Alertas e mudanças em 24h (do Inventário). 6. Links e, no Avaliar, Remover.
+// v6.10: o RSI-21 saiu (não ajudava na decisão).
 const cfg = require('config');
 const a = require('analise');
 const api = require('api');
@@ -60,7 +62,7 @@ function extrairVar(texto, nome) {
 }
 
 // Série [[tempo em ms, RAP], ...] do history_data, em ordem de tempo.
-// Aceita { timestamp: [...], rap: [...] } (o mais provável) ou [[t, rap], ...].
+// Aceita { timestamp: [...], rap: [...] } (o formato visto no iPhone) ou [[t, rap], ...].
 function serieDoHistorico(h) {
   const s = [];
   function por(t, v) {
@@ -85,6 +87,29 @@ function serieDoHistorico(h) {
   return s.length ? s : null;
 }
 
+// v6.10: 1 ponto por dia (o último de cada dia, no fuso do iPhone). Os dias
+// recentes vêm com vários pontos, e a linha ficava serrilhada no fim.
+function porDia(serie) {
+  const mapa = {};
+  const ordem = [];
+  for (const p of serie) {
+    const d = new Date(p[0]);
+    const k = d.getFullYear() + '-' + d.getMonth() + '-' + d.getDate();
+    if (!(k in mapa)) ordem.push(k);
+    mapa[k] = p;
+  }
+  return ordem.map((k) => mapa[k]);
+}
+
+// Últimos `dias` (com o ponto anterior, para a linha começar na borda).
+function recortar(serie, dias) {
+  const desde = Date.now() - dias * 86400000;
+  let ini = serie.findIndex((p) => p[0] >= desde);
+  if (ini < 0) ini = serie.length - 1;
+  if (ini > 0) ini--;
+  return serie.slice(ini);
+}
+
 // Último best price da lista do history_data (se houver).
 function ultimoBest(h) {
   const l = h && !Array.isArray(h) && typeof h === 'object' ? h.best_price : null;
@@ -93,50 +118,17 @@ function ultimoBest(h) {
   return null;
 }
 
-// RSI de Wilder com n pontos. null onde ainda não há pontos suficientes.
-// Sem altas nem quedas (RAP parado) = 50.
-function rsi(valores, n) {
-  const r = valores.map(() => null);
-  if (valores.length <= n) return r;
-  const calc = (g, p) => (p === 0 ? (g === 0 ? 50 : 100) : 100 - 100 / (1 + g / p));
-  let g = 0;
-  let p = 0;
-  for (let k = 1; k <= n; k++) {
-    const d = valores[k] - valores[k - 1];
-    if (d > 0) g += d;
-    else p -= d;
-  }
-  g /= n;
-  p /= n;
-  r[n] = calc(g, p);
-  for (let k = n + 1; k < valores.length; k++) {
-    const d = valores[k] - valores[k - 1];
-    g = (g * (n - 1) + Math.max(d, 0)) / n;
-    p = (p * (n - 1) + Math.max(-d, 0)) / n;
-    r[k] = calc(g, p);
-  }
-  return r;
-}
-
-// Recorte dos últimos `dias` (com o ponto anterior, para a linha começar na borda)
-// e no máximo `max` pontos (o último sempre fica). Saída: [[t, rap, rsi], ...].
-function recortar(serie, rsis, dias, max) {
-  const desde = Date.now() - dias * 86400000;
-  let ini = serie.findIndex((p) => p[0] >= desde);
-  if (ini < 0) ini = serie.length - 1;
-  if (ini > 0) ini--;
-  const idx = [];
-  for (let k = ini; k < serie.length; k++) idx.push(k);
-  let escolhidos = idx;
-  if (idx.length > max) {
-    escolhidos = [];
-    const passo = (idx.length - 1) / (max - 1);
-    for (let q = 0; q < max; q++) escolhidos.push(idx[Math.round(q * passo)]);
-  }
-  return escolhidos.map((k) => [serie[k][0], serie[k][1], rsis[k] == null ? null : Math.round(rsis[k] * 10) / 10]);
-}
-
 // ---------- Contas ----------
+// v6.10: demanda estimada pelas vendas por dia (só quando o Rolimon's não tem
+// demanda, o que acontece com item sem value). CARTAO_DEMANDA_VENDAS = limites
+// de Baixa, Normal, Alta e Incrível; abaixo do primeiro = Terrível.
+function demandaPorVendas(v) {
+  const limites = cfg.CARTAO_DEMANDA_VENDAS;
+  let d = 0;
+  for (const l of limites) if (v >= l) d++;
+  return d;
+}
+
 function arredondar(robux, base) {
   return base >= 1000 ? Math.round(robux / 10) * 10 : Math.round(robux);
 }
@@ -152,38 +144,34 @@ function opDoItem(base, demanda) {
   const dar = [0, -up[3] * mult];
   const pedir = [down[2] * mult, down[3] * mult];
   const robux = (l) => l.map((p) => arredondar((base * p) / 100, base));
-  return {
-    base,
-    mult,
-    demanda: demanda >= 0 ? a.rotuloDemanda(demanda) : null,
-    dar: { pct: dar, robux: robux(dar) },
-    pedir: { pct: pedir, robux: robux(pedir) },
-  };
+  return { base, mult, dar: { pct: dar, robux: robux(dar) }, pedir: { pct: pedir, robux: robux(pedir) } };
 }
 
 function kb(texto) {
   return Math.round((texto.length / 1024) * 10) / 10;
 }
 
-// Monta o card de um item. Nunca lança erro: o que faltar vai em `faltou`
-// (o card mostra "sem dado" naquele bloco) e o resumo vai em `diag`.
+// Monta os dados da tela de um item. Nunca lança erro: o que faltar vai em
+// `faltou` (a tela mostra "sem dado" naquele bloco) e o resumo vai em `diag`.
 async function carregar(assetId, rolimons) {
   const id = String(assetId);
   const linha = rolimons ? rolimons[id] : null;
   const rap = Array.isArray(linha) && typeof linha[2] === 'number' && linha[2] >= 0 ? linha[2] : null;
   const value = Array.isArray(linha) && typeof linha[3] === 'number' && linha[3] > 0 ? linha[3] : null;
-  const demanda = Array.isArray(linha) && typeof linha[5] === 'number' ? linha[5] : -1;
+  const demCatalogo = Array.isArray(linha) && typeof linha[5] === 'number' ? linha[5] : -1;
   const base = value != null ? value : rap;
   const res = {
     id,
     em: Date.now(),
-    op: base > 0 ? opDoItem(base, demanda) : null,
+    op: null,
     semValue: value == null,
+    demandaN: -1,
+    demanda: null,
+    demandaEstimada: false,
     best: null,
     bestFonte: null,
     depois: null,
     vendasDia: null,
-    rsiAtual: null,
     serie: null,
     dias: cfg.CARTAO_DIAS,
     faltou: [],
@@ -224,11 +212,9 @@ async function carregar(assetId, rolimons) {
 
     const serie = serieDoHistorico(hist);
     if (serie && serie.length >= 2) {
-      const rs = rsi(serie.map((p) => p[1]), cfg.CARTAO_RSI);
-      res.serie = recortar(serie, rs, cfg.CARTAO_DIAS, 120);
-      const ult = rs[rs.length - 1];
-      res.rsiAtual = ult == null ? null : Math.round(ult * 10) / 10;
-      res.diag.push('histórico ' + serie.length + ' pontos (' + res.serie.length + ' no gráfico)');
+      const dias = porDia(serie);
+      res.serie = recortar(dias, cfg.CARTAO_DIAS);
+      res.diag.push('histórico ' + serie.length + ' pontos, ' + dias.length + ' dias (' + res.serie.length + ' no gráfico)');
     } else {
       const chaves = hist && typeof hist === 'object' ? Object.keys(hist).slice(0, 12).join(', ') : String(hist);
       res.faltou.push('histórico (' + (hist === undefined ? 'variável sumiu' : 'campos: ' + chaves) + ')');
@@ -247,39 +233,78 @@ async function carregar(assetId, rolimons) {
     }
   }
   if (res.best && rap != null) res.depois = Math.round(rap + (res.best - rap) / 10);
+
+  // Demanda: a do Rolimon's; sem ela, a estimada pelas vendas por dia.
+  let dem = demCatalogo;
+  if (dem < 0 && res.vendasDia != null) {
+    dem = demandaPorVendas(res.vendasDia);
+    res.demandaEstimada = true;
+  }
+  res.demandaN = dem;
+  res.demanda = dem >= 0 ? a.rotuloDemanda(dem) : null;
+  if (base > 0) res.op = opDoItem(base, dem);
+
   if (res.faltou.length) res.diag.push('faltou: ' + res.faltou.join('; '));
   return res;
 }
 
 // ---------- Página ----------
-// O lugar do card nas folhas (um <div> vazio que a página preenche).
-function lugar(id) {
-  return '<div id="' + id + '" class="folha-bloco cartao oculto"></div>';
+// A tela do item (uma só, usada pelo Inventário e pelo Avaliar). Fica no fim do <body>.
+function tela() {
+  return (
+    '<div id="tela-item" class="ti oculto" role="dialog" aria-modal="true" aria-labelledby="ti-nome">' +
+    '<div class="ti-barra"><button type="button" class="ti-voltar" id="ti-voltar">‹ Voltar</button>' +
+    '<div class="ti-titulo"><img class="thumb oculto" id="ti-thumb" alt=""><b id="ti-nome"></b></div></div>' +
+    '<div class="ti-corpo">' +
+    '<div id="ti-card"></div>' +
+    '<div id="ti-alertas" class="ti-bloco oculto"></div>' +
+    '<div id="ti-mud" class="ti-bloco oculto"></div>' +
+    '<div class="ti-links"><a class="ti-acao" id="ti-rol" href="#">Ver no Rolimon\'s</a><a class="ti-acao" id="ti-rbx" href="#">Ver no Roblox</a></div>' +
+    '<button type="button" class="ti-acao ti-perigo oculto" id="ti-remover">Remover da proposta</button>' +
+    '</div></div>'
+  );
 }
 
 function css() {
   return `
-.cartao{gap:10px}
-.ct-grade{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.ct-c{display:flex;flex-direction:column;gap:2px;min-width:0;padding:9px 11px;border-radius:12px;background:var(--card2)}
+.ti{position:fixed;top:0;left:0;right:0;bottom:0;z-index:45;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;background:var(--bg);color:var(--fg)}
+html.ti-aberta,html.ti-aberta body{overflow:hidden}
+.ti-barra{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:10px;padding:max(10px,env(safe-area-inset-top)) 16px 10px;background:var(--bg);border-bottom:1px solid var(--borda)}
+.ti-voltar{flex:none;padding:6px 2px;border:0;background:none;font:inherit;font-size:17px;font-weight:600;color:var(--acc-t);-webkit-tap-highlight-color:transparent}
+.ti-titulo{flex:1;min-width:0;display:flex;align-items:center;justify-content:flex-end;gap:10px}
+.ti-titulo .thumb{flex:none;width:34px;height:34px;border-radius:9px}
+.ti-titulo b{min-width:0;font-size:16px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ti-corpo{display:flex;flex-direction:column;gap:12px;max-width:640px;margin:0 auto;padding:14px 16px max(28px,env(safe-area-inset-bottom))}
+#ti-card{display:flex;flex-direction:column;gap:10px}
+.ti-graf{display:flex;flex-direction:column;gap:6px;padding:12px 12px 8px;border-radius:16px;background:var(--card);border:1px solid var(--card-borda)}
+.ti-graf small{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--sub)}
+.ti-graf svg{display:block;width:100%;height:auto;overflow:visible}
+.ti-grade{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ct-c{display:flex;flex-direction:column;gap:2px;min-width:0;padding:10px 12px;border-radius:14px;background:var(--card);border:1px solid var(--card-borda)}
 .ct-c small{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--sub)}
-.ct-c b{font-size:17px;font-weight:700;font-variant-numeric:tabular-nums}
+.ct-c b{font-size:19px;font-weight:700;font-variant-numeric:tabular-nums}
 .ct-c span{font-size:13px;font-weight:600;font-variant-numeric:tabular-nums}
 .ct-c em{font-style:normal;font-size:11px;line-height:1.3;color:var(--sub)}
 .ct-c .pos{color:var(--pos)}
+.ct-c .warn{color:var(--warn)}
 .ct-c .neg{color:var(--neg)}
-.ct-c .sem{font-size:14px;font-weight:600;color:var(--sub)}
-.ct-nota{font-size:12px;line-height:1.35;color:var(--sub)}
-.ct-graf{display:flex;flex-direction:column;gap:4px}
-.ct-graf small{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--sub)}
-.ct-graf svg{display:block;width:100%;height:auto;overflow:visible}
-.ct-esq{height:64px;border-radius:12px;background:var(--card2);opacity:.6}
+.ct-c .sem{font-size:15px;font-weight:600;color:var(--sub)}
+.ct-nota{font-size:12px;line-height:1.4;color:var(--sub)}
+.ct-esq{height:150px;border-radius:16px;background:var(--card);opacity:.6}
+.ti-bloco{display:flex;flex-direction:column;gap:8px;padding:12px 14px;border-radius:16px;background:var(--card);border:1px solid var(--card-borda)}
+.ti-bloco h3{margin:0;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--sub)}
+.ti-links{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ti-acao{display:block;width:100%;padding:13px 8px;border-radius:14px;border:1px solid var(--card-borda);background:var(--card);font:inherit;font-size:15px;font-weight:600;text-align:center;text-decoration:none;color:var(--acc-t);-webkit-tap-highlight-color:transparent}
+.ti-acao:active{background:var(--card2)}
+.ti-perigo{color:var(--neg)}
 #diag-cartao{white-space:pre-wrap;overflow-wrap:anywhere}
 `;
 }
 
 // Roda na página (injetada por toString: não pode usar nada de fora dela).
-function paginaCartao(PONTE) {
+// window.thItem.abrir({ id, nome, thumb, alertas, mudancas, tituloMud, remover })
+// alertas/mudancas = [[texto, classe]]; remover = função (só no Avaliar).
+function paginaItem(PONTE) {
   var atual = null;
   var timer = null;
   function $(id) { return document.getElementById(id); }
@@ -302,58 +327,53 @@ function paginaCartao(PONTE) {
     return ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth() + 1)).slice(-2);
   }
 
-  // Gráfico do RAP (em cima) e do RSI (embaixo, com as linhas de 30 e 70).
+  // Gráfico do RAP: área + linha, mínimo e máximo à esquerda, o valor de hoje
+  // marcado no fim e as datas do começo, do meio e do fim embaixo.
   function grafico(serie) {
-    var W = 320, H1 = 92, Y2 = 112, H2 = 34, E = 2;
+    var W = 320, H = 132, E = 2, BAIXO = H + 14;
     var t0 = serie[0][0], t1 = serie[serie.length - 1][0];
     var min = Infinity, max = -Infinity;
     serie.forEach(function (p) { if (p[1] < min) min = p[1]; if (p[1] > max) max = p[1]; });
-    if (max === min) { max += 1; min -= 1; }
-    function x(t) { return t1 === t0 ? W : E + ((t - t0) / (t1 - t0)) * (W - 2 * E); }
-    function y(v) { return 6 + (1 - (v - min) / (max - min)) * (H1 - 12); }
-    function yr(v) { return Y2 + (1 - v / 100) * H2; }
-    var linha = '', area = '';
-    serie.forEach(function (p, k) {
-      linha += (k ? 'L' : 'M') + x(p[0]).toFixed(1) + ' ' + y(p[1]).toFixed(1);
-    });
-    area = linha + 'L' + x(t1).toFixed(1) + ' ' + H1 + 'L' + x(t0).toFixed(1) + ' ' + H1 + 'Z';
-    var r = '', aberto = false;
-    serie.forEach(function (p) {
-      if (p[2] == null) { aberto = false; return; }
-      r += (aberto ? 'L' : 'M') + x(p[0]).toFixed(1) + ' ' + yr(p[2]).toFixed(1);
-      aberto = true;
-    });
+    var lo = min, hi = max;
+    if (hi === lo) { hi += 1; lo -= 1; }
+    function x(t) { return t1 === t0 ? W - E : E + ((t - t0) / (t1 - t0)) * (W - 2 * E); }
+    function y(v) { return 8 + (1 - (v - lo) / (hi - lo)) * (H - 16); }
+    var linha = '';
+    serie.forEach(function (p, k) { linha += (k ? 'L' : 'M') + x(p[0]).toFixed(1) + ' ' + y(p[1]).toFixed(1); });
+    var area = linha + 'L' + x(t1).toFixed(1) + ' ' + H + 'L' + x(t0).toFixed(1) + ' ' + H + 'Z';
+    var ult = serie[serie.length - 1];
+    var tm = t0 + (t1 - t0) / 2;
     // Cores por style (var() em atributo de SVG não é garantido no WebKit).
-    var txt = 'font-size="9" style="fill:var(--sub)"';
+    var txt = 'font-size="10" style="fill:var(--sub)"';
     var grade = 'style="stroke:var(--borda)" stroke-dasharray="3 3"';
-    return '<svg viewBox="0 0 ' + W + ' ' + (Y2 + H2 + 12) + '" role="img" aria-label="Gráfico do RAP e do RSI">' +
+    return '<svg viewBox="0 0 ' + W + ' ' + BAIXO + '" role="img" aria-label="Gráfico do RAP">' +
+      '<line x1="0" x2="' + W + '" y1="' + y(max).toFixed(1) + '" y2="' + y(max).toFixed(1) + '" ' + grade + '/>' +
+      '<line x1="0" x2="' + W + '" y1="' + y(min).toFixed(1) + '" y2="' + y(min).toFixed(1) + '" ' + grade + '/>' +
       '<path d="' + area + '" style="fill:var(--acc-t);opacity:.12"/>' +
-      '<path d="' + linha + '" style="fill:none;stroke:var(--acc-t)" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>' +
-      '<text x="' + E + '" y="9" ' + txt + '>' + num(max) + '</text>' +
-      '<text x="' + E + '" y="' + (H1 - 2) + '" ' + txt + '>' + num(min) + '</text>' +
-      '<line x1="0" x2="' + W + '" y1="' + yr(70) + '" y2="' + yr(70) + '" ' + grade + '/>' +
-      '<line x1="0" x2="' + W + '" y1="' + yr(30) + '" y2="' + yr(30) + '" ' + grade + '/>' +
-      '<rect x="0" y="' + Y2 + '" width="' + W + '" height="' + H2 + '" style="fill:none;stroke:var(--borda)"/>' +
-      (r ? '<path d="' + r + '" style="fill:none;stroke:var(--sub)" stroke-width="1.4" stroke-linejoin="round"/>' : '') +
-      '<text x="' + (W - E) + '" y="' + (yr(70) - 2) + '" text-anchor="end" ' + txt + '>70</text>' +
-      '<text x="' + (W - E) + '" y="' + (yr(30) + 9) + '" text-anchor="end" ' + txt + '>30</text>' +
-      '<text x="' + E + '" y="' + (Y2 + H2 + 11) + '" ' + txt + '>' + dataCurta(t0) + '</text>' +
-      '<text x="' + (W - E) + '" y="' + (Y2 + H2 + 11) + '" text-anchor="end" ' + txt + '>' + dataCurta(t1) + '</text>' +
+      '<path d="' + linha + '" style="fill:none;stroke:var(--acc-t)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>' +
+      '<circle cx="' + x(ult[0]).toFixed(1) + '" cy="' + y(ult[1]).toFixed(1) + '" r="3.5" style="fill:var(--acc-t)"/>' +
+      '<text x="' + E + '" y="' + (y(max) - 3).toFixed(1) + '" ' + txt + '>' + num(max) + '</text>' +
+      '<text x="' + E + '" y="' + (y(min) + 12).toFixed(1) + '" ' + txt + '>' + num(min) + '</text>' +
+      '<text x="' + (x(ult[0]) - 6).toFixed(1) + '" y="' + (y(ult[1]) - 7).toFixed(1) + '" text-anchor="end" font-size="11" font-weight="700" style="fill:var(--fg)">' + num(ult[1]) + '</text>' +
+      '<text x="' + E + '" y="' + (BAIXO - 1) + '" ' + txt + '>' + dataCurta(t0) + '</text>' +
+      '<text x="' + (W / 2) + '" y="' + (BAIXO - 1) + '" text-anchor="middle" ' + txt + '>' + dataCurta(tm) + '</text>' +
+      '<text x="' + (W - E) + '" y="' + (BAIXO - 1) + '" text-anchor="end" ' + txt + '>' + dataCurta(t1) + '</text>' +
       '</svg>';
   }
 
-  function rotuloRsi(v) {
-    if (v == null) return '';
-    if (v >= 70) return 'RAP subiu rápido (acima de 70)';
-    if (v <= 30) return 'RAP caiu rápido (abaixo de 30)';
-    return 'entre 30 e 70: sem exagero';
-  }
+  function corDemanda(d) { return d === 0 ? 'neg' : d === 1 ? 'warn' : d >= 3 ? 'pos' : ''; }
 
   function desenhar(res) {
-    if (res.erro) return '<div class="ct-nota">Não consegui montar o card (' + esc(res.erro) + ').</div>';
+    if (res.erro) return '<div class="ct-nota">Não consegui buscar os dados do item (' + esc(res.erro) + ').</div>';
     var h = '';
+    if (res.serie && res.serie.length >= 2) {
+      h += '<div class="ti-graf"><small>RAP em ' + res.dias + ' dias</small>' + grafico(res.serie) + '</div>';
+    } else {
+      h += '<div class="ct-nota">' + (res.paginaOk ? 'Sem histórico do RAP para o gráfico.' :
+        'A página do item no Rolimon\'s não respondeu (' + esc(res.erroPagina || '') + ').') + '</div>';
+    }
     var op = res.op;
-    h += '<div class="ct-grade">';
+    h += '<div class="ti-grade">';
     if (op) {
       h += caixa('OP para dar', '<b>' + faixa(op.dar.pct, pct) + '%</b>', faixa(op.dar.robux, num), 'para pegar este item');
       h += caixa('OP para pedir', '<b>' + faixa(op.pedir.pct, pct) + '%</b>', faixa(op.pedir.robux, num), 'quando você dá este item');
@@ -366,51 +386,82 @@ function paginaCartao(PONTE) {
       res.depois != null ? 'RAP se vender pelo Best Price' : '');
     h += caixa('Vendas por dia', res.vendasDia != null ? '<b>' + res.vendasDia.toLocaleString('pt-BR') + '</b>' : SEM, null,
       res.vendasDia != null ? 'média de 30 dias' : '');
-    h += caixa('RSI-21', res.rsiAtual != null ? '<b class="' + (res.rsiAtual >= 70 ? 'neg' : res.rsiAtual <= 30 ? 'pos' : '') + '">' + pct(res.rsiAtual) + '</b>' : SEM, null,
-      rotuloRsi(res.rsiAtual));
+    h += caixa('Demanda', res.demanda ? '<b class="' + corDemanda(res.demandaN) + '">' + esc(res.demanda) + '</b>' : SEM, null,
+      res.demanda ? (res.demandaEstimada ? 'estimada pelas vendas' : "do Rolimon's") : '');
     h += '</div>';
     if (op) {
       var aj = Math.round((op.mult - 1) * 100);
-      h += '<div class="ct-nota">' + (op.demanda ? 'Ajuste pela demanda (' + esc(op.demanda) + '): ' + (aj > 0 ? '+' : '') + aj + '%' : 'Sem dado de demanda: OP sem ajuste') +
-        ' · sobre o ' + (res.semValue ? 'RAP (item sem value)' : 'value') + ' de ' + num(op.base) + '.</div>';
+      h += '<div class="ct-nota">OP ' + (res.demanda ? 'ajustado pela demanda: ' + (aj > 0 ? '+' : '') + aj + '%' : 'sem ajuste (sem dado de demanda)') +
+        ', sobre o ' + (res.semValue ? 'RAP (item sem value)' : 'value') + ' de ' + num(op.base) + '.</div>';
     }
-    if (res.serie && res.serie.length >= 2) {
-      h += '<div class="ct-graf"><small>RAP em ' + res.dias + ' dias · RSI-21 embaixo</small>' + grafico(res.serie) + '</div>';
-    } else if (res.paginaOk) {
-      h += '<div class="ct-nota">Sem histórico do RAP para o gráfico.</div>';
-    }
-    if (!res.paginaOk) h += '<div class="ct-nota">A página do item no Rolimon\'s não respondeu (' + esc(res.erroPagina || '') + ').</div>';
     return h;
   }
 
-  function abrir(id, el) {
-    if (!el) return;
-    clearTimeout(timer);
-    atual = { id: String(id), el: el };
-    el.innerHTML = '<div class="ct-nota">Buscando os dados do item no Rolimon\'s...</div><div class="ct-esq"></div>';
+  function bloco(id, titulo, linhas, simbolo) {
+    var el = $(id);
+    if (!linhas || !linhas.length) { el.classList.add('oculto'); el.innerHTML = ''; return; }
+    el.innerHTML = '<h3>' + esc(titulo) + '</h3>' + linhas.map(function (x) {
+      return '<div class="motivo"><span class="marca ' + esc(x[1]) + '">' + simbolo(x[1]) + '</span><span class="' + esc(x[1]) + '">' + esc(x[0]) + '</span></div>';
+    }).join('');
     el.classList.remove('oculto');
+  }
+
+  function fechar() {
+    clearTimeout(timer);
+    atual = null;
+    $('tela-item').classList.add('oculto');
+    document.documentElement.classList.remove('ti-aberta');
+  }
+
+  function abrir(o) {
+    var t = $('tela-item');
+    if (!t || !o || !o.id) return;
+    var id = String(o.id);
+    clearTimeout(timer);
+    atual = { id: id, remover: typeof o.remover === 'function' ? o.remover : null };
+    $('ti-nome').textContent = o.nome || 'Item ' + id;
+    var th = $('ti-thumb');
+    if (o.thumb) { th.src = o.thumb; th.classList.remove('oculto'); }
+    else { th.removeAttribute('src'); th.classList.add('oculto'); }
+    bloco('ti-alertas', 'Alertas', o.alertas, function () { return '!'; });
+    bloco('ti-mud', o.tituloMud || 'Mudanças', o.mudancas, function (c) { return c === 'pos' ? '▲' : c === 'neg' ? '▼' : '•'; });
+    $('ti-rol').href = 'https://www.rolimons.com/item/' + id;
+    $('ti-rbx').href = 'https://www.roblox.com/catalog/' + id;
+    $('ti-remover').classList.toggle('oculto', !atual.remover);
+    $('ti-card').innerHTML = '<div class="ct-esq"></div><div class="ct-nota">Buscando os dados do item no Rolimon\'s...</div>';
+    t.classList.remove('oculto');
+    t.scrollTop = 0;
+    document.documentElement.classList.add('ti-aberta');
+    // Pede ao Scriptable pela ponte (o endereço é barrado lá; só a página do item sai).
     var f = document.createElement('iframe');
     f.style.display = 'none';
     f.src = PONTE + 'cartao?id=' + encodeURIComponent(id) + '&t=' + Date.now();
     document.body.appendChild(f);
     setTimeout(function () { if (f.parentNode) f.parentNode.removeChild(f); }, 5000);
     timer = setTimeout(function () {
-      if (atual && atual.el === el && atual.id === String(id)) el.innerHTML = '<div class="ct-nota">Sem resposta do Scriptable. Feche e toque no item de novo.</div>';
+      if (atual && atual.id === id) $('ti-card').innerHTML = '<div class="ct-nota">Sem resposta do Scriptable. Volte e toque no item de novo.</div>';
     }, 60000);
   }
 
+  $('ti-voltar').addEventListener('click', fechar);
+  $('ti-remover').addEventListener('click', function () {
+    var r = atual && atual.remover;
+    fechar();
+    if (r) r();
+  });
+
   window.receberCartao = function (res) {
     var d = $('diag-cartao');
-    if (d && res) d.textContent = 'Card do item ' + res.id + ': ' + (res.erro || (res.diag || []).join(' · '));
+    if (d && res) d.textContent = 'Tela do item ' + res.id + ': ' + (res.erro || (res.diag || []).join(' · '));
     if (!res || !atual || String(res.id) !== atual.id) return;
     clearTimeout(timer);
-    atual.el.innerHTML = desenhar(res);
+    $('ti-card').innerHTML = desenhar(res);
   };
-  window.thCartao = { abrir: abrir };
+  window.thItem = { abrir: abrir, fechar: fechar };
 }
 
 function script(ponteJson) {
-  return '<script>\n(' + paginaCartao.toString() + ')(' + ponteJson + ');\n</script>';
+  return '<script>\n(' + paginaItem.toString() + ')(' + ponteJson + ');\n</script>';
 }
 
-module.exports = { carregar, lugar, css, script, extrairVar, serieDoHistorico, rsi };
+module.exports = { carregar, tela, css, script, extrairVar, serieDoHistorico, porDia, demandaPorVendas };

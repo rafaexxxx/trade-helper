@@ -500,7 +500,7 @@ ${anuncios.secao(cfg, av.erro ? 'os dados do avaliador não foram preparados (' 
   <summary>Diagnóstico</summary>
   <p id="diag-ponte"></p>
   <p id="diag-anuncios"></p>
-  <p id="diag-cartao">Card do item: nenhum aberto ainda</p>
+  <p id="diag-cartao">Tela do item: nenhum item aberto ainda</p>
   <p id="diag-conta2">Conta 2: ${r.conta2 ? 'salva, ainda não aberta nesta abertura' : 'nenhuma'}</p>
   <p id="diag-diario">Diário: ${esc(r.diario && r.diario.erro ? 'erro ao montar (' + r.diario.erro + ')' : (r.diag && r.diag.diario) || '')}</p>
   <textarea readonly>${esc(JSON.stringify(r.diag, null, 2))}</textarea>
@@ -509,16 +509,7 @@ ${anuncios.secao(cfg, av.erro ? 'os dados do avaliador não foram preparados (' 
 <footer>v${esc(r.versao)} · ${esc(String(r.sha || '').slice(0, 7))} · dados: Rolimon's e Roblox · somente leitura</footer>
 </div>
 
-<div id="fundo" class="fundo oculto"></div>
-<div id="folha" class="folha oculto">
-  <p id="folha-nome"></p>
-  ${cartao.lugar('folha-cartao')}
-  <div id="folha-alertas" class="folha-bloco oculto"></div>
-  <div id="folha-mud" class="folha-bloco oculto"></div>
-  <a id="link-rol" href="#">Ver no Rolimon's</a>
-  <a id="link-rbx" href="#">Ver no Roblox</a>
-  <button id="cancelar" class="cancelar">Cancelar</button>
-</div>
+${cartao.tela()}
 <div id="m-fundo" class="fundo oculto"></div>
 <div id="m-folha" class="folha oculto">
   <p>Opções</p>
@@ -605,23 +596,8 @@ ${ajuda.secao(cfg)}
     })(recolhiveis[k]);
   }
 
-  // Menu ao tocar no item (folha única, usada pelas duas contas):
-  // alertas e mudanças do período em cima, links embaixo.
-  var fundo = $('fundo');
-  var folha = $('folha');
-  function fechar(){ fundo.classList.add('oculto'); folha.classList.add('oculto'); }
-  function blocoMenu(id, titulo, linhas, simbolo){
-    var el = $(id);
-    if (!linhas || !linhas.length) { el.classList.add('oculto'); el.innerHTML = ''; return; }
-    el.innerHTML = '<h3>' + textoSeguro(titulo) + '</h3>' + linhas.map(function(x){
-      return '<div class="motivo"><span class="marca ' + x[1] + '">' + simbolo(x[1]) + '</span><span class="' + x[1] + '">' + textoSeguro(x[0]) + '</span></div>';
-    }).join('');
-    el.classList.remove('oculto');
-  }
-  fundo.addEventListener('click', fechar);
-  $('cancelar').addEventListener('click', fechar);
-  $('link-rol').addEventListener('click', function(){ setTimeout(fechar, 300); });
-  $('link-rbx').addEventListener('click', function(){ setTimeout(fechar, 300); });
+  // v6.10: o toque no item abre a tela do item (cartao.js, usada pelas duas contas
+  // e pelo Avaliar), com os alertas e as mudanças do período no fim.
 
   // Liga um bloco do Inventário (o seu ou o da conta 2).
   // INV = menu de cada item (por uaid): a = alertas, m = mudanças em 24h.
@@ -694,19 +670,17 @@ ${ajuda.secao(cfg)}
     lista.addEventListener('click', function(ev){
       var it = ev.target.closest('.item');
       if (!it) return;
-      var id = it.getAttribute('data-asset');
       var info = INV[it.getAttribute('data-uaid')] || { a: [], m: [] };
-      blocoMenu('folha-alertas', 'Alertas', info.a, function(){ return '!'; });
-      blocoMenu('folha-mud', TITULO_MUD, info.m, function(c){
-        return c === 'pos' ? '▲' : c === 'neg' ? '▼' : '•';
+      var img = it.querySelector('img.thumb');
+      // Os dados do item são buscados só agora, neste toque.
+      if (window.thItem) window.thItem.abrir({
+        id: it.getAttribute('data-asset'),
+        nome: it.getAttribute('data-titulo'),
+        thumb: img ? img.getAttribute('src') : null,
+        alertas: info.a,
+        mudancas: info.m,
+        tituloMud: TITULO_MUD
       });
-      $('folha-nome').textContent = it.getAttribute('data-titulo');
-      $('link-rol').href = 'https://www.rolimons.com/item/' + id;
-      $('link-rbx').href = 'https://www.roblox.com/catalog/' + id;
-      // v6.9: card do item (buscado só agora, neste toque).
-      if (window.thCartao) window.thCartao.abrir(id, $('folha-cartao'));
-      fundo.classList.remove('oculto');
-      folha.classList.remove('oculto');
     });
   }
   ligarInventario($('inv-1'), ${avaliador.serializar(menu)}, ${avaliador.serializar(tituloMud)});
