@@ -297,4 +297,130 @@ async function carregarTudo(store, ajustes) {
   };
 }
 
-module.exports = { carregarTudo, garantirId, carregarJogador, buscarMiniaturas, miniaturasEmCache, buscarAnunciosRecentes };
+// ---------- v6.8.2: TESTE das fontes do card do item (temporário) ----------
+// Ao tocar num item, cada fonte candidata é consultada UMA vez, uma de cada vez,
+// sem novas tentativas. Nada aqui lança erro: devolve o que cada uma respondeu
+// (status, tempo, tamanho, campos) para aparecer na folha do item.
+const FONTES_TESTE = [
+  { nome: 'A · Roblox resale-data', tipo: 'json', url: (id) => 'https://economy.roblox.com/v1/assets/' + id + '/resale-data' },
+  { nome: 'B · Roblox resellers', tipo: 'json', url: (id) => 'https://economy.roblox.com/v1/assets/' + id + '/resellers?limit=10' },
+  { nome: 'C · Roblox v2 details', tipo: 'json', url: (id) => 'https://economy.roblox.com/v2/assets/' + id + '/details' },
+  { nome: "D · Página do Rolimon's", tipo: 'html', url: (id) => 'https://www.rolimons.com/item/' + id },
+];
+
+function curto(v, n) {
+  const s = String(v).replace(/\s+/g, ' ').trim();
+  return s.length > n ? s.slice(0, n) + '…' : s;
+}
+
+// Campos de um JSON, um nível para dentro: "lista[12]", "obj{a=1, b=2}", "x=3".
+function camposJson(j) {
+  if (Array.isArray(j)) return ['(lista com ' + j.length + ')'];
+  if (!j || typeof j !== 'object') return ['(' + curto(j, 40) + ')'];
+  return Object.keys(j).slice(0, 25).map((k) => {
+    const v = j[k];
+    if (Array.isArray(v)) return k + '[' + v.length + ']';
+    if (v && typeof v === 'object') {
+      const dentro = Object.keys(v).slice(0, 12).map((k2) => {
+        const v2 = v[k2];
+        return k2 + (v2 && typeof v2 === 'object' ? (Array.isArray(v2) ? '[' + v2.length + ']' : '{…}') : '=' + curto(v2, 18));
+      });
+      return k + '{' + dentro.join(', ') + '}';
+    }
+    return k + '=' + curto(v, 24);
+  });
+}
+
+// Leituras já prontas para o card, quando o formato é o esperado.
+function extrasJson(nome, j) {
+  const ex = [];
+  if (!j || typeof j !== 'object') return ex;
+  if (nome.indexOf('resale-data') >= 0) {
+    const vol = Array.isArray(j.volumeDataPoints) ? j.volumeDataPoints : [];
+    const preco = Array.isArray(j.priceDataPoints) ? j.priceDataPoints : [];
+    if (vol.length) {
+      const desde = Date.now() - 30 * 86400000;
+      let soma = 0;
+      let min = Infinity;
+      let max = -Infinity;
+      for (const p of vol) {
+        const t = p ? Date.parse(p.date) : NaN;
+        if (t < min) min = t;
+        if (t > max) max = t;
+        if (t >= desde && Number(p.value) > 0) soma += Number(p.value);
+      }
+      ex.push('vendas/dia (30 dias): ' + (Math.round((soma / 30) * 100) / 100));
+      if (isFinite(min)) ex.push('dias com venda de ' + new Date(min).toISOString().slice(0, 10) + ' até ' + new Date(max).toISOString().slice(0, 10));
+    }
+    if (preco.length) ex.push('1º ponto de preço: ' + curto(JSON.stringify(preco[0]), 60));
+  }
+  if (nome.indexOf('resellers') >= 0 && Array.isArray(j.data)) {
+    const precos = j.data.map((x) => x && Number(x.price)).filter((x) => x > 0);
+    if (precos.length) ex.push('menor preço à venda: ' + Math.min.apply(null, precos));
+  }
+  if (nome.indexOf('details') >= 0 && j.CollectiblesItemDetails) {
+    ex.push('CollectiblesItemDetails: ' + curto(JSON.stringify(j.CollectiblesItemDetails), 160));
+  }
+  return ex;
+}
+
+// Página HTML: nomes das variáveis do script (ex.: history_data) e sinais de bloqueio.
+function camposHtml(texto) {
+  const nomes = [];
+  const re = /var\s+([A-Za-z_][A-Za-z0-9_]*)\s*=/g;
+  let m;
+  while ((m = re.exec(texto)) && nomes.length < 30) if (nomes.indexOf(m[1]) < 0) nomes.push(m[1]);
+  const ex = [];
+  const t = /<title>([^<]*)<\/title>/i.exec(texto);
+  if (t) ex.push('título: ' + curto(t[1], 60));
+  if (/cf-chl|Just a moment|Attention Required/i.test(texto)) ex.push('parece bloqueio do Cloudflare');
+  const pts = /"num_points"\s*:\s*(\d+)/.exec(texto);
+  if (pts) ex.push('history num_points: ' + pts[1]);
+  for (const chave of ['copies', 'owners', 'premium', 'best_price', 'sales']) {
+    const r2 = new RegExp('"([a-z_]*' + chave + '[a-z_]*)"\\s*:\\s*(-?\\d+)', 'i').exec(texto);
+    if (r2) ex.push(r2[1] + ': ' + r2[2]);
+  }
+  return { campos: nomes.length ? ['variáveis: ' + nomes.join(', ')] : ['(sem variáveis no script)'], extras: ex };
+}
+
+async function sondarFonte(f, assetId) {
+  const url = f.url(encodeURIComponent(assetId));
+  const r = new Request(url);
+  r.timeoutInterval = 12;
+  r.headers = { Accept: f.tipo === 'json' ? 'application/json' : 'text/html' };
+  const inicio = Date.now();
+  const res = { nome: f.nome, status: 0, ms: 0, kb: 0, campos: [], extras: [], trecho: '', erro: '' };
+  let texto = '';
+  try {
+    texto = await r.loadString();
+  } catch (e) {
+    res.erro = 'falha de rede: ' + curto(e.message || e, 80);
+  }
+  res.ms = Date.now() - inicio;
+  res.status = r.response ? r.response.statusCode : 0;
+  res.kb = Math.round(((texto || '').length / 1024) * 10) / 10;
+  if (res.erro) return res;
+  if (f.tipo === 'json') {
+    try {
+      const j = JSON.parse(texto);
+      res.campos = camposJson(j);
+      res.extras = extrasJson(f.nome, j);
+    } catch (e) {
+      res.erro = 'não veio em JSON';
+    }
+  } else {
+    const h = camposHtml(texto || '');
+    res.campos = h.campos;
+    res.extras = h.extras;
+  }
+  if (res.status !== 200 || res.erro) res.trecho = curto(texto || '', 160);
+  return res;
+}
+
+async function sondarFontes(assetId) {
+  const fontes = [];
+  for (const f of FONTES_TESTE) fontes.push(await sondarFonte(f, assetId));
+  return { id: String(assetId), em: Date.now(), fontes };
+}
+
+module.exports = { carregarTudo, garantirId, carregarJogador, buscarMiniaturas, miniaturasEmCache, buscarAnunciosRecentes, sondarFontes };

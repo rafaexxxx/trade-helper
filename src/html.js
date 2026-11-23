@@ -298,6 +298,11 @@ footer{color:var(--sub);font-size:13px;text-align:center}
 .folha{max-height:85vh;overflow-y:auto}
 .folha-bloco{padding:12px 16px;border-bottom:1px solid var(--borda);display:flex;flex-direction:column;gap:8px;text-align:left}
 .folha-bloco h3{margin:0;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--sub)}
+.ft-f{font-size:13px;line-height:1.4;overflow-wrap:anywhere}
+.ft-f b{font-size:14px}
+.ft-f small{font-size:12px;color:var(--sub)}
+.ft-f .ok{color:var(--pos);font-weight:700}
+.ft-f .falha{color:var(--neg);font-weight:700}
 .motivo{display:flex;gap:10px;align-items:center;font-size:15px}
 
 /* v5.2: topo com o menu ⋯, alternador de conta e a cor da conta 2 (vinho).
@@ -511,6 +516,7 @@ ${anuncios.secao(cfg, av.erro ? 'os dados do avaliador não foram preparados (' 
   <p id="folha-nome"></p>
   <div id="folha-alertas" class="folha-bloco oculto"></div>
   <div id="folha-mud" class="folha-bloco oculto"></div>
+  <div id="folha-fontes" class="folha-bloco oculto"></div>
   <a id="link-rol" href="#">Ver no Rolimon's</a>
   <a id="link-rbx" href="#">Ver no Roblox</a>
   <button id="cancelar" class="cancelar">Cancelar</button>
@@ -699,10 +705,44 @@ ${ajuda.secao(cfg)}
       $('folha-nome').textContent = it.getAttribute('data-titulo');
       $('link-rol').href = 'https://www.rolimons.com/item/' + id;
       $('link-rbx').href = 'https://www.roblox.com/catalog/' + id;
+      pedirFontes(id);
       fundo.classList.remove('oculto');
       folha.classList.remove('oculto');
     });
   }
+
+  // v6.8.2 (TESTE, temporário): ao tocar no item, o Scriptable consulta as
+  // fontes candidatas do card e o resultado aparece nesta folha.
+  var fontesAtual = null;
+  function pedirFontes(id){
+    fontesAtual = String(id);
+    var el = $('folha-fontes');
+    el.innerHTML = '<h3>Teste das fontes</h3><div class="ft-f">Consultando 4 fontes, uma de cada vez (pode levar até 1 min)...</div>';
+    el.classList.remove('oculto');
+    var f = document.createElement('iframe');
+    f.style.display = 'none';
+    f.src = PONTE + 'fontes?id=' + encodeURIComponent(id) + '&t=' + Date.now();
+    document.body.appendChild(f);
+    setTimeout(function(){ if (f.parentNode) f.parentNode.removeChild(f); }, 5000);
+  }
+  window.receberFontes = function(res){
+    if (!res || String(res.id) !== fontesAtual) return;
+    var h = '<h3>Teste das fontes</h3>';
+    if (res.erro) h += '<div class="ft-f"><span class="falha">' + textoSeguro(res.erro) + '</span></div>';
+    (res.fontes || []).forEach(function(x){
+      var ok = x.status === 200 && !x.erro;
+      h += '<div class="ft-f"><b>' + textoSeguro(x.nome) + '</b><br>' +
+        '<span class="' + (ok ? 'ok' : 'falha') + '">' + (x.status ? 'HTTP ' + x.status : 'sem resposta') + '</span>' +
+        ' · ' + x.ms + ' ms · ' + x.kb + ' KB' +
+        (x.erro ? '<br><span class="falha">' + textoSeguro(x.erro) + '</span>' : '') +
+        (x.extras && x.extras.length ? '<br>' + x.extras.map(function(s){ return textoSeguro(s); }).join('<br>') : '') +
+        (x.campos && x.campos.length ? '<br><small>' + textoSeguro(x.campos.join(' · ')) + '</small>' : '') +
+        (x.trecho ? '<br><small>resposta: ' + textoSeguro(x.trecho) + '</small>' : '') +
+        '</div>';
+    });
+    h += '<div class="ft-f"><small>Consultado às ' + textoSeguro(new Date(res.em).toLocaleTimeString('pt-BR')) + ' (guardado por 2 min)</small></div>';
+    $('folha-fontes').innerHTML = h;
+  };
   ligarInventario($('inv-1'), ${avaliador.serializar(menu)}, ${avaliador.serializar(tituloMud)});
 
   // ---------- Alternador de conta (v5.2) ----------

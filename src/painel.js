@@ -472,9 +472,38 @@ async function executar(ctx) {
     });
   }
 
+  // v6.8.2 (TESTE, temporário): PONTE + 'fontes?id=<assetId>' consulta as fontes
+  // candidatas do card do item. Só no toque; o mesmo item fica guardado por 2 min.
+  const fontesCache = {};
+  function atenderFontes(url) {
+    const m = /[?&]id=(\d+)/.exec(url);
+    if (!m) return;
+    const id = m[1];
+    filaPonte = filaPonte.then(async () => {
+      let res = fontesCache[id];
+      if (!res || Date.now() - res.em > 120000) {
+        try {
+          res = await api.sondarFontes(id);
+          fontesCache[id] = res;
+        } catch (e) {
+          res = { id, em: Date.now(), fontes: [], erro: e.message || String(e) };
+        }
+      }
+      try {
+        await wv.evaluateJavaScript('window.receberFontes && window.receberFontes(' + avaliador.serializar(res) + ')', false);
+      } catch (e) {
+        // página fechada ou sem a função: ignora
+      }
+    });
+  }
+
   // Links do menu de toque abrem fora do painel (Safari ou app do Roblox).
   wv.shouldAllowRequest = (req) => {
     const url = (req && req.url) || '';
+    if (url.indexOf(avaliador.PONTE + 'fontes') === 0) {
+      atenderFontes(url);
+      return false;
+    }
     if (url.indexOf(avaliador.PONTE + 'diario') === 0) {
       atenderDiario(url);
       return false;
