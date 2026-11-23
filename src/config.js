@@ -100,6 +100,16 @@ module.exports = {
   ANUNCIO_ADDS_MAX: 2,
   ANUNCIO_SEU_DOWNGRADE_MIN_MEDIOS: 2,
   // Tag "any" (sidegrade): v6.6, não gera sugestão (quase ninguém aceita).
+  // v6.9: card do item (ao tocar no item no Inventário e no Avaliar). Os dados
+  // vêm da página do item no Rolimon's, buscada SÓ no toque e guardada por X min.
+  CARTAO_CACHE_MIN: 10,
+  // Período do gráfico do RAP (dias) e quantos pontos entram no RSI.
+  CARTAO_DIAS: 90,
+  CARTAO_RSI: 21,
+  // OP do card: a base sai das réguas do veredito (dar = de 0 até o "Vale muito"
+  // do upgrade; pedir = o "Vale a pena" do downgrade) e é multiplicada pela
+  // demanda do item no Rolimon's (0 terrível .. 4 incrível; sem dado = 1).
+  CARTAO_OP_DEMANDA_MULT: { 0: 0.6, 1: 0.8, 2: 1, 3: 1.2, 4: 1.4 },
   // Quantos dos seus itens entram na busca de combinações (mais = mais lento).
   ANUNCIO_COMBINACAO_MAX_ITENS: 25,
   // Quantos cartões cada bloco da aba mostra.

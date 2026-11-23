@@ -41,9 +41,27 @@ Pronto! Das próximas vezes é só abrir o script. Ele confere sozinho se há ve
 - **Faixa de totais** no topo: value total, RAP total e a variação de 24h.
 - **Seus itens** logo abaixo, com miniatura, busca e ordenação (value, RAP, demanda, tendência, nome).
 - **Cada informação num lugar só** (v6.3): a etiqueta aparece só para o que não está em outro lugar da linha (projected, RAP longe do value); queda de preço fica na seta; demanda e tendência, coloridas embaixo do nome. O chip "Com alerta" filtra todo item com algum risco.
-- **Tocar no item** mostra os alertas (como o item é), as mudanças em 24h (antes → depois) e abre o Rolimon's ou o Roblox.
+- **Tocar no item** mostra o **card do item**, os alertas (como o item é), as mudanças em 24h (antes → depois) e abre o Rolimon's ou o Roblox.
 - **Setas ▲ ▼**: variação de value/RAP do item nas últimas 24h (a partir de `LIMITE_MUDANCA_PCT`).
 - O histórico de 24h é montado com 1 retrato por hora (painel e widget), guardado por 48h no iPhone.
+
+### 🃏 Card do item (v6.9)
+
+Aparece ao tocar num item no **Inventário** e no **Avaliar**. Os dados são buscados **só nesse toque**, na página do item no Rolimon's (~850 KB), e ficam guardados por `CARTAO_CACHE_MIN` (10 min). Nada é buscado ao abrir o app.
+
+| Bloco | O que é | De onde vem |
+|---|---|---|
+| **OP para dar** | Quanto pagar a mais para **pegar** o item (seu upgrade), em % e em Robux | 0 até o "Vale muito" do upgrade (0–5%) × demanda |
+| **OP para pedir** | Quanto pedir a mais quando você **dá** o item (seu downgrade) | O "Vale a pena" do downgrade (7–12%) × demanda |
+| **Best Price** | Menor preço à venda agora | Página do Rolimon's (reserva: Roblox `v2/assets/{id}/details`) |
+| **Depois da venda** | O RAP se alguém comprar pelo Best Price: RAP + (Best − RAP) ÷ 10 | Conta do app |
+| **Vendas por dia** | Média de 30 dias | Página do Rolimon's |
+| **RSI-21** e **gráfico** | RAP dos últimos 90 dias, com o RSI-21 embaixo (acima de 70 = subiu rápido; abaixo de 30 = caiu rápido) | Histórico da página do Rolimon's |
+
+- **Ajuste do OP pela demanda** (`CARTAO_OP_DEMANDA_MULT`): Terrível ×0,6 · Baixa ×0,8 · Normal ×1 · Alta ×1,2 · Incrível ×1,4. O OP é calculado sobre o **value base** (item sem value usa o RAP).
+- RAP, value e demanda não se repetem no card: já estão na linha do item.
+- A página do Rolimon's não é uma API oficial e pode mudar sem aviso. O bloco que não vier mostra "sem dado", e o Diagnóstico diz o que faltou.
+- Testado na v6.8.2: o `resale-data` do Roblox recusa itens colecionáveis (HTTP 400), e o `resellers` pede login (HTTP 401).
 
 ### 📒 Diário de trades
 

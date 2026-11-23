@@ -401,7 +401,19 @@ function capitulo4(cfg) {
     <li><b>Setas ▲ ▼:</b> aparecem no número quando o value ou o RAP do item mudou ${pct(cfg.LIMITE_MUDANCA_PCT)} ou mais em 24h.</li>
     <li><b>Etiqueta colorida:</b> só para o que não aparece em outro lugar da linha (Projected, RAP longe do value). Queda de preço fica na seta vermelha; demanda e tendência, coloridas na linha de baixo. O chip "Com alerta" mostra todos os itens com algum risco, com ou sem etiqueta.</li>
     <li><b>Chips de ordem:</b> Value, RAP, Demanda, Tendência e Nome. Toque de novo para inverter.</li>
-    <li><b>Toque no item:</b> abre os alertas (como o item é), as mudanças em 24h (o que mudou, com antes → depois) e os links para o Rolimon's e o Roblox.</li>
+    <li><b>Toque no item:</b> abre o card do item, os alertas (como o item é), as mudanças em 24h (o que mudou, com antes → depois) e os links para o Rolimon's e o Roblox.</li>
+  </ul>
+
+  <h3 id="aj-cartao">Card do item</h3>
+  <p>Aparece ao tocar num item no Inventário e no Avaliar. Os dados vêm da página do item no Rolimon's, buscada só nesse toque e guardada por ${cfg.CARTAO_CACHE_MIN} min.</p>
+  <ul class="aj-lista">
+    <li><b>OP para dar:</b> quanto pagar a mais para <b>pegar</b> este item (o seu upgrade). Vai de 0 até o "Vale muito" da régua do upgrade (${pct(-cfg.VEREDITO_UPGRADE_PCT[3])}).</li>
+    <li><b>OP para pedir:</b> quanto pedir a mais quando você <b>dá</b> este item (o seu downgrade). É o "Vale a pena" da régua do downgrade (${pct(cfg.VEREDITO_DOWNGRADE_PCT[2])} a ${pct(cfg.VEREDITO_DOWNGRADE_PCT[3])}).</li>
+    <li><b>Ajuste pela demanda:</b> item disputado pede OP maior; item parado, menor. Terrível ×0,6, Baixa ×0,8, Normal ×1, Alta ×1,2 e Incrível ×1,4. A conta usa o value (sem value, o RAP).</li>
+    <li><b>Best Price:</b> o menor preço à venda agora. <b>Depois da venda:</b> o RAP se alguém comprar por esse preço. O Roblox move o RAP 1/10 do caminho até o preço da venda.</li>
+    <li><b>Vendas por dia:</b> média de 30 dias. É o melhor sinal de que o item gira.</li>
+    <li><b>Gráfico e RSI-21:</b> o RAP dos últimos ${cfg.CARTAO_DIAS} dias e, embaixo, o RSI. Acima de 70, o RAP subiu rápido (cuidado ao pegar); abaixo de 30, caiu rápido.</li>
+    <li>Se o Rolimon's não responder, o bloco mostra "sem dado". Os OP aparecem mesmo assim, porque saem das réguas do app.</li>
   </ul>
 
   <h3 id="aj-avaliar">Avaliar trade</h3>
@@ -411,6 +423,7 @@ function capitulo4(cfg) {
     <li><b>Robux:</b> digite nos dois lados; o que você recebe já entra com o desconto de ${Math.round(cfg.TAXA_ROBUX * 100)}%.</li>
     <li><b>Veredito:</b> aparece quando os dois lados têm algo. Use a régua da forma da trade. ${ir('aj-regua', 'Ver as réguas')}</li>
     <li><b>Resumo e Alertas:</b> a conta lado a lado e tudo que merece atenção. "Limpar proposta" pede dois toques.</li>
+    <li><b>Toque num item da proposta:</b> abre o card do item e a opção de tirar o item da proposta. ${ir('aj-cartao', 'Ver o card')}</li>
   </ul>
 
   <h3 id="aj-anuncios">Anúncios</h3>

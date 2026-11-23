@@ -390,6 +390,8 @@ function folhas() {
     '<div id="av-fundo" class="fundo oculto"></div>' +
     '<div id="av-folha" class="folha oculto">' +
     '<p id="av-folha-nome"></p>' +
+    // v6.9: lugar do card do item (o mesmo de cartao.lugar; preenchido pelo cartao.js).
+    '<div id="av-cartao" class="folha-bloco cartao oculto"></div>' +
     '<button id="av-remover" class="remover">Remover da proposta</button>' +
     '<a id="av-link" href="#">Ver no Rolimon\'s</a>' +
     '<button id="av-cancelar" class="cancelar">Cancelar</button>' +
@@ -854,6 +856,8 @@ function paginaAvaliador(D, P) {
     selecionado = { lado: lado, k: k };
     $('av-folha-nome').textContent = i.nome;
     $('av-link').href = 'https://www.rolimons.com/item/' + i.id;
+    // v6.9: card do item (buscado só agora, neste toque).
+    if (window.thCartao) window.thCartao.abrir(i.id, $('av-cartao'));
     $('av-fundo').classList.remove('oculto');
     $('av-folha').classList.remove('oculto');
   }

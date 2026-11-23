@@ -9,6 +9,7 @@ const avaliador = require('avaliador');
 const anuncios = require('anuncios');
 const diario = require('diario');
 const notificacoes = require('notificacoes');
+const cartao = require('cartao');
 
 // v6.2: aba pedida ao abrir pelo toque na notificação (?aba=anuncios no
 // scriptable:///run/..., ou o userInfo da notificação). args é global do
@@ -472,36 +473,38 @@ async function executar(ctx) {
     });
   }
 
-  // v6.8.2 (TESTE, temporário): PONTE + 'fontes?id=<assetId>' consulta as fontes
-  // candidatas do card do item. Só no toque; o mesmo item fica guardado por 2 min.
-  const fontesCache = {};
-  function atenderFontes(url) {
+  // v6.9: card do item. PONTE + 'cartao?id=<assetId>' busca a página do item no
+  // Rolimon's SÓ nesse toque; o card fica guardado por CARTAO_CACHE_MIN (só se a
+  // página respondeu). Fora da filaPonte: não segura as miniaturas.
+  const cartoes = {};
+  const cartoesEmCurso = {};
+  function atenderCartao(url) {
     const m = /[?&]id=(\d+)/.exec(url);
     if (!m) return;
     const id = m[1];
-    filaPonte = filaPonte.then(async () => {
-      let res = fontesCache[id];
-      if (!res || Date.now() - res.em > 120000) {
-        try {
-          res = await api.sondarFontes(id);
-          fontesCache[id] = res;
-        } catch (e) {
-          res = { id, em: Date.now(), fontes: [], erro: e.message || String(e) };
+    (async () => {
+      let res = cartoes[id];
+      if (!res || Date.now() - res.em > cfg.CARTAO_CACHE_MIN * 60000) {
+        if (!cartoesEmCurso[id]) {
+          cartoesEmCurso[id] = cartao.carregar(id, dados.rolimons).catch((e) => ({ id, em: Date.now(), erro: e.message || String(e) }));
         }
+        res = await cartoesEmCurso[id];
+        delete cartoesEmCurso[id];
+        if (res.paginaOk) cartoes[id] = res;
       }
       try {
-        await wv.evaluateJavaScript('window.receberFontes && window.receberFontes(' + avaliador.serializar(res) + ')', false);
+        await wv.evaluateJavaScript('window.receberCartao && window.receberCartao(' + avaliador.serializar(res) + ')', false);
       } catch (e) {
         // página fechada ou sem a função: ignora
       }
-    });
+    })();
   }
 
   // Links do menu de toque abrem fora do painel (Safari ou app do Roblox).
   wv.shouldAllowRequest = (req) => {
     const url = (req && req.url) || '';
-    if (url.indexOf(avaliador.PONTE + 'fontes') === 0) {
-      atenderFontes(url);
+    if (url.indexOf(avaliador.PONTE + 'cartao') === 0) {
+      atenderCartao(url);
       return false;
     }
     if (url.indexOf(avaliador.PONTE + 'diario') === 0) {
