@@ -186,14 +186,26 @@ function idsDaPagina(pag) {
 }
 
 // ---------- Página ----------
+// v6.13 (Etapa 5, protótipo Q2): a pergunta fica no topo do Inventário, compacta
+// (miniaturas do que saiu → do que entrou, a diferença e Sim / Não; Robux e os
+// itens só no toque). O lucro e as trades saíram do fim do Inventário e moram
+// numa tela cheia própria, aberta pelo menu ⋯ > Diário de trades (só na conta
+// principal), no mesmo molde da tela do item.
 
-// Lugares no Inventário: as perguntas no topo; a seção no fim.
+// Lugar no topo do Inventário: o aviso de "salvo" e as perguntas.
 function topo() {
   return '<div id="dia-ok" class="dia-ok oculto" role="status"></div><div id="dia-pend" class="dia-pend"></div>';
 }
 
-function secao() {
-  return '<div class="secao" id="dia-secao"></div>';
+// Tela cheia do Diário (fica no fim do <body>, antes da tela do item).
+function tela() {
+  return (
+    '<div id="tela-dia" class="ti oculto" role="dialog" aria-modal="true" aria-labelledby="td-nome">' +
+    '<div class="ti-barra"><div class="ti-titulo"><b id="td-nome">Diário de trades</b></div></div>' +
+    '<div class="ti-corpo" id="dia-secao"></div>' +
+    '<div class="ti-pe"><button type="button" class="ti-voltar" id="td-voltar">‹ Voltar</button></div>' +
+    '</div>'
+  );
 }
 
 function css() {
@@ -202,9 +214,6 @@ function css() {
 .dia-pend:empty{display:none}
 .dia-ok{padding:10px 14px;border-radius:12px;background:var(--pos-bg);color:var(--pos);font-size:14px;font-weight:600}
 .dia-card{border-radius:18px;background:var(--card);box-shadow:var(--sombra);border:1.5px solid var(--acc-t);overflow:hidden;-webkit-backdrop-filter:var(--vidro);backdrop-filter:var(--vidro)}
-.dia-cab{display:flex;flex-direction:column;gap:2px;padding:14px 16px 10px}
-.dia-cab b{font-size:18px;font-weight:700}
-.dia-cab span{font-size:13px;color:var(--sub)}
 .dia-lado{padding:8px 16px 10px}
 .dia-lado.dou{background:var(--dou-bg)}
 .dia-lado.rec{background:var(--rec-bg)}
@@ -220,29 +229,52 @@ function css() {
 .dia-rbx .seg{flex:none}
 .dia-rbx .seg button{flex:none;padding:7px 10px;font-size:13px}
 .dia-rbx input{flex:1;min-width:0;font:inherit;font-size:16px;padding:8px 12px;border:1px solid var(--borda);border-radius:10px;background:var(--card);color:var(--fg);-webkit-appearance:none}
-.dia-dif{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:10px 16px;border-top:1px solid var(--borda);font-size:14px;color:var(--sub)}
-.dia-dif b{font-size:18px;white-space:nowrap}
-.dia-bts{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:12px 16px 16px}
+.dia-bts{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:4px 14px 14px}
+.dia-bts .btn{padding:10px 8px;font-size:14px}
+/* v6.13: pergunta compacta (abre no toque) */
+.dq-lin{display:flex;align-items:center;gap:10px;width:100%;padding:12px 14px 10px;border:0;background:none;color:inherit;font:inherit;text-align:left;-webkit-tap-highlight-color:transparent}
+.dq-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:7px}
+.dq-txt>b{font-size:15px;font-weight:700;line-height:1.2}
+.dq-txt>b small{margin-left:6px;font-size:12px;font-weight:500;color:var(--sub)}
+.dq-mini,.dt-mini{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+.dq-mini .thumb{width:26px;height:26px;border-radius:7px}
+.dt-mini .thumb{width:22px;height:22px;border-radius:6px}
+.dq-mini .seta,.dt-mini .seta{margin:0 4px;color:var(--sub);font-size:13px}
+.dq-dif{flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:2px;text-align:right}
+.dq-dif b{font-size:19px;font-weight:700;line-height:1;white-space:nowrap}
+.dq-dif small{font-size:11px;font-weight:600;color:var(--sub);white-space:nowrap}
+.dq-chev{flex:none;color:var(--sub);font-size:20px;line-height:1;transition:transform .15s}
+.dia-card.aberta .dq-chev{transform:rotate(90deg)}
+.dq-det{border-top:1px solid var(--borda)}
+.dia-card.aberta .dia-bts{padding-top:12px}
+/* v6.13: tela do Diário */
+.dt-pend{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:12px;background:var(--warn-bg);color:var(--warn);font-size:14px;font-weight:600}
+.dt-pend button{margin-left:auto;padding:0;border:0;background:none;color:inherit;font:inherit;text-decoration:underline}
 .dia-lucro{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:16px;border-radius:16px;background:var(--card);border:1px solid var(--card-borda);box-shadow:var(--sombra);-webkit-backdrop-filter:var(--vidro);backdrop-filter:var(--vidro)}
 .dia-lucro .rot{display:flex;flex-direction:column;gap:2px;min-width:0}
 .dia-lucro .rot b{font-size:15px}
 .dia-lucro .rot span{font-size:13px;color:var(--sub)}
-.dia-lucro .num{font-size:28px;font-weight:700;letter-spacing:-.01em;white-space:nowrap}
+.dia-lucro .num{font-size:30px;font-weight:700;letter-spacing:-.01em;white-space:nowrap}
 .dia-trade{display:flex;flex-direction:column;gap:8px;padding:12px 16px}
 .dia-trade+.dia-trade{border-top:1px solid var(--borda)}
-.dia-lin{display:flex;align-items:center;gap:12px;width:100%;padding:0;border:0;background:none;text-align:left;-webkit-tap-highlight-color:transparent}
-.dia-lin .nome{font-size:15px}
+.dia-lin{display:flex;align-items:center;gap:12px;width:100%;padding:0;border:0;background:none;color:inherit;font:inherit;text-align:left;-webkit-tap-highlight-color:transparent}
+.dia-lin .item-txt{gap:5px}
 .dia-lin .l{font-size:17px;font-weight:700;white-space:nowrap}
 .dia-data{flex:none;width:46px;text-align:center;font-size:12px;font-weight:700;line-height:1.15;color:var(--sub)}
 .dia-data b{display:block;font-size:18px;color:var(--fg)}
 .dia-det{display:flex;flex-direction:column;gap:6px;padding:8px 10px;border-radius:12px;background:var(--card2);font-size:14px}
+.dia-det .dia-lado{padding:4px 8px 6px;border-radius:10px}
+.dia-det .dia-rot{padding:2px 0}
+.dia-det .dia-it{padding:3px 0}
+.dia-det .dia-it .nome,.dia-det .dia-it .v{font-size:14px}
 .dia-apagar{align-self:flex-start;padding:2px 0;border:0;background:none;color:var(--neg);font-size:14px;font-weight:600}
 `;
 }
 
-// <script> do diário: desenha as perguntas e a seção, e fala com o Scriptable
+// <script> do diário: desenha as perguntas e a tela, e fala com o Scriptable
 // pela ponte (PONTE + 'diario?acao=sim|nao|apagar&id=..&r=..').
 // A página atualiza na hora; a resposta da ponte (window.receberDiario) confirma.
+// window.thAbrirDiario() abre a tela; window.thDiarioPendentes() diz quantas perguntas há.
 function script(dadosJson, ponteJson, miniJson) {
   return `<script>
 (function(){
@@ -250,9 +282,9 @@ function script(dadosJson, ponteJson, miniJson) {
   var D = ${dadosJson};
   var MINI = ${miniJson};
   var aberta = null, apagarArmado = null, okTimer = null;
-  var rbx = {};
+  var rbx = {}, perguntaAberta = {};
   function $(id){ return document.getElementById(id); }
-  if (!$('dia-secao')) return;
+  if (!$('dia-secao') || !$('dia-pend')) return;
   function esc(s){
     return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; });
   }
@@ -273,6 +305,8 @@ function script(dadosJson, ponteJson, miniJson) {
     var u = MINI[String(it.a)];
     return u ? '<img class="thumb" src="' + esc(u) + '" alt="">' : '<span class="thumb"></span>';
   }
+  // Miniaturas de um lado (todas; a linha quebra se precisar).
+  function mini(l){ return l.map(thumb).join(''); }
   function ponte(q){
     try {
       var f = document.createElement('iframe');
@@ -294,56 +328,106 @@ function script(dadosJson, ponteJson, miniJson) {
         return '<div class="dia-it">' + thumb(it) + '<span class="nome">' + esc(it.n) + '</span><span class="v">' + fmt(it.v) + '</span></div>';
       }).join('') + '</div>';
   }
+
+  // ---------- Perguntas (topo do Inventário) ----------
   function cartao(p){
     var r = rbx[p.id] || (rbx[p.id] = { modo: 'rec', txt: '' });
     var dif = soma(p.entrou) - soma(p.saiu) + robuxDe(p.id);
-    return '<div class="dia-card" data-id="' + p.id + '">' +
-      '<div class="dia-cab"><b>Você fez esta trade?</b><span>' + esc(quando(p.data)) + (p.origem === 'widget' ? ' · visto pelo widget' : '') + '</span></div>' +
-      lado(p.saiu, 'dou', 'Saíram') + lado(p.entrou, 'rec', 'Entraram') +
-      '<div class="dia-rbx"><label for="dia-r-' + p.id + '">Robux <small>(opcional: o que caiu ou saiu da conta)</small></label>' +
+    var ab = !!perguntaAberta[p.id];
+    var h = '<div class="dia-card dq' + (ab ? ' aberta' : '') + '" data-id="' + p.id + '">' +
+      '<button type="button" class="dq-lin" data-abrir-p="1" aria-expanded="' + ab + '">' +
+      '<span class="dq-txt"><b>Você fez esta trade?<small>' + esc(quando(p.data)) + (p.origem === 'widget' ? ' · pelo widget' : '') + '</small></b>' +
+      '<span class="dq-mini" aria-label="Saíram ' + p.saiu.length + ', entraram ' + p.entrou.length + '">' + mini(p.saiu) + '<span class="seta">→</span>' + mini(p.entrou) + '</span></span>' +
+      '<span class="dq-dif"><b class="' + cor(dif) + '">' + sinal(dif) + '</b><small>value de hoje</small></span>' +
+      '<span class="dq-chev" aria-hidden="true">›</span></button>';
+    if (ab) {
+      h += '<div class="dq-det">' + lado(p.saiu, 'dou', 'Saíram') + lado(p.entrou, 'rec', 'Entraram') +
+        '<div class="dia-rbx"><label for="dia-r-' + p.id + '">Robux <small>(opcional: o que caiu ou saiu da conta)</small></label>' +
         '<div class="dia-rbx-lin"><div class="seg peq"><button type="button" data-modo="rec" class="' + (r.modo === 'rec' ? 'on' : '') + '">Entraram</button>' +
         '<button type="button" data-modo="dei" class="' + (r.modo === 'dei' ? 'on' : '') + '">Saíram</button></div>' +
-        '<input id="dia-r-' + p.id + '" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="0" value="' + esc(r.txt) + '"></div></div>' +
-      '<div class="dia-dif"><span>Diferença com o value de hoje</span><b class="' + cor(dif) + '">' + sinal(dif) + '</b></div>' +
-      '<div class="dia-bts"><button type="button" class="btn" data-acao="sim">Sim</button><button type="button" class="btn sec" data-acao="nao">Não foi trade</button></div>' +
-    '</div>';
+        '<input id="dia-r-' + p.id + '" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="0" value="' + esc(r.txt) + '"></div></div></div>';
+    }
+    return h + '<div class="dia-bts"><button type="button" class="btn" data-acao="sim">Sim</button><button type="button" class="btn sec" data-acao="nao">Não foi trade</button></div></div>';
   }
   function desenharPerguntas(){
     $('dia-pend').innerHTML = D.pendentes.map(cartao).join('');
   }
+
+  // ---------- Tela do Diário ----------
+  // Lucro acumulado da trade mais antiga até hoje (área + linha + pontos), no
+  // estilo do gráfico da tela do item. Cores por style (var() em atributo de SVG
+  // não é garantido no WebKit).
+  function grafico(serie){
+    var W = 320, H = 110, E = 2, BAIXO = H + 18;
+    var t0 = serie[0][0], t1 = serie[serie.length - 1][0];
+    var lo = 0, hi = 0;
+    serie.forEach(function(p){ if (p[1] < lo) lo = p[1]; if (p[1] > hi) hi = p[1]; });
+    if (hi === lo) hi = lo + 1;
+    function x(t){ return E + ((t - t0) / (t1 - t0 || 1)) * (W - 2 * E); }
+    function y(v){ return 8 + (1 - (v - lo) / (hi - lo)) * (H - 16); }
+    var c = serie[serie.length - 1][1] < 0 ? 'var(--neg)' : 'var(--pos)';
+    var linha = '';
+    serie.forEach(function(p, k){ linha += (k ? 'L' : 'M') + x(p[0]).toFixed(1) + ' ' + y(p[1]).toFixed(1); });
+    var area = linha + 'L' + x(t1).toFixed(1) + ' ' + y(0).toFixed(1) + 'L' + x(t0).toFixed(1) + ' ' + y(0).toFixed(1) + 'Z';
+    var ult = serie[serie.length - 1];
+    var txt = 'font-size="10" style="fill:var(--sub)"';
+    function dc(t){ var d = new Date(t); return dois(d.getDate()) + '/' + dois(d.getMonth() + 1); }
+    return '<svg viewBox="0 0 ' + W + ' ' + BAIXO + '" role="img" aria-label="Gráfico do lucro acumulado">' +
+      '<line x1="0" x2="' + W + '" y1="' + y(0).toFixed(1) + '" y2="' + y(0).toFixed(1) + '" style="stroke:var(--sub);opacity:.45" stroke-dasharray="3 3"/>' +
+      '<path d="' + area + '" style="fill:' + c + ';opacity:.14"/>' +
+      '<path d="' + linha + '" style="fill:none;stroke:' + c + '" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>' +
+      serie.slice(1, -1).map(function(p){ return '<circle cx="' + x(p[0]).toFixed(1) + '" cy="' + y(p[1]).toFixed(1) + '" r="2.5" style="fill:' + c + '"/>'; }).join('') +
+      '<circle cx="' + x(ult[0]).toFixed(1) + '" cy="' + y(ult[1]).toFixed(1) + '" r="4" style="fill:' + c + ';stroke:var(--card)" stroke-width="2"/>' +
+      '<text x="' + E + '" y="' + (BAIXO - 1) + '" ' + txt + '>' + dc(t0) + '</text>' +
+      '<text x="' + (W - E) + '" y="' + (BAIXO - 1) + '" text-anchor="end" ' + txt + '>' + dc(t1) + '</text></svg>';
+  }
   function desenharSecao(){
-    var n = D.trades.length;
-    var total = 0;
-    for (var k = 0; k < n; k++) total += lucro(D.trades[k]);
-    var h = '<h2>Diário de trades' + (D.pendentes.length ? ' <span class="cont warn">' + D.pendentes.length + (D.pendentes.length === 1 ? ' pergunta' : ' perguntas') + '</span>' : '') + '</h2>';
+    var l = D.trades;
+    var n = l.length;
+    var total = 0, melhor = -Infinity, pior = Infinity, ganhou = 0;
+    l.forEach(function(t){ var x = lucro(t); total += x; if (x > melhor) melhor = x; if (x < pior) pior = x; if (Math.round(x) > 0) ganhou++; });
+    var h = '';
+    var np = D.pendentes.length;
+    if (np) h += '<div class="dt-pend"><span>' + (np === 1 ? '1 pergunta esperando' : np + ' perguntas esperando') + ' no Inventário</span><button type="button" id="dt-responder">Responder</button></div>';
     h += '<div class="dia-lucro"><div class="rot"><b>Lucro até hoje</b><span>' +
-      (n ? n + (n === 1 ? ' trade' : ' trades') + ' · value de hoje' : 'nenhuma trade ainda') + '</span></div>' +
+      (n ? n + (n === 1 ? ' trade' : ' trades') + ' · pelo value de hoje' : 'nenhuma trade ainda') + '</span></div>' +
       '<span class="num ' + (n ? cor(total) : 'sub') + '">' + (n ? sinal(total) : '—') + '</span></div>';
     if (n) {
-      h += '<div class="grupo">' + D.trades.map(function(t){
-        var l = lucro(t);
+      // D.trades vem da mais nova para a mais antiga.
+      var acc = 0, antigas = l.slice().reverse(), serie = [[antigas[0].data - 86400000, 0]];
+      antigas.forEach(function(t){ acc += lucro(t); serie.push([t.data, acc]); });
+      h += '<div class="ti-graf"><small>Lucro acumulado</small>' + grafico(serie) +
+        '<div class="ti-leg"><span><small>Melhor</small><b class="' + cor(melhor) + '">' + sinal(melhor) + '</b></span>' +
+        '<span><small>Pior</small><b class="' + cor(pior) + '">' + sinal(pior) + '</b></span>' +
+        '<span><small>Média</small><b class="' + cor(total / n) + '">' + sinal(total / n) + '</b></span>' +
+        '<span><small>Com lucro</small><b>' + ganhou + ' de ' + n + '</b></span></div></div>';
+      h += '<div class="grupo">' + l.map(function(t){
+        var lu = lucro(t);
         var x = new Date(t.data);
-        var resumo = 'Dei ' + t.saiu.length + ' · recebi ' + t.entrou.length +
+        var nomes = t.entrou.map(function(i){ return i.n; }).join(', ') +
           (t.robux ? ' · ' + (t.robux > 0 ? '+' : '−') + fmt(t.robux) + ' R$' : '');
-        var det = aberta === t.id ? '<div class="dia-det">' +
-          '<div><span class="sub">Dei:</span> ' + t.saiu.map(function(i){ return esc(i.n) + ' (' + fmt(i.v) + ')'; }).join(', ') + '</div>' +
-          '<div><span class="sub">Recebi:</span> ' + t.entrou.map(function(i){ return esc(i.n) + ' (' + fmt(i.v) + ')'; }).join(', ') + '</div>' +
-          (t.robux ? '<div><span class="sub">Robux:</span> ' + (t.robux > 0 ? 'entraram ' : 'saíram ') + fmt(t.robux) + '</div>' : '') +
+        var det = aberta === t.id ? '<div class="dia-det">' + lado(t.saiu, 'dou', 'Dei') + lado(t.entrou, 'rec', 'Recebi') +
+          (t.robux ? '<div class="dia-rot"><span>Robux</span><span class="' + cor(t.robux) + '">' + (t.robux > 0 ? 'entraram ' : 'saíram ') + fmt(t.robux) + '</span></div>' : '') +
           '<button type="button" class="dia-apagar" data-apagar="' + t.id + '">' + (apagarArmado ? 'Toque de novo para apagar' : 'Apagar do diário') + '</button></div>' : '';
-        return '<div class="dia-trade"><button type="button" class="dia-lin" data-abrir="' + t.id + '">' +
+        return '<div class="dia-trade"><button type="button" class="dia-lin" data-abrir="' + t.id + '" aria-expanded="' + (aberta === t.id) + '">' +
           '<span class="dia-data"><b>' + x.getDate() + '</b>' + MESES[x.getMonth()] + '</span>' +
-          '<span class="item-txt"><span class="nome">' + esc(t.entrou.map(function(i){ return i.n; }).join(', ')) + '</span><span class="det">' + resumo + '</span></span>' +
-          '<span class="l ' + cor(l) + '">' + sinal(l) + '</span></button>' + det + '</div>';
+          '<span class="item-txt"><span class="dt-mini">' + mini(t.saiu) + '<span class="seta">→</span>' + mini(t.entrou) + '</span>' +
+          '<span class="det">' + esc(nomes) + '</span></span>' +
+          '<span class="l ' + cor(lu) + '">' + sinal(lu) + '</span></button>' + det + '</div>';
       }).join('') + '</div>';
     }
-    h += '<p class="nota">' + (n || D.pendentes.length
-      ? 'Value de hoje do que entrou − value de hoje do que saiu + Robux. Duas trades entre consultas aparecem juntas; compra e venda também podem gerar pergunta.'
+    h += '<p class="nota">' + (n || np
+      ? 'Value de hoje do que entrou − value de hoje do que saiu + Robux. Toque numa trade para ver os itens. Duas trades entre consultas aparecem juntas; compra e venda também podem gerar pergunta.'
       : D.comecou
-        ? 'O app compara os seus itens a cada consulta (painel e widget). Quando itens saírem e outros entrarem, ele pergunta aqui em cima se foi uma trade.'
-        : 'A partir desta abertura o app passa a acompanhar os seus itens. Quando itens saírem e outros entrarem, ele pergunta se foi uma trade.') + '</p>';
+        ? 'O app compara os seus itens a cada consulta (painel e widget). Quando itens saírem e outros entrarem, ele pergunta no topo do Inventário se foi uma trade.'
+        : 'A partir desta abertura o app passa a acompanhar os seus itens. Quando itens saírem e outros entrarem, ele pergunta no topo do Inventário se foi uma trade.') + '</p>';
     $('dia-secao').innerHTML = h;
   }
-  function tudo(){ desenharPerguntas(); desenharSecao(); }
+  function tudo(){
+    desenharPerguntas();
+    desenharSecao();
+    if (window.thAoMudarDiario) { try { window.thAoMudarDiario(D.pendentes.length); } catch (e) {} }
+  }
 
   function avisoOk(txt){
     var el = $('dia-ok');
@@ -353,12 +437,34 @@ function script(dadosJson, ponteJson, miniJson) {
     okTimer = setTimeout(function(){ el.classList.add('oculto'); }, 4000);
   }
 
+  function abrirTela(){
+    aberta = null;
+    desenharSecao();
+    var t = $('tela-dia');
+    t.classList.remove('oculto');
+    t.scrollTop = 0;
+    document.documentElement.classList.add('ti-aberta');
+  }
+  function fecharTela(){
+    $('tela-dia').classList.add('oculto');
+    var item = $('tela-item');
+    if (!item || item.classList.contains('oculto')) document.documentElement.classList.remove('ti-aberta');
+  }
+  window.thAbrirDiario = abrirTela;
+  window.thDiarioPendentes = function(){ return D.pendentes.length; };
+  $('td-voltar').addEventListener('click', fecharTela);
+
   $('dia-pend').addEventListener('click', function(ev){
     var card = ev.target.closest('.dia-card');
     if (!card) return;
     var id = Number(card.getAttribute('data-id'));
     var b = ev.target.closest('button');
     if (!b) return;
+    if (b.getAttribute('data-abrir-p')) {
+      perguntaAberta[id] = !perguntaAberta[id];
+      desenharPerguntas();
+      return;
+    }
     var modo = b.getAttribute('data-modo');
     if (modo) {
       rbx[id] = rbx[id] || { modo: 'rec', txt: '' };
@@ -376,11 +482,12 @@ function script(dadosJson, ponteJson, miniJson) {
       var r = robuxDe(id);
       D.trades.unshift({ id: p.id, data: p.data, saiu: p.saiu, entrou: p.entrou, robux: r });
       ponte('acao=sim&id=' + id + '&r=' + r);
-      avisoOk('Trade salva no diário.');
+      avisoOk('Trade salva no Diário (menu ⋯).');
     } else {
       ponte('acao=nao&id=' + id);
     }
     delete rbx[id];
+    delete perguntaAberta[id];
     tudo();
   });
   $('dia-pend').addEventListener('input', function(ev){
@@ -395,13 +502,20 @@ function script(dadosJson, ponteJson, miniJson) {
     for (var k = 0; k < D.pendentes.length; k++) if (D.pendentes[k].id === id) p = D.pendentes[k];
     if (!p) return;
     var dif = soma(p.entrou) - soma(p.saiu) + robuxDe(id);
-    var el = card.querySelector('.dia-dif b');
+    var el = card.querySelector('.dq-dif b');
     el.textContent = sinal(dif);
     el.className = cor(dif);
   });
   $('dia-secao').addEventListener('click', function(ev){
     var b = ev.target.closest('button');
     if (!b) return;
+    if (b.id === 'dt-responder') {
+      fecharTela();
+      var bi = document.querySelector('#abas button[data-aba="inv"]');
+      if (bi) bi.click();
+      window.scrollTo(0, 0);
+      return;
+    }
     var ap = b.getAttribute('data-apagar');
     if (ap) {
       // Apagar pede um segundo toque (sem confirm(), que pode não existir no Scriptable).
@@ -416,7 +530,7 @@ function script(dadosJson, ponteJson, miniJson) {
       D.trades = D.trades.filter(function(t){ return t.id !== id; });
       aberta = null;
       ponte('acao=apagar&id=' + id);
-      desenharSecao();
+      tudo();
       return;
     }
     var ab = b.getAttribute('data-abrir');
@@ -452,5 +566,5 @@ function script(dadosJson, ponteJson, miniJson) {
 
 module.exports = {
   detectar, responder, apagar, paraPagina, idsDaPagina,
-  topo, secao, css, script,
+  topo, tela, css, script,
 };

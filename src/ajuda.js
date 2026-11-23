@@ -437,22 +437,27 @@ function capitulo4(cfg) {
   <ul class="aj-lista">
     <li><b>O que aparece:</b> anúncios recentes do Rolimon's com vantagem para você. Os que pedem itens seus entram a partir de "Vale a pena". Os que só pedem uma tag ganham uma sugestão montada com os seus itens.</li>
     <li><b>O que fica de fora:</b> ofertas com item projected, com demanda terrível ou com o RAP subindo mais de ${pct(cfg.ALERTA_RAP_24H_PCT)} em 24h. Seus itens em hold não entram. Trade com o mesmo item dos dois lados só aparece se você não perder value.</li>
-    <li><b>Filtro "Um item seu":</b> mostra só os anúncios em que esse item vai no seu lado.</li>
+    <li><b>Topo:</b> na primeira linha, a forma da trade (com quantos anúncios cada uma tem). Na segunda, os chips <b>"Todos os seus itens ▾"</b> (o filtro de um item seu) e <b>Ordem ▾</b>, que abrem uma folha. Na terceira, quantos anúncios foram vistos e o botão <b>↻</b>, que busca de novo.</li>
+    <li><b>Filtro de um item seu:</b> mostra só os anúncios em que esse item vai no seu lado. Com um item escolhido, o chip mostra o item; o ✕ tira o filtro.</li>
+    <li><b>Selo "gira" ou "parado":</b> fica na linha fechada, ao lado do que você recebe. Usa as vendas por dia do item de maior value desse lado: "gira" a partir de 1 venda por dia, "parado" abaixo disso. As vendas são buscadas por trás, um item por vez (enquanto isso aparece "…"), e ficam guardadas por ${cfg.CARTAO_LINHA_PAGINA_H} h. Ao abrir o cartão, o selo some e cada item mostra a própria linha.</li>
+    <li><b>Linha de cada item do cartão aberto (ex.: Alta · 15/dia · OP dar 0–6%):</b> a mesma do Avaliar. Em Recebo, o OP dar (laranja); em Dou, o OP pedir (verde).</li>
     <li><b>Todos, Seu upgrade, Seu downgrade:</b> a forma da trade do seu lado. Seu upgrade: você dá vários itens e recebe 1. Seu downgrade: você dá 1 e recebe 2 ou 3. Vale para anúncios que pedem seus itens e para as sugestões; sidegrade e "por Robux" só aparecem em Todos. Se o anúncio aceita as duas formas, cada filtro monta a sugestão daquela forma, e por isso os números podem somar mais que Todos.</li>
     <li><b>Ordem:</b> maior ganho, mais recentes ou maior value recebido.</li>
     <li><b>Toque num item do cartão aberto:</b> abre a tela do item, com as mudanças de RAP e value em 24h no fim. O "Ver no Rolimon's" fica embaixo dela. ${ir('aj-cartao', 'Ver a tela do item')}</li>
-    <li><b>Atualizar:</b> os anúncios são buscados ao abrir a aba, no máximo a cada ${cfg.ANUNCIOS_CACHE_MIN} min. Os vistos ficam guardados por ${cfg.ANUNCIOS_GUARDAR_HORAS} h e podem já ter sido fechados.</li>
+    <li><b>↻ (atualizar):</b> os anúncios são buscados ao abrir a aba, no máximo a cada ${cfg.ANUNCIOS_CACHE_MIN} min. Os vistos ficam guardados por ${cfg.ANUNCIOS_GUARDAR_HORAS} h e podem já ter sido fechados.</li>
   </ul>
 
   <h3 id="aj-conta2">Conta 2</h3>
   <p>No menu ⋯, "Adicionar conta 2" guarda o username de outra conta (só neste iPhone). O chip com ⇄ embaixo do título troca entre as contas. Na conta 2 o painel muda de cor, mostra "Vendo a conta de …" e um botão Voltar. Inventário e Anúncios passam a ser os dela; o Avaliar some.</p>
 
   <h3 id="aj-diario">Diário de trades</h3>
-  <p>Fica no fim do Inventário. A cada consulta (painel e widget), o app compara os seus itens com os da vez anterior. Quando itens saem e outros entram, ele pergunta no topo do Inventário: <b>"Você fez esta trade?"</b>. Você responde Sim ou Não foi trade e, se quiser, coloca os Robux que entraram ou saíram.</p>
+  <p>Abre pelo menu ⋯ &gt; <b>Diário de trades</b>, numa tela própria (só na sua conta principal). A cada consulta (painel e widget), o app compara os seus itens com os da vez anterior. Quando itens saem e outros entram, ele pergunta no topo do Inventário: <b>"Você fez esta trade?"</b>.</p>
   <ul class="aj-lista">
+    <li><b>A pergunta:</b> uma faixa curta com as miniaturas do que saiu → do que entrou e a diferença pelo value de hoje. Responda Sim ou Não foi trade. Toque na faixa para ver os itens e, se quiser, colocar os Robux que entraram ou saíram. Enquanto houver pergunta, o menu ⋯ mostra "· 1 pergunta" ao lado do Diário.</li>
     <li><b>Lucro até hoje:</b> o value de hoje do que entrou, menos o value de hoje do que saiu, mais os Robux. Mostra se as suas trades estão dando certo com o tempo.</li>
+    <li><b>Lucro acumulado:</b> o gráfico soma as trades da mais antiga até hoje. Embaixo: a melhor e a pior trade, a média e quantas deram lucro.</li>
     <li><b>Por que ele pergunta:</b> o app não vê as suas trades de verdade (não tem login). Duas trades entre uma consulta e outra aparecem juntas, e compra ou venda também podem gerar pergunta.</li>
-    <li>Toque numa trade do diário para ver os detalhes ou apagá-la.</li>
+    <li>Toque numa trade do diário para ver os itens ou apagá-la.</li>
   </ul>
 
   <h3 id="aj-notif">Notificações</h3>

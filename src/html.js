@@ -10,6 +10,9 @@
 // v6.1: diário de trades (módulo diario) no Inventário da conta principal:
 // perguntas "Você fez esta trade?" no topo e a seção com o lucro no fim.
 // v6.4: tudo de tema foi para o módulo temas (13 temas + 6 Temáticos).
+// v6.13 (Etapa 5): o diário saiu do fim do Inventário e virou uma tela própria
+// (menu ⋯ > Diário de trades, só na conta principal); a pergunta segue no topo,
+// compacta. As vendas/dia que chegam pela fila também vão para os Anúncios.
 const a = require('analise');
 const temas = require('temas');
 const avaliador = require('avaliador');
@@ -514,7 +517,6 @@ ${temas.ceu()}
 <div class="inv aba" id="inv-1">
 ${dia ? diario.topo() : ''}
 ${inv.html}
-${dia ? diario.secao() : ''}
 </div>
 <div class="inv aba oculto" id="inv-2"></div>
 </div>
@@ -536,10 +538,12 @@ ${anuncios.secao(cfg, av.erro ? 'os dados do avaliador não foram preparados (' 
 <footer>v${esc(r.versao)} · ${esc(String(r.sha || '').slice(0, 7))} · dados: Rolimon's e Roblox · somente leitura</footer>
 </div>
 
+${dia ? diario.tela() : ''}
 ${cartao.tela()}
 <div id="m-fundo" class="fundo oculto"></div>
 <div id="m-folha" class="folha oculto">
   <p>Opções</p>
+  ${dia ? '<button type="button" class="op" id="m-diario">Diário de trades<small class="sub" id="m-dia-n"></small></button>' : ''}
   <button type="button" class="op" id="m-trocar">Adicionar conta 2</button>
   <button type="button" class="op perigo oculto" id="m-remover">Remover conta 2</button>
   <button type="button" class="op" id="m-temas">Temas</button>
@@ -760,6 +764,8 @@ ${ajuda.secao(cfg)}
     }
     // v6.12: a linha dos itens da proposta (Avaliar) usa as mesmas respostas.
     if (window.thAoReceberLinhas) { try { window.thAoReceberLinhas(mapa || {}); } catch (e) {} }
+    // v6.13: e também o selo de giro e os itens do cartão aberto dos Anúncios.
+    if (window.thAoReceberLinhasAn) { try { window.thAoReceberLinhasAn(mapa || {}); } catch (e) {} }
   };
   setTimeout(function(){ pedirLinhas(1); }, ${Number(cfg.CARTAO_LINHA_ESPERA_MS) || 2500});
 
@@ -776,6 +782,8 @@ ${ajuda.secao(cfg)}
     $('meta-hora').textContent = (c2.nome ? '· ' : 'Atualizado ') + $('meta-hora').getAttribute('data-hora');
     $('m-trocar').textContent = c2.nome ? 'Trocar conta 2 (' + c2.nome + ')' : 'Adicionar conta 2';
     $('m-remover').classList.toggle('oculto', !c2.nome);
+    // v6.13: o Diário é da conta principal; some do menu enquanto você vê a conta 2.
+    if ($('m-diario')) $('m-diario').classList.toggle('oculto', conta === 2);
   }
   // Estado da conta 2 enquanto os itens dela não chegam (buscando ou erro).
   function desenharEstadoC2(){
@@ -943,6 +951,16 @@ ${ajuda.secao(cfg)}
     marcarTemas();
     $('t-fundo').classList.remove('oculto');
     $('t-folha').classList.remove('oculto');
+  });
+  // ---------- Diário (v6.13: tela própria pelo menu ⋯) ----------
+  // O número de perguntas aparece ao lado ("· 1 pergunta"); diario.js avisa quando muda.
+  window.thAoMudarDiario = function(n){
+    var el = $('m-dia-n');
+    if (el) el.textContent = n ? ' · ' + n + (n === 1 ? ' pergunta' : ' perguntas') : '';
+  };
+  if ($('m-diario')) $('m-diario').addEventListener('click', function(){
+    fecharMenu();
+    if (window.thAbrirDiario) window.thAbrirDiario();
   });
   // ---------- Ajuda (v5.4) ----------
   $('m-ajuda').addEventListener('click', function(){

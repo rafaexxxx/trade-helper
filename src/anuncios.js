@@ -179,38 +179,37 @@ function parametros(cfg, meuId) {
 // ---------- HTML ----------
 // v5.0: status + filtros (um item seu, ordem) + uma lista única de linhas curtas.
 // A explicação das regras foi para a tela de Ajuda.
+// v6.13 (Etapa 5, protótipo Q2): o topo virou três linhas curtas: a forma (com os
+// números), os chips "Item ▾" e "Ordem ▾" (abrem folhas) e o status miúdo com ↻.
+// O título "Anúncios N" saiu (o número já está na barra da forma).
 function secao(cfg, erro) {
   if (erro) {
     return '<div id="aba-anuncios" class="aba oculto"><p class="aviso">A aba Anúncios não pôde ser montada: ' + esc(erro) + '</p></div>';
   }
   return (
     '<div id="aba-anuncios" class="aba oculto">' +
-    '<div class="an-status"><p class="meta" id="an-info">Os anúncios são buscados quando você abre esta aba.</p>' +
-    '<button class="btn" id="an-atualizar">Atualizar</button></div>' +
-    '<p class="aviso oculto" id="an-erro"></p>' +
-    '<p class="meta oculto" id="an-conta"></p>' +
-    '<div class="an-filtros">' +
-    '<button type="button" class="an-fbtn" id="an-filtro"></button>' +
+    '<div class="an-topo">' +
     // v6.8: forma da trade do SEU ponto de vista (o número é desenhado na página).
     '<div class="seg peq" id="an-forma">' +
     '<button type="button" data-f="todos">Todos<small></small></button>' +
     '<button type="button" data-f="upgrade">Seu upgrade<small></small></button>' +
     '<button type="button" data-f="downgrade">Seu downgrade<small></small></button>' +
     '</div>' +
-    '<div class="seg peq" id="an-ordem">' +
-    '<button type="button" data-o="ganho">Maior ganho</button>' +
-    '<button type="button" data-o="recentes">Recentes</button>' +
-    '<button type="button" data-o="value">Maior value</button>' +
-    '</div></div>' +
-    '<section class="secao"><h2>Anúncios<span class="cont" id="an-n"></span></h2>' +
-    '<div id="an-lista"></div></section>' +
+    '<div class="an-sel"><button type="button" class="chip" id="an-filtro"></button>' +
+    '<button type="button" class="chip" id="an-ordem"></button></div>' +
+    '<div class="an-status"><p class="meta" id="an-info">Os anúncios são buscados quando você abre esta aba.</p>' +
+    '<button type="button" class="mais" id="an-atualizar" aria-label="Atualizar anúncios">↻</button></div>' +
+    '</div>' +
+    '<p class="aviso oculto" id="an-erro"></p>' +
+    '<p class="meta oculto" id="an-conta"></p>' +
+    '<div id="an-lista"></div>' +
     // v5.4: as regras desta aba ficam na Ajuda (a tag é do dono do anúncio etc.).
     ajuda.link('aj-tags', 'Como as contas funcionam?') +
     '</div>'
   );
 }
 
-// Folha "Um item seu" (escolhe o item do filtro).
+// Folhas "Um item seu" (escolhe o item do filtro) e, v6.13, a da ordem.
 function folha() {
   return (
     '<div id="an-fundo" class="fundo oculto"></div>' +
@@ -218,32 +217,54 @@ function folha() {
     '<div class="an-fl-topo"><b>Um item seu</b><button type="button" id="an-fechar">Fechar</button></div>' +
     '<p class="an-fl-info">Mostra só os anúncios em que esse item entra no seu lado (Dou). Nos de upgrade e downgrade, a sugestão é refeita com ele.</p>' +
     '<div class="an-fl-lista" id="an-fl-lista"></div>' +
+    '</div>' +
+    '<div id="ao-fundo" class="fundo oculto"></div>' +
+    '<div id="ao-folha" class="folha oculto">' +
+    '<p>Ordem dos anúncios</p>' +
+    '<button type="button" class="op" data-o="ganho">Maior ganho</button>' +
+    '<button type="button" class="op" data-o="recentes">Recentes</button>' +
+    '<button type="button" class="op" data-o="value">Maior value</button>' +
+    '<button type="button" class="op cancelar" id="ao-cancelar">Cancelar</button>' +
     '</div>'
   );
 }
 
 function css() {
   return `
-.an-status{display:flex;align-items:center;justify-content:space-between;gap:12px}
-.an-status .meta{flex:1;min-width:0;margin:0}
-/* v6.8.1: o botão nunca encolhe (o texto ao lado é que quebra em linhas). */
-.an-status .btn{flex:none;white-space:nowrap}
-.an-filtros{display:flex;flex-direction:column;gap:8px}
-.an-fbtn{display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px 8px 8px;border:1px solid var(--borda);border-radius:14px;background:var(--card);text-align:left;-webkit-tap-highlight-color:transparent}
-.an-fbtn.on{border-color:var(--acc-t);background:var(--dou-bg)}
-.an-fbtn .thumb{width:32px;height:32px;border-radius:9px}
-.an-ftodos{display:grid;place-items:center;color:var(--sub);font-size:15px}
-.an-ftxt{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.2}
-.an-ftxt small{font-size:12px;font-weight:500;color:var(--sub)}
-.an-ftxt b{font-size:15px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.an-fx{flex:none;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--card2);color:var(--sub);font-size:15px;line-height:1}
-.an-fseta{flex:none;color:var(--sub);font-size:13px}
-#an-forma button{flex:auto;white-space:nowrap}
+/* v6.13: topo em três linhas curtas (forma; chips Item e Ordem; status com ↻). */
+.an-topo{display:flex;flex-direction:column;gap:8px}
+#an-forma button{flex:auto;white-space:nowrap;font-size:13px;padding:7px 4px}
 #an-forma small{margin-left:4px;font-size:11px;font-weight:700;opacity:.7;font-variant-numeric:tabular-nums}
 #an-forma small:empty{display:none}
+.an-sel{display:flex;gap:6px;align-items:center;min-width:0}
+.an-sel .chip{display:inline-flex;align-items:center;gap:6px;min-width:0;padding:6px 12px;font-size:13px}
+#an-filtro{max-width:64%}
+#an-filtro.com-item{padding-left:6px}
+#an-ordem{flex:none}
+.an-sel .chip .thumb{flex:none;width:20px;height:20px;border-radius:6px}
+.an-sel .chip .t{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.an-sel .chip .v{flex:none;font-size:11px;opacity:.75}
+.an-sel .chip .x{flex:none;margin-left:2px;padding:0 2px;font-weight:700}
+.an-status{display:flex;align-items:center;gap:10px}
+.an-status .meta{flex:1;min-width:0;margin:0;font-size:12px}
+.an-status .mais{width:34px;height:34px;font-size:17px}
+.an-status .mais:disabled{opacity:.6}
+.an-status .mais.buscando{animation:anGira .9s linear infinite}
+@keyframes anGira{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion: reduce){.an-status .mais.buscando{animation:none}}
+.an-ftodos{display:grid;place-items:center;color:var(--sub);font-size:15px}
+.folha .op.on{font-weight:700}
+.folha .op.on::after{content:"  ✓"}
+/* v6.13: selo de giro na linha fechada (vendas/dia do item principal que você
+   recebe). Some quando o cartão abre: lá cada item mostra o número. */
+.giro{flex:none;display:inline-flex;align-items:center;padding:2px 7px;border-radius:6px;font-size:11px;font-weight:700;line-height:1.35;white-space:nowrap}
+.giro.pos{background:var(--pos-bg);color:var(--pos)}
+.giro.neg{background:var(--neg-bg);color:var(--neg)}
+.giro.esp{background:var(--card2);color:var(--sub)}
+.an-it.aberto .giro{display:none}
 
 .an-grupo{display:flex;flex-direction:column;border-radius:18px;background:var(--card);border:1px solid var(--card-borda);box-shadow:var(--sombra);overflow:hidden}
-.an-grupo,.an-fbtn{-webkit-backdrop-filter:var(--vidro);backdrop-filter:var(--vidro)}
+.an-grupo{-webkit-backdrop-filter:var(--vidro);backdrop-filter:var(--vidro)}
 .an-it+.an-it{border-top:1px solid var(--borda)}
 .an-linha{display:flex;align-items:center;gap:10px;width:100%;padding:12px 14px;border:0;background:none;text-align:left;-webkit-tap-highlight-color:transparent}
 .an-linha:active,.an-it.aberto>.an-linha{background:var(--card2)}
@@ -652,6 +673,7 @@ function criarAnalisador(D, P, PA) {
 function paginaAnuncios(D, P, PA) {
   var THUMBS = D.miniaturas || {};
   var ORDENS = { ganho: 1, recentes: 1, value: 1 };
+  var NOMES_ORDEM = { ganho: 'Maior ganho', recentes: 'Recentes', value: 'Maior value' };
   // v6.8: filtro de forma, do SEU ponto de vista (mesmo texto da etiqueta da linha).
   var FORMAS = { todos: 'Todos', upgrade: 'Seu upgrade', downgrade: 'Seu downgrade' };
 
@@ -798,10 +820,114 @@ function paginaAnuncios(D, P, PA) {
   function miniatura(id) {
     return THUMBS[id] ? '<img class="thumb" src="' + esc(THUMBS[id]) + '" alt="">' : '<span class="thumb"></span>';
   }
-  // Embaixo do nome: só a demanda.
-  function detalhes(i) {
-    if (!(i.dem >= 0)) return '<span class="sub">Sem dados</span>';
-    return '<span class="' + corDem(i.dem) + '">' + esc(P.demandaCurta[i.dem]) + '</span>';
+  // ---------- v6.13: vendas/dia (selo de giro e itens do cartão aberto) ----------
+  // As vendas vêm da mesma fila do Inventário e do Avaliar (PONTE + 'linhas?ids=',
+  // que fura a fila; até 2 × MAX_ITENS_POR_LADO ids por pedido). LN = as linhas
+  // guardadas no iPhone (D.linhas) mais as que chegam por window.thAoReceberLinhasAn.
+  var LN = {};
+  (function () { var l = D.linhas || {}; for (var id in l) LN[id] = l[id]; })();
+  var vendasAn = { pedidosPor: {}, pendentes: {}, timer: null, redesenho: null };
+  function nivelVendas(v) {
+    var n = 0;
+    (P.demVendas || []).forEach(function (l) { if (v >= l) n++; });
+    return n;
+  }
+  function principal(itens) {
+    var m = null;
+    itens.forEach(function (i) { if (!m || valorEfetivo(i) > valorEfetivo(m)) m = i; });
+    return m;
+  }
+  // Selo da linha fechada: "gira" a partir de 1 venda por dia (Normal na escala
+  // da demanda), "parado" abaixo disso, "…" enquanto as vendas não chegam.
+  function seloGiro(r) {
+    var i = principal(r.rec);
+    if (!i) return '';
+    var ln = LN[i.id];
+    if (ln && ln.v != null) {
+      var gira = nivelVendas(ln.v) >= 2;
+      return '<span class="giro ' + (gira ? 'pos' : 'neg') + '" title="' + esc(i.nome) + ': ' + esc(ln.tv) + '">' + (gira ? 'gira' : 'parado') + '</span>';
+    }
+    if (vendasAn.pendentes[i.id]) return '<span class="giro esp" aria-label="Buscando as vendas">…</span>';
+    return '';
+  }
+  // Pede as vendas que faltam: o item principal de cada anúncio mostrado e os
+  // itens do cartão aberto. Uma vez por item em cada abertura do painel.
+  function pedirVendasAn() {
+    var ids = [];
+    function quer(i) {
+      if (!i || !i.id || vendasAn.pedidosPor[i.id] || ids.indexOf(i.id) >= 0) return;
+      var ln = LN[i.id];
+      if (ln && ln.v != null) return;
+      ids.push(i.id);
+    }
+    var aberto = null;
+    estado.mostrados.forEach(function (r) {
+      if (estado.aberto === r.ad[0]) aberto = r;
+      quer(principal(r.rec));
+    });
+    // Os do cartão aberto vão primeiro.
+    if (aberto) {
+      var antes = ids;
+      ids = [];
+      aberto.rec.concat(aberto.dou).forEach(quer);
+      antes.forEach(function (id) { if (ids.indexOf(id) < 0) ids.push(id); });
+    }
+    if (!ids.length) return;
+    ids.forEach(function (id) { vendasAn.pedidosPor[id] = 1; vendasAn.pendentes[id] = 1; });
+    // Cada pedido vai para a frente da fila: manda os pacotes do último para o
+    // primeiro, para o primeiro pacote ser buscado primeiro.
+    var tam = Math.max(1, (P.maxItens || 4) * 2);
+    var pacotes = [];
+    for (var k = 0; k < ids.length; k += tam) pacotes.push(ids.slice(k, k + tam));
+    pacotes.reverse().forEach(function (p, n) {
+      setTimeout(function () {
+        var f = document.createElement('iframe');
+        f.style.display = 'none';
+        f.src = P.ponte + 'linhas?ids=' + p.join(',') + '&t=' + Date.now() + n;
+        document.body.appendChild(f);
+        setTimeout(function () { if (f.parentNode) f.parentNode.removeChild(f); }, 5000);
+      }, n * 400);
+    });
+    // Sem resposta (Scriptable ocupado ou fechado): tira os "…" depois de 4 min.
+    clearTimeout(vendasAn.timer);
+    vendasAn.timer = setTimeout(function () {
+      vendasAn.pendentes = {};
+      if (estado.carregou) desenharLista();
+    }, 240000);
+  }
+  window.thAoReceberLinhasAn = function (mapa) {
+    var mexeu = false;
+    for (var id in mapa) {
+      if (mapa[id]) { LN[id] = mapa[id]; mexeu = true; }
+      if (vendasAn.pendentes[id]) { delete vendasAn.pendentes[id]; mexeu = true; }
+    }
+    if (!mexeu || !estado.carregou) return;
+    // Várias respostas seguidas = um redesenho só.
+    clearTimeout(vendasAn.redesenho);
+    vendasAn.redesenho = setTimeout(desenharLista, 300);
+  };
+  function faixaPctAn(l) {
+    function c(p) { return String(Math.round(p * 10) / 10).replace('.', ','); }
+    return (l[0] === l[1] ? c(l[0]) : c(l[0]) + '–' + c(l[1])) + '%';
+  }
+  // Embaixo do nome, no cartão aberto (v6.13, igual ao Avaliar): demanda ·
+  // vendas/dia · só o OP do lado. Recebo = OP dar (laranja); Dou = OP pedir (verde).
+  function detalhes(i, lado) {
+    var d = [];
+    var ln = LN[i.id];
+    if (i.dem >= 0) d.push('<span class="' + corDem(i.dem) + '">' + esc(P.demandaCurta[i.dem]) + '</span>');
+    if (ln && ln.tv) d.push('<span class="' + esc(ln.c) + '">' + esc(ln.tv) + '</span>');
+    else if (vendasAn.pendentes[i.id]) d.push('<span class="sub">…/dia</span>');
+    var dem = i.dem;
+    if (!(dem >= 0) && ln && ln.v != null) dem = nivelVendas(ln.v);
+    var base = valorEfetivo(i);
+    if (base > 0 && P.opRegua && (dem >= 0 || !vendasAn.pendentes[i.id])) {
+      var op = opFaixas(base, dem, P.opRegua);
+      d.push(lado === 'rec'
+        ? '<span class="warn">OP dar ' + faixaPctAn(op.dar.pct) + '</span>'
+        : '<span class="pos">OP pedir ' + faixaPctAn(op.pedir.pct) + '</span>');
+    }
+    return d.length ? d.join(' · ') : '<span class="sub">Sem dados</span>';
   }
   // Valor com a fonte ao lado ("value" ou "RAP"); a fonte tem largura fixa
   // para os números ficarem alinhados.
@@ -810,11 +936,11 @@ function paginaAnuncios(D, P, PA) {
   }
   // Item do cartão aberto. v6.12: o toque abre a tela do item (cartao.js), que
   // tem o "Ver no Rolimon's" embaixo.
-  function linhaItem(i) {
+  function linhaItem(i, lado) {
     return (
       '<button type="button" class="an-i" data-item="' + esc(i.id) + '" data-nome="' + esc(i.nome) + '">' + miniatura(i.id) +
       '<span class="item-txt"><span class="nome">' + esc(i.nome) + '</span>' +
-      '<span class="det">' + detalhes(i) + '</span></span>' +
+      '<span class="det">' + detalhes(i, lado) + '</span></span>' +
       valor(valorEfetivo(i), i.value != null ? 'value' : 'RAP') +
       '<span class="an-seta" aria-hidden="true">›</span></button>'
     );
@@ -840,7 +966,7 @@ function paginaAnuncios(D, P, PA) {
   // Um lado (Recebo ou Dou) com a linha Total (value base, Robux já incluídos).
   function blocoLado(classe, rotulo, itens, robux, recebe, t) {
     var h = '<div class="an-lado ' + classe + '"><div class="an-lcab"><span>' + rotulo + '</span><span>Valor</span></div>';
-    h += itens.map(linhaItem).join('');
+    h += itens.map(function (i) { return linhaItem(i, classe); }).join('');
     if (robux) {
       var liquido = recebe ? Math.floor(robux * (1 - P.taxaRobux)) : robux;
       h += '<div class="an-i"><span class="item-txt"><span class="nome">+ ' + fmtNum(robux) + ' Robux</span>' +
@@ -898,7 +1024,7 @@ function paginaAnuncios(D, P, PA) {
       '<span class="an-main"><span class="an-l1"><b>' + esc(ad[3] || 'Jogador ' + ad[2]) + '</b>' +
       '<span class="an-etq' + (sug ? '' : ' seus') + '">' + esc(etiqueta(r)) + '</span>' +
       '<span class="an-tempo">' + haQuanto(ad[1]) + '</span></span>' +
-      '<span class="an-l2">' + grupo(r.rec, r.robux, 'rec') + '<span class="an-tr">⇄</span>' +
+      '<span class="an-l2">' + grupo(r.rec, r.robux, 'rec') + seloGiro(r) + '<span class="an-tr">⇄</span>' +
       grupo(r.dou, 0, 'dou' + (sug ? ' sug' : '')) + '</span></span>' +
       '<span class="an-pct" data-cor="' + cor + '"><b>' + pctTxt(r.pct) + '</b><small>' + esc(r.v ? r.v.titulo : '') + '</small></span>' +
       '<span class="an-chev">›</span></button>' +
@@ -910,22 +1036,23 @@ function paginaAnuncios(D, P, PA) {
     return l && l[0] ? l[0].nome : '';
   }
   function desenharFiltro() {
+    // v6.13: chips pequenos. Com item escolhido, o chip mostra o item e um ✕.
     var b = $('an-filtro');
     if (estado.item && AN.porAsset[estado.item]) {
       var i = AN.porAsset[estado.item][0];
-      b.className = 'an-fbtn on';
-      b.innerHTML = miniatura(i.id) + '<span class="an-ftxt"><small>Só anúncios com</small><b>' + esc(i.nome) + '</b></span>' +
-        '<span class="an-fx" data-limpar="1" aria-label="Tirar filtro">✕</span>';
+      b.className = 'chip on com-item';
+      b.setAttribute('aria-label', 'Só anúncios com ' + i.nome);
+      b.innerHTML = miniatura(i.id) + '<span class="t">' + esc(i.nome) + '</span>' +
+        '<span class="x" data-limpar="1" role="button" aria-label="Tirar filtro">✕</span>';
     } else {
-      b.className = 'an-fbtn';
-      b.innerHTML = '<span class="thumb an-ftodos">☰</span><span class="an-ftxt"><small>Um item seu</small><b>Todos os seus itens</b></span>' +
-        '<span class="an-fseta">▼</span>';
+      b.className = 'chip';
+      b.setAttribute('aria-label', 'Escolher um item seu');
+      b.innerHTML = '<span class="t">Todos os seus itens</span><span class="v" aria-hidden="true">▾</span>';
     }
-    var bs = document.querySelectorAll('#an-ordem button');
-    for (var k = 0; k < bs.length; k++) bs[k].classList.toggle('on', bs[k].getAttribute('data-o') === estado.ordem);
+    $('an-ordem').innerHTML = '<span class="t">' + esc(NOMES_ORDEM[estado.ordem]) + '</span><span class="v" aria-hidden="true">▾</span>';
     // v6.8: forma, com quantos anúncios cada uma tem (já com o filtro do item).
     var fs = document.querySelectorAll('#an-forma button');
-    for (k = 0; k < fs.length; k++) {
+    for (var k = 0; k < fs.length; k++) {
       var f = fs[k].getAttribute('data-f');
       fs[k].classList.toggle('on', f === estado.forma);
       fs[k].querySelector('small').textContent = estado.carregou ? estado.formas[f].length : '';
@@ -934,8 +1061,6 @@ function paginaAnuncios(D, P, PA) {
   function desenharLista() {
     var lista = estado.lista;
     estado.mostrados = [];
-    $('an-n').textContent = estado.carregou ? lista.length : '';
-    $('an-n').className = 'cont' + (estado.carregou && lista.length ? ' pos' : '');
     if (!estado.carregou) {
       $('an-lista').innerHTML = '<p class="vazio">' + (estado.carregando ? 'Buscando...' : '—') + '</p>';
       return;
@@ -954,6 +1079,8 @@ function paginaAnuncios(D, P, PA) {
       return;
     }
     estado.mostrados = lista.slice(0, PA.maxLista);
+    // v6.13: antes de desenhar, pede as vendas que faltam (o selo já sai com "…").
+    pedirVendasAn();
     var h = '<div class="an-grupo">' + estado.mostrados.map(linha).join('') + '</div>';
     if (lista.length > estado.mostrados.length) h += '<p class="an-mais">Mostrando ' + estado.mostrados.length + ' de ' + lista.length + '.</p>';
     $('an-lista').innerHTML = h;
@@ -970,6 +1097,7 @@ function paginaAnuncios(D, P, PA) {
     }
     $('an-info').textContent = info;
     $('an-atualizar').disabled = estado.carregando;
+    $('an-atualizar').classList.toggle('buscando', estado.carregando);
     var erro = res && res.erro;
     $('an-erro').classList.toggle('oculto', !erro);
     if (erro) {
@@ -1138,13 +1266,28 @@ function paginaAnuncios(D, P, PA) {
   });
   $('an-fundo').addEventListener('click', fecharFolha);
   $('an-fechar').addEventListener('click', fecharFolha);
-  $('an-ordem').addEventListener('click', function (ev) {
+  // v6.13: a ordem fica numa folha pequena (chip "Ordem ▾").
+  function fecharOrdem() {
+    $('ao-fundo').classList.add('oculto');
+    $('ao-folha').classList.add('oculto');
+  }
+  $('an-ordem').addEventListener('click', function () {
+    var bs = document.querySelectorAll('#ao-folha [data-o]');
+    for (var k = 0; k < bs.length; k++) bs[k].classList.toggle('on', bs[k].getAttribute('data-o') === estado.ordem);
+    $('ao-fundo').classList.remove('oculto');
+    $('ao-folha').classList.remove('oculto');
+  });
+  $('ao-fundo').addEventListener('click', fecharOrdem);
+  $('ao-folha').addEventListener('click', function (ev) {
     var b = ev.target.closest('button[data-o]');
-    if (!b) return;
-    estado.ordem = b.getAttribute('data-o');
-    gravarSalvo('an-ordem', estado.ordem);
-    ['todos', 'upgrade', 'downgrade'].forEach(function (f) { ordenar(estado.formas[f]); });
-    desenhar();
+    if (b && ORDENS[b.getAttribute('data-o')]) {
+      estado.ordem = b.getAttribute('data-o');
+      gravarSalvo('an-ordem', estado.ordem);
+      ['todos', 'upgrade', 'downgrade'].forEach(function (f) { ordenar(estado.formas[f]); });
+      estado.aberto = null;
+      desenhar();
+    }
+    if (b || ev.target.closest('#ao-cancelar')) fecharOrdem();
   });
   // v6.8: filtro Todos / Seu upgrade / Seu downgrade (as três listas já estão prontas).
   $('an-forma').addEventListener('click', function (ev) {
