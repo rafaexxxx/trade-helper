@@ -132,22 +132,30 @@ function demandaPorVendas(v) {
   return d;
 }
 
-function arredondar(robux, base) {
-  return base >= 1000 ? Math.round(robux / 10) * 10 : Math.round(robux);
-}
-
 // OP do item sobre o value base (value; sem value = RAP).
 // dar = quanto pagar a mais para PEGAR o item (seu upgrade);
 // pedir = quanto pedir a mais quando você DÁ o item (seu downgrade).
+// v6.12: a conta ficou pura (R = reguaOp()) porque também roda na página do
+// Avaliar (injetada por toString: não pode usar nada de fora dela).
+function opFaixas(base, demanda, R) {
+  var mult = R.mult && typeof R.mult[demanda] === 'number' ? R.mult[demanda] : 1;
+  var dar = [0, -R.up[3] * mult];
+  var pedir = [R.down[2] * mult, R.down[3] * mult];
+  function robux(l) {
+    return l.map(function (p) {
+      var r = (base * p) / 100;
+      return base >= 1000 ? Math.round(r / 10) * 10 : Math.round(r);
+    });
+  }
+  return { base: base, mult: mult, dar: { pct: dar, robux: robux(dar) }, pedir: { pct: pedir, robux: robux(pedir) } };
+}
+
+function reguaOp() {
+  return { up: cfg.VEREDITO_UPGRADE_PCT, down: cfg.VEREDITO_DOWNGRADE_PCT, mult: cfg.CARTAO_OP_DEMANDA_MULT || {} };
+}
+
 function opDoItem(base, demanda) {
-  const tabela = cfg.CARTAO_OP_DEMANDA_MULT || {};
-  const mult = typeof tabela[demanda] === 'number' ? tabela[demanda] : 1;
-  const up = cfg.VEREDITO_UPGRADE_PCT;
-  const down = cfg.VEREDITO_DOWNGRADE_PCT;
-  const dar = [0, -up[3] * mult];
-  const pedir = [down[2] * mult, down[3] * mult];
-  const robux = (l) => l.map((p) => arredondar((base * p) / 100, base));
-  return { base, mult, dar: { pct: dar, robux: robux(dar) }, pedir: { pct: pedir, robux: robux(pedir) } };
+  return opFaixas(base, demanda, reguaOp());
 }
 
 function kb(texto) {
@@ -624,4 +632,5 @@ function script(ponteJson) {
 module.exports = {
   carregar, lerPagina, tela, css, script, extrairVar, serieDoHistorico, porDia, demandaPorVendas,
   lerGuardados, gravarGuardados, entrada, guardarPagina, guardarBest, paginaGuardada, linha, linhas,
+  opFaixas, reguaOp,
 };

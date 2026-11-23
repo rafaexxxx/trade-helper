@@ -596,6 +596,8 @@ ${ajuda.secao(cfg)}
     try { localStorage.setItem('aba', x); } catch (e) {}
     // A aba Anúncios só busca os anúncios quando é aberta.
     if (x === 'anuncios' && !esperando && window.thAbrirAnuncios) window.thAbrirAnuncios();
+    // v6.12: o Avaliar pede as vendas/dia dos itens da proposta quando é aberto.
+    if (x === 'avaliar' && window.thAbrirAvaliar) { try { window.thAbrirAvaliar(); } catch (e) {} }
   }
   var botoesAba = document.querySelectorAll('#abas button');
   for (var k = 0; k < botoesAba.length; k++) {
@@ -756,6 +758,8 @@ ${ajuda.secao(cfg)}
         }
       }
     }
+    // v6.12: a linha dos itens da proposta (Avaliar) usa as mesmas respostas.
+    if (window.thAoReceberLinhas) { try { window.thAoReceberLinhas(mapa || {}); } catch (e) {} }
   };
   setTimeout(function(){ pedirLinhas(1); }, ${Number(cfg.CARTAO_LINHA_ESPERA_MS) || 2500});
 

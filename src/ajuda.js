@@ -408,7 +408,7 @@ function capitulo4(cfg) {
   </ul>
 
   <h3 id="aj-cartao">Tela do item</h3>
-  <p>Abre ao tocar num item no Inventário e no Avaliar. O botão "‹ Voltar", fixo embaixo, fecha. Os dados vêm da página do item no Rolimon's, buscada nesse toque e guardada por ${cfg.CARTAO_CACHE_MIN} min. Se a busca por trás do Inventário acabou de trazer a página, a tela abre na hora.</p>
+  <p>Abre ao tocar num item no Inventário, no Avaliar e nos Anúncios. O botão "‹ Voltar", fixo embaixo, fecha. Os dados vêm da página do item no Rolimon's, buscada nesse toque e guardada por ${cfg.CARTAO_CACHE_MIN} min. Se a busca por trás do Inventário acabou de trazer a página, a tela abre na hora.</p>
   <ul class="aj-lista">
     <li><b>Cores:</b> laranja é o que você paga; verde é o que você ganha ou o que sobe; vermelho é o que desce ou não gira.</li>
     <li><b>Gráfico:</b> o RAP dos últimos ${cfg.CARTAO_DIAS} dias, com 1 ponto por dia. Embaixo: o maior (verde) e o menor (vermelho) RAP do período, o de hoje e quanto ele mudou.</li>
@@ -428,6 +428,8 @@ function capitulo4(cfg) {
     <li><b>Robux:</b> digite nos dois lados; o que você recebe já entra com o desconto de ${Math.round(cfg.TAXA_ROBUX * 100)}%.</li>
     <li><b>Veredito:</b> aparece quando os dois lados têm algo. Use a régua da forma da trade. ${ir('aj-regua', 'Ver as réguas')}</li>
     <li><b>Resumo e Alertas:</b> a conta lado a lado e tudo que merece atenção. "Limpar proposta" pede dois toques.</li>
+    <li><b>Linha de cada item (ex.: Alta · 15/dia · OP dar 0–6%):</b> depois da demanda vêm as vendas por dia (mesmas cores do Inventário) e só o OP que vale para aquele lado. Em <b>Recebo</b>, o <b>OP dar</b> (laranja): quanto pagar a mais para pegar o item. Em <b>Dou</b>, o <b>OP pedir</b> (verde): quanto pedir a mais por ele. São os mesmos números da tela do item, e o valor em Robux fica nela. Isso <b>não muda o veredito</b>.</li>
+    <li><b>De onde vêm as vendas:</b> do que já está guardado no iPhone (a busca do Inventário guarda por ${cfg.CARTAO_LINHA_PAGINA_H}h). Ao abrir esta aba e ao adicionar um item, os que faltam são buscados por trás, um por vez e na frente da fila do Inventário; enquanto isso aparece "…/dia". Item sem demanda no Rolimon's espera as vendas para calcular o OP com a demanda estimada.</li>
     <li><b>Toque num item da proposta:</b> abre a tela do item; "Remover da proposta" fica no fim dela. ${ir('aj-cartao', 'Ver a tela do item')}</li>
   </ul>
 
@@ -438,6 +440,7 @@ function capitulo4(cfg) {
     <li><b>Filtro "Um item seu":</b> mostra só os anúncios em que esse item vai no seu lado.</li>
     <li><b>Todos, Seu upgrade, Seu downgrade:</b> a forma da trade do seu lado. Seu upgrade: você dá vários itens e recebe 1. Seu downgrade: você dá 1 e recebe 2 ou 3. Vale para anúncios que pedem seus itens e para as sugestões; sidegrade e "por Robux" só aparecem em Todos. Se o anúncio aceita as duas formas, cada filtro monta a sugestão daquela forma, e por isso os números podem somar mais que Todos.</li>
     <li><b>Ordem:</b> maior ganho, mais recentes ou maior value recebido.</li>
+    <li><b>Toque num item do cartão aberto:</b> abre a tela do item, com as mudanças de RAP e value em 24h no fim. O "Ver no Rolimon's" fica embaixo dela. ${ir('aj-cartao', 'Ver a tela do item')}</li>
     <li><b>Atualizar:</b> os anúncios são buscados ao abrir a aba, no máximo a cada ${cfg.ANUNCIOS_CACHE_MIN} min. Os vistos ficam guardados por ${cfg.ANUNCIOS_GUARDAR_HORAS} h e podem já ter sido fechados.</li>
   </ul>
 

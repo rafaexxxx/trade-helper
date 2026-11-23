@@ -263,7 +263,10 @@ async function executar(ctx) {
   try {
     baseCatalogo = hist.baseCatalogo24h(ctx.dirDados, agora);
     const thumbs = Object.assign({}, api.miniaturasEmCache(store), miniaturas);
-    const json = avaliador.serializar(avaliador.prepararDados(dados.rolimons, itens, baseCatalogo, thumbs));
+    // v6.12: o Avaliar recebe tudo o que está guardado (vendas/dia de qualquer
+    // item já visto), para a linha da proposta aparecer na hora.
+    const linhasAv = cartao.linhas(guardados, Object.keys(guardados.itens).map((id) => ({ assetId: id })));
+    const json = avaliador.serializar(avaliador.prepararDados(dados.rolimons, itens, baseCatalogo, thumbs, linhasAv));
     resultado.avaliador = { json, base: baseCatalogo ? baseCatalogo.data : null, erro: null };
   } catch (e) {
     resultado.avaliador = { json: null, base: null, erro: e.message || String(e) };
@@ -519,10 +522,13 @@ async function executar(ctx) {
 
   // Manda a linha nova de um item para a página (as duas contas; a página acha
   // as linhas pelo data-asset) e o resumo da fila para o Diagnóstico.
-  async function enviarLinha(id) {
+  // v6.12: semDado = manda null quando não há nada guardado (o Avaliar para de
+  // mostrar "…/dia" naquele item).
+  async function enviarLinha(id, semDado) {
     const mapa = {};
     const l = cartao.linha(guardados, id);
     if (l) mapa[id] = l;
+    else if (semDado) mapa[id] = null;
     try {
       await wv.evaluateJavaScript(
         'window.receberLinhas && window.receberLinhas(' + avaliador.serializar(mapa) + ',' + avaliador.serializar(resumoFila()) + ')',
@@ -572,6 +578,7 @@ async function executar(ctx) {
   const fila = {
     ids: [],
     vistos: {},
+    avisar: {},
     rodando: false,
     pausaRol: null,
     pausaRbx: null,
@@ -670,12 +677,35 @@ async function executar(ctx) {
         fila.n.falhas++;
         fila.ultimoErro = e.message || String(e);
       }
+      // v6.12: item pedido pelo Avaliar sempre tem resposta (mesmo sem dado).
+      if (fila.avisar[id]) {
+        delete fila.avisar[id];
+        await enviarLinha(id, true);
+      }
     }
     fila.rodando = false;
     await enviarLinha('0');
   }
 
   function atenderLinhas(url) {
+    // v6.12: PONTE + 'linhas?ids=1,2,3' = itens da proposta do Avaliar. Furam a
+    // fila (vão para a frente); os que já estão guardados há menos de
+    // CARTAO_LINHA_PAGINA_H não buscam nada de novo.
+    const mi = /[?&]ids=([\d,]+)/.exec(url);
+    if (mi) {
+      const ids = [];
+      for (const id of mi[1].split(',')) {
+        if (!id || ids.indexOf(id) >= 0 || ids.length >= 2 * cfg.MAX_ITENS_POR_LADO) continue;
+        ids.push(id);
+        fila.vistos[id] = true;
+        fila.avisar[id] = true;
+        const k = fila.ids.indexOf(id);
+        if (k >= 0) fila.ids.splice(k, 1);
+      }
+      fila.ids = ids.concat(fila.ids);
+      rodarFila();
+      return;
+    }
     const lista = /conta=2/.test(url) ? itensConta2 : itens;
     if (!lista) return;
     // A lista já vem do maior value para o menor (analise.montarItens).

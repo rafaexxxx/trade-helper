@@ -65,7 +65,7 @@ Pronto! Das próximas vezes é só abrir o script. Ele confere sozinho se há ve
 
 ### 🃏 Tela do item (v6.10; o card nasceu na v6.9)
 
-Abre em **tela cheia** ao tocar num item no **Inventário** (nas duas contas) e no **Avaliar**. O botão **‹ Voltar** fica fixo **embaixo** (v6.10.1: no topo ele ficava colado no "Close" do Scriptable).
+Abre em **tela cheia** ao tocar num item no **Inventário** (nas duas contas), no **Avaliar** e nos **Anúncios** (v6.12). O botão **‹ Voltar** fica fixo **embaixo** (v6.10.1: no topo ele ficava colado no "Close" do Scriptable).
 
 **Cores** (v6.10.1): 🟠 laranja = o que você paga (OP para dar) · 🟢 verde = o que você ganha ou o que sobe (OP para pedir, ▲ no RAP, maior RAP, vendas e demanda boas) · 🔴 vermelho = o que desce ou não gira. Os dados vêm da página do item no Rolimon's (~850 KB), buscada nesse toque, ou da que a busca por trás do Inventário guardou há até `CARTAO_CACHE_MIN` (10 min). Nada é buscado ao abrir o app.
 
@@ -104,6 +104,20 @@ Ordem da tela:
 3. Se houver Robux, digite nos campos **Robux** de cada lado (no máximo 4 itens por lado, como no Roblox).
 4. Leia o **veredito** e os motivos.
 
+### 📈 Vendas/dia e OP na linha do item (v6.12)
+
+A linha de cada item da proposta mostra, depois da demanda, as **vendas por dia** e **só o OP que vale para aquele lado**:
+
+| Lado | Exemplo | O que é |
+|---|---|---|
+| **Recebo** | `Alta · 15/dia · OP dar 0–6%` (laranja) | quanto pagar a mais para **pegar** o item |
+| **Dou** | `Normal · 2,3/dia · OP pedir 7–12%` (verde) | quanto **pedir** a mais quando você dá o item |
+
+- O OP é a **mesma conta da tela do item** (`cartao.opFaixas`): só em %, e o valor em Robux fica na tela do item.
+- As vendas/dia vêm do **arquivo guardado** da v6.11 (`dados/cartoes.json`, vale 24h). Ao **abrir a aba** e ao **adicionar um item**, os itens da proposta vão para a **frente da fila** do Inventário (`PONTE + 'linhas?ids=…'`), uma vez por abertura. Enquanto não chegam, aparece `…/dia`. Nada roda na abertura do app: se o painel abrir direto no Avaliar, espera `CARTAO_LINHA_ESPERA_MS`.
+- Item **sem demanda** no Rolimon's espera as vendas e usa a demanda estimada (igual à tela do item). Item fora do Rolimon's fica sem OP.
+- **Nada disso muda o veredito.**
+
 Como a conta é feita:
 
 - **Value base**: é o número que decide. Item **com value** no Rolimon's vale o value; item **sem value** vale o RAP. Somam-se os Robux.
@@ -132,7 +146,7 @@ A forma é vista do **seu** lado, pela contagem de itens:
 
 1. No painel, toque em **Anúncios** no topo. Os anúncios recentes do Rolimon's são buscados nessa hora (no máximo 1 busca a cada 3 min).
 2. Os anúncios já vistos ficam guardados no iPhone por **2h**, então a lista cresce a cada consulta. Um anúncio guardado pode já ter sido fechado.
-3. A lista é **única**, em linhas curtas (jogador, itens, % e veredito). Tocar numa linha abre o cartão completo; tocar num item abre a página dele no Rolimon's; os botões levam ao **jogador no Rolimon's** ou abrem a **trade no Roblox** (quem monta e envia a trade é você).
+3. A lista é **única**, em linhas curtas (jogador, itens, % e veredito). Tocar numa linha abre o cartão completo; tocar num item abre a **tela do item** (v6.12), com as mudanças de RAP e value em 24h no fim e o "Ver no Rolimon's" embaixo; os botões levam ao **jogador no Rolimon's** ou abrem a **trade no Roblox** (quem monta e envia a trade é você).
 4. **Filtros**:
    - **"Um item seu"**: só os anúncios que envolvem aquele item.
    - **Todos / Seu upgrade / Seu downgrade** (v6.8): a forma da trade do **seu** lado, com a contagem em cada botão.

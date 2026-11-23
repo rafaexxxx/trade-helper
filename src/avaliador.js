@@ -3,6 +3,8 @@
 // um catálogo enxuto e gera o HTML, o CSS e o JS da aba.
 const a = require('analise');
 const ajuda = require('ajuda');
+// v6.12: a régua do OP (opFaixas) é a mesma da tela do item.
+const cartao = require('cartao');
 
 // v6.2: as funções compartilhadas abaixo também rodam no Scriptable (notificações
 // do widget). Na página elas usam as cópias injetadas de fmtNum/fmtPct/fmtPctSinal;
@@ -271,13 +273,18 @@ function parametros(cfg) {
     demandaCurta,
     tendenciaCurta,
     ponte: PONTE,
+    // v6.12: OP do lado e demanda estimada pelas vendas na linha do item.
+    opRegua: cartao.reguaOp(),
+    demVendas: cfg.CARTAO_DEMANDA_VENDAS,
+    esperaLinhas: cfg.CARTAO_LINHA_ESPERA_MS,
   };
 }
 
 // ---------- Dados para a página ----------
 // catalogo: items do Rolimon's; itens: inventário já montado (analise.montarItens);
 // base: retrato do catálogo de ~24h atrás (ou null); miniaturas: { assetId: url }.
-function prepararDados(catalogo, itens, base, miniaturas) {
+// v6.12: linhas = { assetId: cartao.linha } do que está guardado (vendas/dia).
+function prepararDados(catalogo, itens, base, miniaturas, linhas) {
   const C = {};
   const b24 = base ? base.itens : null;
   for (const id of Object.keys(catalogo)) {
@@ -300,7 +307,7 @@ function prepararDados(catalogo, itens, base, miniaturas) {
       b && value > 0 ? pct1(b[1], value) : null,
     ];
   }
-  return { catalogo: C, inventario: inventarioCompacto(itens), miniaturas: miniaturas || {} };
+  return { catalogo: C, inventario: inventarioCompacto(itens), miniaturas: miniaturas || {}, linhas: linhas || {} };
 }
 
 // [uaid, assetId, serial, hold, nome, rap] (nome e rap servem para itens fora do Rolimon's).
@@ -564,6 +571,7 @@ function paginaAvaliador(D, P) {
   function detalhes(i, lado) {
     var d = [];
     if (i.dem >= 0) d.push('<span class="' + corDem(i.dem) + '">' + esc(P.demandaCurta[i.dem]) + '</span>');
+    d = d.concat(vendasEOp(i, lado));
     if (i.serial) d.push('#' + esc(i.serial));
     if (i.tend >= 0) d.push('<span class="' + corTend(i.tend) + '">' + esc(P.tendenciaCurta[i.tend]) + '</span>');
     if (i.rap24 != null) d.push(variacao24(i.rap24));
@@ -576,6 +584,104 @@ function paginaAvaliador(D, P) {
     if (lado === 'dou' && !i.doInventario) d.push('<span class="warn">simulação</span>');
     return d.join(' · ');
   }
+  // ---------- v6.12: vendas/dia e o OP do lado, na linha do item ----------
+  // As vendas/dia vêm do que o Scriptable guardou (dados/cartoes.json, a mesma
+  // fila do Inventário). Os itens da proposta são pedidos ao abrir a aba e ao
+  // adicionar um item, uma vez por abertura; até a resposta, "…/dia".
+  // O OP usa a mesma régua da tela do item (opFaixas, de cartao.js). Recebo =
+  // OP para dar (o que você paga a mais para pegar o item); Dou = OP para pedir.
+  // Nada disso muda o veredito.
+  var LINHAS = D.linhas || {};
+  var vendas = { pedidos: 0, pedidosPor: {}, pendentes: {}, respostas: 0, timer: null };
+  function pctCurto(p) {
+    return String(Math.round(p * 10) / 10).replace('.', ',');
+  }
+  function faixaPct(l) {
+    return (l[0] === l[1] ? pctCurto(l[0]) : pctCurto(l[0]) + '–' + pctCurto(l[1])) + '%';
+  }
+  // Mesma escala da demanda (0 terrível .. 4 incrível), como na tela do item.
+  function demandaPorVendasP(v) {
+    var n = 0;
+    P.demVendas.forEach(function (l) { if (v >= l) n++; });
+    return n;
+  }
+  function vendasEOp(i, lado) {
+    var d = [];
+    var ln = LINHAS[i.id];
+    var pend = !!vendas.pendentes[i.id];
+    if (ln && ln.tv) d.push('<span class="' + esc(ln.c) + '">' + esc(ln.tv) + '</span>');
+    else if (pend) d.push('<span class="sub">…/dia</span>');
+    // Item fora do Rolimon's: a tela do item também fica sem OP.
+    if (i.foraRolimons) return d;
+    var base = valorEfetivo(i);
+    var dem = i.dem;
+    if (!(dem >= 0)) {
+      // Sem demanda no Rolimon's: estimada pelas vendas (espera elas chegarem).
+      if (ln && ln.v != null) dem = demandaPorVendasP(ln.v);
+      else if (pend) return d;
+    }
+    if (base > 0) {
+      var op = opFaixas(base, dem, P.opRegua);
+      d.push(lado === 'recebo'
+        ? '<span class="warn">OP dar ' + faixaPct(op.dar.pct) + '</span>'
+        : '<span class="pos">OP pedir ' + faixaPct(op.pedir.pct) + '</span>');
+    }
+    return d;
+  }
+  function redesenharItens() {
+    desenharLado('dou', proposta.dou.map(resolver));
+    desenharLado('recebo', proposta.recebo.map(resolver));
+  }
+  function pedirVendas() {
+    var ids = [];
+    proposta.dou.concat(proposta.recebo).forEach(function (e) {
+      var i = resolver(e);
+      if (i && !i.foraRolimons && !vendas.pedidosPor[i.id] && ids.indexOf(i.id) < 0) ids.push(i.id);
+    });
+    if (!ids.length) return;
+    ids.forEach(function (id) {
+      vendas.pedidosPor[id] = 1;
+      vendas.pendentes[id] = 1;
+    });
+    vendas.pedidos++;
+    var f = document.createElement('iframe');
+    f.style.display = 'none';
+    f.src = P.ponte + 'linhas?ids=' + ids.join(',') + '&t=' + Date.now();
+    document.body.appendChild(f);
+    setTimeout(function () { if (f.parentNode) f.parentNode.removeChild(f); }, 5000);
+    // Sem resposta (Scriptable ocupado ou fechado): tira o "…" depois de 2 min.
+    clearTimeout(vendas.timer);
+    vendas.timer = setTimeout(function () {
+      vendas.pendentes = {};
+      redesenharItens();
+      atualizarDiagPonte();
+    }, 120000);
+    redesenharItens();
+    atualizarDiagPonte();
+  }
+  window.thAbrirAvaliar = pedirVendas;
+  window.thAoReceberLinhas = function (mapa) {
+    var mexeu = false;
+    for (var id in mapa) {
+      if (mapa[id]) LINHAS[id] = mapa[id];
+      if (vendas.pendentes[id]) {
+        delete vendas.pendentes[id];
+        vendas.respostas++;
+        mexeu = true;
+      }
+      if (mapa[id] && !mexeu) {
+        mexeu = proposta.dou.concat(proposta.recebo).some(function (e) {
+          var i = resolver(e);
+          return i && i.id === id;
+        });
+      }
+    }
+    if (mexeu) {
+      redesenharItens();
+      atualizarDiagPonte();
+    }
+  };
+
   // Linha do item: o número grande é o value base ("RAP" ao lado quando o item
   // não tem value); embaixo, o RAP como informação.
   function linha(i, lado, k) {
@@ -863,7 +969,9 @@ function paginaAvaliador(D, P) {
     if (!el) return;
     el.textContent = 'Avaliador: ' + qtdCatalogo + ' itens no catálogo · ponte das miniaturas: ' +
       ponte.pedidos + ' pedido(s), ' + ponte.respostas + ' resposta(s)' +
-      (ponte.ultimoErro ? ' · erro: ' + ponte.ultimoErro : '') + ' · proposta salva: ' + (salvaOk ? 'sim' : 'não');
+      (ponte.ultimoErro ? ' · erro: ' + ponte.ultimoErro : '') + ' · proposta salva: ' + (salvaOk ? 'sim' : 'não') +
+      ' · vendas/dia: ' + Object.keys(LINHAS).length + ' guardadas, ' + vendas.pedidos + ' pedido(s), ' +
+      vendas.respostas + ' resposta(s), ' + Object.keys(vendas.pendentes).length + ' esperando';
   }
   function pedirMiniaturas(ids) {
     var faltam = [];
@@ -953,6 +1061,7 @@ function paginaAvaliador(D, P) {
     if (r && proposta[busca.lado].length < P.maxItens) proposta[busca.lado].push(r.e);
     fecharBusca();
     atualizar();
+    pedirVendas();
   });
   $('fb-fechar').addEventListener('click', fecharBusca);
   $('fb-fundo').addEventListener('click', fecharBusca);
@@ -985,6 +1094,9 @@ function paginaAvaliador(D, P) {
   $('rb-dou').value = proposta.robuxDou || '';
   $('rb-recebo').value = proposta.robuxRecebo || '';
   atualizar();
+  // v6.12: painel aberto direto no Avaliar (aba lembrada): pede as vendas/dia
+  // depois da mesma espera do Inventário (nada na abertura).
+  if (!$('aba-avaliar').classList.contains('oculto')) setTimeout(pedirVendas, P.esperaLinhas || 2500);
 }
 
 // <script> completo da aba: funções auxiliares + dados + paginaAvaliador.
@@ -1004,6 +1116,7 @@ function script(json, cfg) {
     calcularVeredito.toString() + '\n' +
     corVeredito.toString() + '\n' +
     tituloWFL.toString() + '\n' +
+    cartao.opFaixas.toString() + '\n' +
     'var TH_D = ' + json + ';\n' +
     'var TH_P = ' + serializar(parametros(cfg)) + ';\n' +
     '(' + paginaAvaliador.toString() + ')(TH_D, TH_P);\n' +

@@ -277,7 +277,8 @@ function css() {
 .an-lado.rec .an-lcab{color:var(--pos)}
 .an-lado.dou .an-lcab{color:var(--acc-t)}
 .an-i{display:flex;align-items:center;gap:10px;padding:8px 12px;color:inherit;text-decoration:none;-webkit-tap-highlight-color:transparent}
-a.an-i:active{background:var(--card2)}
+button.an-i{width:100%;margin:0;border:0;background:none;font:inherit;text-align:left}
+button.an-i:active{background:var(--card2)}
 .an-i .thumb{width:34px;height:34px;border-radius:9px}
 .an-i .item-txt{gap:1px}
 .an-i .nome{font-size:14px}
@@ -807,16 +808,34 @@ function paginaAnuncios(D, P, PA) {
   function valor(n, fonte) {
     return '<span class="an-val">' + fmtNum(n) + '<small>' + fonte + '</small></span>';
   }
-  // Item do cartão aberto: o toque abre a página do item no Rolimon's
-  // (o painel.js manda o link para o Safari).
+  // Item do cartão aberto. v6.12: o toque abre a tela do item (cartao.js), que
+  // tem o "Ver no Rolimon's" embaixo.
   function linhaItem(i) {
     return (
-      '<a class="an-i" href="https://www.rolimons.com/item/' + esc(i.id) + '">' + miniatura(i.id) +
+      '<button type="button" class="an-i" data-item="' + esc(i.id) + '" data-nome="' + esc(i.nome) + '">' + miniatura(i.id) +
       '<span class="item-txt"><span class="nome">' + esc(i.nome) + '</span>' +
       '<span class="det">' + detalhes(i) + '</span></span>' +
       valor(valorEfetivo(i), i.value != null ? 'value' : 'RAP') +
-      '<span class="an-seta" aria-hidden="true">↗</span></a>'
+      '<span class="an-seta" aria-hidden="true">›</span></button>'
     );
+  }
+  // Mudanças de 24h que a lista já tem (sem busca extra), no fim da tela do item.
+  function mudancas24(i) {
+    var m = [];
+    if (i && i.rap24) m.push(['RAP ' + fmtPctSinal(i.rap24) + ' em 24h', i.rap24 > 0 ? 'pos' : 'neg']);
+    if (i && i.val24) m.push(['Value ' + fmtPctSinal(i.val24) + ' em 24h', i.val24 > 0 ? 'pos' : 'neg']);
+    return m;
+  }
+  function abrirItem(b) {
+    var id = b.getAttribute('data-item');
+    if (!id || !window.thItem) return;
+    window.thItem.abrir({
+      id: id,
+      nome: b.getAttribute('data-nome'),
+      thumb: THUMBS[id] || null,
+      mudancas: mudancas24(itemDoCatalogo(D.catalogo, id)),
+      tituloMud: 'Mudanças em 24h',
+    });
   }
   // Um lado (Recebo ou Dou) com a linha Total (value base, Robux já incluídos).
   function blocoLado(classe, rotulo, itens, robux, recebe, t) {
@@ -1137,9 +1156,14 @@ function paginaAnuncios(D, P, PA) {
     estado.aberto = null;
     desenhar();
   });
-  // Links (item, jogador, trade) seguem sozinhos: o painel.js abre no Safari.
-  // O toque na linha só abre e fecha o cartão.
+  // Links (jogador, trade) seguem sozinhos: o painel.js abre no Safari.
+  // O toque no item abre a tela do item; o toque na linha abre e fecha o cartão.
   $('aba-anuncios').addEventListener('click', function (ev) {
+    var bi = ev.target.closest('[data-item]');
+    if (bi) {
+      abrirItem(bi);
+      return;
+    }
     if (ev.target.closest('a')) return;
     var l = ev.target.closest('.an-linha');
     if (!l) return;
