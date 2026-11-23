@@ -405,13 +405,14 @@ function capitulo4(cfg) {
   </ul>
 
   <h3 id="aj-cartao">Tela do item</h3>
-  <p>Abre ao tocar num item no Inventário e no Avaliar. "‹ Voltar" fecha. Os dados vêm da página do item no Rolimon's, buscada só nesse toque e guardada por ${cfg.CARTAO_CACHE_MIN} min.</p>
+  <p>Abre ao tocar num item no Inventário e no Avaliar. O botão "‹ Voltar", fixo embaixo, fecha. Os dados vêm da página do item no Rolimon's, buscada só nesse toque e guardada por ${cfg.CARTAO_CACHE_MIN} min.</p>
   <ul class="aj-lista">
-    <li><b>Gráfico:</b> o RAP dos últimos ${cfg.CARTAO_DIAS} dias, com 1 ponto por dia, o maior e o menor RAP do período e o RAP de hoje marcado no fim.</li>
+    <li><b>Cores:</b> laranja é o que você paga; verde é o que você ganha ou o que sobe; vermelho é o que desce ou não gira.</li>
+    <li><b>Gráfico:</b> o RAP dos últimos ${cfg.CARTAO_DIAS} dias, com 1 ponto por dia. Embaixo: o maior (verde) e o menor (vermelho) RAP do período, o de hoje e quanto ele mudou.</li>
     <li><b>OP para dar:</b> quanto pagar a mais para <b>pegar</b> este item (o seu upgrade). Vai de 0 até o "Vale muito" da régua do upgrade (${pct(-cfg.VEREDITO_UPGRADE_PCT[3])}).</li>
     <li><b>OP para pedir:</b> quanto pedir a mais quando você <b>dá</b> este item (o seu downgrade). É o "Vale a pena" da régua do downgrade (${pct(cfg.VEREDITO_DOWNGRADE_PCT[2])} a ${pct(cfg.VEREDITO_DOWNGRADE_PCT[3])}).</li>
     <li><b>Ajuste pela demanda:</b> item disputado pede OP maior; item parado, menor. Terrível ×0,6, Baixa ×0,8, Normal ×1, Alta ×1,2 e Incrível ×1,4. A conta usa o value (sem value, o RAP).</li>
-    <li><b>Best Price:</b> o menor preço à venda agora. <b>Depois da venda:</b> o RAP se alguém comprar por esse preço. O Roblox move o RAP 1/10 do caminho até o preço da venda.</li>
+    <li><b>Best Price:</b> o menor preço à venda agora. <b>Depois da venda:</b> o RAP se alguém comprar por esse preço. O Roblox move o RAP 1/10 do caminho até o preço da venda; a seta mostra quanto ele sobe ou desce.</li>
     <li><b>Vendas por dia:</b> média de 30 dias. É o melhor sinal de que o item gira.</li>
     <li><b>Demanda:</b> a do Rolimon's. Item sem value não tem demanda lá; nesse caso, ela é <b>estimada pelas vendas</b>: ${String(cfg.CARTAO_DEMANDA_VENDAS[3]).replace('.', ',')} ou mais por dia = Incrível, ${String(cfg.CARTAO_DEMANDA_VENDAS[2]).replace('.', ',')} ou mais = Alta, ${String(cfg.CARTAO_DEMANDA_VENDAS[1]).replace('.', ',')} ou mais = Normal, ${String(cfg.CARTAO_DEMANDA_VENDAS[0]).replace('.', ',')} ou mais = Baixa, menos = Terrível.</li>
     <li>Se o Rolimon's não responder, o bloco mostra "sem dado". Os OP aparecem mesmo assim, porque saem das réguas do app.</li>

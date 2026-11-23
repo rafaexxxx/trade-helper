@@ -47,13 +47,15 @@ Pronto! Das próximas vezes é só abrir o script. Ele confere sozinho se há ve
 
 ### 🃏 Tela do item (v6.10; o card nasceu na v6.9)
 
-Abre em **tela cheia** ao tocar num item no **Inventário** (nas duas contas) e no **Avaliar**. **‹ Voltar** fecha. Os dados são buscados **só nesse toque**, na página do item no Rolimon's (~850 KB), e ficam guardados por `CARTAO_CACHE_MIN` (10 min). Nada é buscado ao abrir o app.
+Abre em **tela cheia** ao tocar num item no **Inventário** (nas duas contas) e no **Avaliar**. O botão **‹ Voltar** fica fixo **embaixo** (v6.10.1: no topo ele ficava colado no "Close" do Scriptable).
+
+**Cores** (v6.10.1): 🟠 laranja = o que você paga (OP para dar) · 🟢 verde = o que você ganha ou o que sobe (OP para pedir, ▲ no RAP, maior RAP, vendas e demanda boas) · 🔴 vermelho = o que desce ou não gira. Os dados são buscados **só nesse toque**, na página do item no Rolimon's (~850 KB), e ficam guardados por `CARTAO_CACHE_MIN` (10 min). Nada é buscado ao abrir o app.
 
 Ordem da tela:
 
 | Bloco | O que é | De onde vem |
 |---|---|---|
-| **Gráfico** | RAP dos últimos 90 dias (1 ponto por dia: o último de cada dia), com o maior, o menor e o de hoje | Histórico da página do Rolimon's |
+| **Gráfico** | RAP dos últimos 90 dias (1 ponto por dia: o último de cada dia). Embaixo, a legenda: maior, menor, hoje e a variação no período (os números ficam fora do desenho para não se atravessarem) | Histórico da página do Rolimon's |
 | **OP para dar** | Quanto pagar a mais para **pegar** o item (seu upgrade), em % e em Robux | 0 até o "Vale muito" do upgrade (0–5%) × demanda |
 | **OP para pedir** | Quanto pedir a mais quando você **dá** o item (seu downgrade) | O "Vale a pena" do downgrade (7–12%) × demanda |
 | **Best Price** | Menor preço à venda agora | Página do Rolimon's (reserva: Roblox `v2/assets/{id}/details`) |

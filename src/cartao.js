@@ -165,6 +165,8 @@ async function carregar(assetId, rolimons) {
     em: Date.now(),
     op: null,
     semValue: value == null,
+    rap,
+    vendasN: -1,
     demandaN: -1,
     demanda: null,
     demandaEstimada: false,
@@ -235,9 +237,11 @@ async function carregar(assetId, rolimons) {
   if (res.best && rap != null) res.depois = Math.round(rap + (res.best - rap) / 10);
 
   // Demanda: a do Rolimon's; sem ela, a estimada pelas vendas por dia.
+  // vendasN (mesma escala 0..4) só colore as vendas por dia na tela.
+  if (res.vendasDia != null) res.vendasN = demandaPorVendas(res.vendasDia);
   let dem = demCatalogo;
   if (dem < 0 && res.vendasDia != null) {
-    dem = demandaPorVendas(res.vendasDia);
+    dem = res.vendasN;
     res.demandaEstimada = true;
   }
   res.demandaN = dem;
@@ -253,15 +257,18 @@ async function carregar(assetId, rolimons) {
 function tela() {
   return (
     '<div id="tela-item" class="ti oculto" role="dialog" aria-modal="true" aria-labelledby="ti-nome">' +
-    '<div class="ti-barra"><button type="button" class="ti-voltar" id="ti-voltar">‹ Voltar</button>' +
-    '<div class="ti-titulo"><img class="thumb oculto" id="ti-thumb" alt=""><b id="ti-nome"></b></div></div>' +
+    // v6.10.1: em cima só o item; o Voltar foi para uma barra fixa embaixo
+    // (no topo ele ficava colado no "Close" do Scriptable).
+    '<div class="ti-barra"><div class="ti-titulo"><img class="thumb oculto" id="ti-thumb" alt=""><b id="ti-nome"></b></div></div>' +
     '<div class="ti-corpo">' +
     '<div id="ti-card"></div>' +
     '<div id="ti-alertas" class="ti-bloco oculto"></div>' +
     '<div id="ti-mud" class="ti-bloco oculto"></div>' +
     '<div class="ti-links"><a class="ti-acao" id="ti-rol" href="#">Ver no Rolimon\'s</a><a class="ti-acao" id="ti-rbx" href="#">Ver no Roblox</a></div>' +
     '<button type="button" class="ti-acao ti-perigo oculto" id="ti-remover">Remover da proposta</button>' +
-    '</div></div>'
+    '</div>' +
+    '<div class="ti-pe"><button type="button" class="ti-voltar" id="ti-voltar">‹ Voltar</button></div>' +
+    '</div>'
   );
 }
 
@@ -269,12 +276,14 @@ function css() {
   return `
 .ti{position:fixed;top:0;left:0;right:0;bottom:0;z-index:45;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;background:var(--bg);color:var(--fg)}
 html.ti-aberta,html.ti-aberta body{overflow:hidden}
-.ti-barra{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:10px;padding:max(10px,env(safe-area-inset-top)) 16px 10px;background:var(--bg);border-bottom:1px solid var(--borda)}
-.ti-voltar{flex:none;padding:6px 2px;border:0;background:none;font:inherit;font-size:17px;font-weight:600;color:var(--acc-t);-webkit-tap-highlight-color:transparent}
-.ti-titulo{flex:1;min-width:0;display:flex;align-items:center;justify-content:flex-end;gap:10px}
+.ti-barra{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:10px;padding:max(12px,env(safe-area-inset-top)) 16px 12px;background:var(--bg);border-bottom:1px solid var(--borda)}
+.ti-titulo{flex:1;min-width:0;display:flex;align-items:center;gap:10px}
+.ti-pe{position:fixed;left:0;right:0;bottom:0;z-index:3;padding:10px 16px max(12px,env(safe-area-inset-bottom));background:var(--bg);border-top:1px solid var(--borda)}
+.ti-voltar{display:block;width:100%;max-width:640px;margin:0 auto;padding:14px 16px;border-radius:14px;border:1px solid var(--card-borda);background:var(--card2);font:inherit;font-size:17px;font-weight:700;color:var(--acc-t);-webkit-tap-highlight-color:transparent}
+.ti-voltar:active{opacity:.7}
 .ti-titulo .thumb{flex:none;width:34px;height:34px;border-radius:9px}
 .ti-titulo b{min-width:0;font-size:16px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.ti-corpo{display:flex;flex-direction:column;gap:12px;max-width:640px;margin:0 auto;padding:14px 16px max(28px,env(safe-area-inset-bottom))}
+.ti-corpo{display:flex;flex-direction:column;gap:12px;max-width:640px;margin:0 auto;padding:14px 16px calc(96px + env(safe-area-inset-bottom))}
 #ti-card{display:flex;flex-direction:column;gap:10px}
 .ti-graf{display:flex;flex-direction:column;gap:6px;padding:12px 12px 8px;border-radius:16px;background:var(--card);border:1px solid var(--card-borda)}
 .ti-graf small{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--sub)}
@@ -285,11 +294,18 @@ html.ti-aberta,html.ti-aberta body{overflow:hidden}
 .ct-c b{font-size:19px;font-weight:700;font-variant-numeric:tabular-nums}
 .ct-c span{font-size:13px;font-weight:600;font-variant-numeric:tabular-nums}
 .ct-c em{font-style:normal;font-size:11px;line-height:1.3;color:var(--sub)}
-.ct-c .pos{color:var(--pos)}
-.ct-c .warn{color:var(--warn)}
-.ct-c .neg{color:var(--neg)}
+.ct-c i{font-style:normal}
+:is(.ct-c,.ct-nota,.ti-leg) .pos{color:var(--pos)}
+:is(.ct-c,.ct-nota,.ti-leg) .warn{color:var(--warn)}
+:is(.ct-c,.ct-nota,.ti-leg) .neg{color:var(--neg)}
+.ct-c .rap{color:var(--rap)}
 .ct-c .sem{font-size:15px;font-weight:600;color:var(--sub)}
 .ct-nota{font-size:12px;line-height:1.4;color:var(--sub)}
+.ct-nota b{font-weight:700}
+.ti-leg{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding-top:8px;border-top:1px solid var(--borda)}
+.ti-leg span{display:flex;flex-direction:column;gap:1px;min-width:0}
+.ti-leg small{font-size:10px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--sub);white-space:nowrap}
+.ti-leg b{font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
 .ct-esq{height:150px;border-radius:16px;background:var(--card);opacity:.6}
 .ti-bloco{display:flex;flex-direction:column;gap:8px;padding:12px 14px;border-radius:16px;background:var(--card);border:1px solid var(--card-borda)}
 .ti-bloco h3{margin:0;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--sub)}
@@ -327,10 +343,12 @@ function paginaItem(PONTE) {
     return ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth() + 1)).slice(-2);
   }
 
-  // Gráfico do RAP: área + linha, mínimo e máximo à esquerda, o valor de hoje
-  // marcado no fim e as datas do começo, do meio e do fim embaixo.
+  // Gráfico do RAP: área + linha, linhas tracejadas no maior e no menor RAP, o
+  // ponto de hoje no fim e as datas do começo, do meio e do fim embaixo.
+  // v6.10.1: os números saíram de dentro do gráfico (se atravessavam) e foram
+  // para a legenda colorida logo abaixo (legenda()).
   function grafico(serie) {
-    var W = 320, H = 132, E = 2, BAIXO = H + 14;
+    var W = 320, H = 132, E = 2, BAIXO = H + 18;
     var t0 = serie[0][0], t1 = serie[serie.length - 1][0];
     var min = Infinity, max = -Infinity;
     serie.forEach(function (p) { if (p[1] < min) min = p[1]; if (p[1] > max) max = p[1]; });
@@ -345,53 +363,76 @@ function paginaItem(PONTE) {
     var tm = t0 + (t1 - t0) / 2;
     // Cores por style (var() em atributo de SVG não é garantido no WebKit).
     var txt = 'font-size="10" style="fill:var(--sub)"';
-    var grade = 'style="stroke:var(--borda)" stroke-dasharray="3 3"';
     return '<svg viewBox="0 0 ' + W + ' ' + BAIXO + '" role="img" aria-label="Gráfico do RAP">' +
-      '<line x1="0" x2="' + W + '" y1="' + y(max).toFixed(1) + '" y2="' + y(max).toFixed(1) + '" ' + grade + '/>' +
-      '<line x1="0" x2="' + W + '" y1="' + y(min).toFixed(1) + '" y2="' + y(min).toFixed(1) + '" ' + grade + '/>' +
+      '<line x1="0" x2="' + W + '" y1="' + y(max).toFixed(1) + '" y2="' + y(max).toFixed(1) + '" style="stroke:var(--pos);opacity:.55" stroke-dasharray="3 3"/>' +
+      '<line x1="0" x2="' + W + '" y1="' + y(min).toFixed(1) + '" y2="' + y(min).toFixed(1) + '" style="stroke:var(--neg);opacity:.55" stroke-dasharray="3 3"/>' +
       '<path d="' + area + '" style="fill:var(--acc-t);opacity:.12"/>' +
       '<path d="' + linha + '" style="fill:none;stroke:var(--acc-t)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>' +
-      '<circle cx="' + x(ult[0]).toFixed(1) + '" cy="' + y(ult[1]).toFixed(1) + '" r="3.5" style="fill:var(--acc-t)"/>' +
-      '<text x="' + E + '" y="' + (y(max) - 3).toFixed(1) + '" ' + txt + '>' + num(max) + '</text>' +
-      '<text x="' + E + '" y="' + (y(min) + 12).toFixed(1) + '" ' + txt + '>' + num(min) + '</text>' +
-      '<text x="' + (x(ult[0]) - 6).toFixed(1) + '" y="' + (y(ult[1]) - 7).toFixed(1) + '" text-anchor="end" font-size="11" font-weight="700" style="fill:var(--fg)">' + num(ult[1]) + '</text>' +
+      '<circle cx="' + x(ult[0]).toFixed(1) + '" cy="' + y(ult[1]).toFixed(1) + '" r="4" style="fill:var(--acc-t);stroke:var(--card)" stroke-width="2"/>' +
       '<text x="' + E + '" y="' + (BAIXO - 1) + '" ' + txt + '>' + dataCurta(t0) + '</text>' +
       '<text x="' + (W / 2) + '" y="' + (BAIXO - 1) + '" text-anchor="middle" ' + txt + '>' + dataCurta(tm) + '</text>' +
       '<text x="' + (W - E) + '" y="' + (BAIXO - 1) + '" text-anchor="end" ' + txt + '>' + dataCurta(t1) + '</text>' +
       '</svg>';
   }
 
+  // Legenda do gráfico: maior (verde), menor (vermelho), hoje e a variação no período.
+  function legenda(serie, dias) {
+    var min = Infinity, max = -Infinity;
+    serie.forEach(function (p) { if (p[1] < min) min = p[1]; if (p[1] > max) max = p[1]; });
+    var hoje = serie[serie.length - 1][1];
+    var ini = serie[0][1];
+    var v = ini > 0 ? ((hoje - ini) / ini) * 100 : 0;
+    var cv = v > 0.05 ? 'pos' : v < -0.05 ? 'neg' : '';
+    var sv = v > 0.05 ? '▲ +' : v < -0.05 ? '▼ −' : '';
+    return '<div class="ti-leg">' +
+      '<span><small>Maior</small><b class="pos">' + num(max) + '</b></span>' +
+      '<span><small>Menor</small><b class="neg">' + num(min) + '</b></span>' +
+      '<span><small>Hoje</small><b>' + num(hoje) + '</b></span>' +
+      '<span><small>Em ' + dias + ' dias</small><b class="' + cv + '">' + sv + pct(Math.abs(v)) + '%</b></span>' +
+      '</div>';
+  }
+
+  // 0 terrível .. 4 incrível (a mesma escala serve para as vendas por dia).
   function corDemanda(d) { return d === 0 ? 'neg' : d === 1 ? 'warn' : d >= 3 ? 'pos' : ''; }
 
   function desenhar(res) {
     if (res.erro) return '<div class="ct-nota">Não consegui buscar os dados do item (' + esc(res.erro) + ').</div>';
     var h = '';
     if (res.serie && res.serie.length >= 2) {
-      h += '<div class="ti-graf"><small>RAP em ' + res.dias + ' dias</small>' + grafico(res.serie) + '</div>';
+      h += '<div class="ti-graf"><small>RAP em ' + res.dias + ' dias</small>' + grafico(res.serie) + legenda(res.serie, res.dias) + '</div>';
     } else {
       h += '<div class="ct-nota">' + (res.paginaOk ? 'Sem histórico do RAP para o gráfico.' :
         'A página do item no Rolimon\'s não respondeu (' + esc(res.erroPagina || '') + ').') + '</div>';
     }
     var op = res.op;
     h += '<div class="ti-grade">';
+    // v6.10.1: cada cor tem um sentido. Laranja = o que você paga; verde = o
+    // que você ganha (ou o que sobe); vermelho = o que desce ou não gira.
     if (op) {
-      h += caixa('OP para dar', '<b>' + faixa(op.dar.pct, pct) + '%</b>', faixa(op.dar.robux, num), 'para pegar este item');
-      h += caixa('OP para pedir', '<b>' + faixa(op.pedir.pct, pct) + '%</b>', faixa(op.pedir.robux, num), 'quando você dá este item');
+      h += caixa('OP para dar', '<b class="warn">' + faixa(op.dar.pct, pct) + '%</b>', '<i class="warn">' + faixa(op.dar.robux, num) + '</i>', 'você paga a mais para pegar este item');
+      h += caixa('OP para pedir', '<b class="pos">' + faixa(op.pedir.pct, pct) + '%</b>', '<i class="pos">' + faixa(op.pedir.robux, num) + '</i>', 'você pede a mais quando dá este item');
     } else {
       h += caixa('OP para dar', SEM) + caixa('OP para pedir', SEM);
     }
-    h += caixa('Best Price', res.best ? '<b>' + num(res.best) + '</b>' : SEM, null,
+    h += caixa('Best Price', res.best ? '<b class="rap">' + num(res.best) + '</b>' : SEM, null,
       res.best ? 'menor preço à venda' + (res.bestFonte === 'Roblox' ? ' (Roblox)' : '') : '');
-    h += caixa('Depois da venda', res.depois != null ? '<b>' + num(res.depois) + '</b>' : SEM, null,
-      res.depois != null ? 'RAP se vender pelo Best Price' : '');
-    h += caixa('Vendas por dia', res.vendasDia != null ? '<b>' + res.vendasDia.toLocaleString('pt-BR') + '</b>' : SEM, null,
+    if (res.depois != null && res.rap != null) {
+      var dif = res.depois - res.rap;
+      var cd = dif > 0 ? 'pos' : dif < 0 ? 'neg' : '';
+      h += caixa('Depois da venda', '<b class="' + cd + '">' + num(res.depois) + '</b>',
+        '<i class="' + cd + '">' + (dif > 0 ? '▲ +' + num(dif) : dif < 0 ? '▼ −' + num(-dif) : '=') + ' no RAP</i>', 'RAP se vender pelo Best Price');
+    } else {
+      h += caixa('Depois da venda', SEM);
+    }
+    h += caixa('Vendas por dia', res.vendasDia != null ? '<b class="' + corDemanda(res.vendasN) + '">' + res.vendasDia.toLocaleString('pt-BR') + '</b>' : SEM, null,
       res.vendasDia != null ? 'média de 30 dias' : '');
     h += caixa('Demanda', res.demanda ? '<b class="' + corDemanda(res.demandaN) + '">' + esc(res.demanda) + '</b>' : SEM, null,
       res.demanda ? (res.demandaEstimada ? 'estimada pelas vendas' : "do Rolimon's") : '');
     h += '</div>';
     if (op) {
       var aj = Math.round((op.mult - 1) * 100);
-      h += '<div class="ct-nota">OP ' + (res.demanda ? 'ajustado pela demanda: ' + (aj > 0 ? '+' : '') + aj + '%' : 'sem ajuste (sem dado de demanda)') +
+      var ca = aj > 0 ? 'pos' : aj < 0 ? 'neg' : '';
+      h += '<div class="ct-nota">OP ' + (res.demanda ? 'ajustado pela demanda: <b class="' + ca + '">' + (aj > 0 ? '+' : aj < 0 ? '−' : '') + Math.abs(aj) + '%</b>' : 'sem ajuste (sem dado de demanda)') +
         ', sobre o ' + (res.semValue ? 'RAP (item sem value)' : 'value') + ' de ' + num(op.base) + '.</div>';
     }
     return h;
