@@ -146,4 +146,11 @@ module.exports = {
   // Tempo máximo (segundos) da análise dentro do widget. Passou disso, os
   // anúncios que faltaram ficam para a próxima atualização.
   NOTIF_TEMPO_MAX_S: 8,
+
+  // ===== Diário de trades =====
+  // v6.14: trade vista em consultas diferentes (o item que saiu numa, o que
+  // entrou noutra). A metade sem par espera até X horas pela outra; depois
+  // some em silêncio. O item atrasado também entra na pergunta aberta (ainda
+  // não respondida) com menos de X horas.
+  DIARIO_JANELA_H: 24,
 };

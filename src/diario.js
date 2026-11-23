@@ -5,29 +5,52 @@
 // Inventário. Só saiu ou só entrou (compra, venda, presente) não pergunta.
 // Tudo fica no arquivo dados/diario.json, só neste iPhone.
 //
+// v6.14: a trade pode aparecer partida em consultas diferentes (o painel vê o
+// item sair e só a consulta seguinte, ou o widget, vê o novo chegar). A metade
+// sem par vira "solto" e espera cfg.DIARIO_JANELA_H horas pela outra:
+// - consulta com os dois lados → pergunta só com ela (os soltos seguem esperando);
+// - um lado só + solto do outro lado → pergunta nova juntando tudo;
+// - um lado só, sem solto do outro, mas com pergunta aberta dentro da janela →
+//   o item atrasado entra na pergunta aberta mais recente;
+// - senão vira solto; passou da janela, some em silêncio.
+// Item que entrou solto e saiu de novo (comprou e revendeu) se anula.
+//
 // Formato do arquivo:
 // { userId, seq,
 //   ref: { data, itens: { uaid: assetId } },        // inventário da última consulta
-//   sumidos: { uaid: data },                         // saíram sem nada entrar (48h)
-//   pendentes: [{ id, data, origem, saiu: [it], entrou: [it] }],
+//   sumidos: { uaid: data },                         // saíram (48h): se voltarem, era falha
+//   soltos: { saiu: { uaid: it+d }, entrou: { uaid: it+d } },  // sem par (janela)
+//   pendentes: [{ id, data, origem, partes, saiu: [it], entrou: [it] }],
 //   trades:    [{ id, data, confirmadaEm, userId, saiu: [it], entrou: [it], robux }] }
 // it = { u: uaid, a: assetId, n: nome, v: value base na hora (guardado, não aparece) }
+// d = quando o solto foi visto; partes = em quantas consultas a pergunta foi montada.
 // robux = o que caiu (+) ou saiu (−) da conta, como a pessoa digitou.
+
+const cfg = require('config');
 
 const ARQ = 'diario';
 const MAX_PENDENTES = 10;
 const MAX_TRADES = 500;
 const MAX_ITENS_EVENTO = 40;
+const MAX_SOLTOS = 40;
 const SUMIDOS_HORAS = 48;
 const MAX_ROBUX = 100000000;
 
+function janelaH() {
+  const h = Number(cfg.DIARIO_JANELA_H);
+  return h > 0 ? h : 24;
+}
+
 function ler(store) {
   const d = store.ler(ARQ) || {};
+  const obj = (x) => (x && typeof x === 'object' && !Array.isArray(x) ? x : {});
+  const s = obj(d.soltos);
   return {
     userId: d.userId || null,
     seq: Number(d.seq) || 0,
     ref: d.ref && d.ref.itens ? d.ref : null,
-    sumidos: d.sumidos && typeof d.sumidos === 'object' ? d.sumidos : {},
+    sumidos: obj(d.sumidos),
+    soltos: { saiu: obj(s.saiu), entrou: obj(s.entrou) },
     pendentes: Array.isArray(d.pendentes) ? d.pendentes : [],
     trades: Array.isArray(d.trades) ? d.trades : [],
   };
@@ -77,51 +100,120 @@ function detectar(store, dados, itens, fonte, agora, origem) {
     d.userId = userId;
     d.ref = { data: agora, itens: atual };
     d.sumidos = {};
+    d.soltos = { saiu: {}, entrou: {} };
     d.pendentes = [];
     gravar(store, d);
     return 'começou a acompanhar (' + Object.keys(atual).length + ' itens)';
   }
 
-  // Esquece os "sumidos" antigos.
+  // Esquece os "sumidos" antigos e os soltos de fora da janela.
   const limite = agora - SUMIDOS_HORAS * 3600000;
   for (const u of Object.keys(d.sumidos)) if (!(d.sumidos[u] >= limite)) delete d.sumidos[u];
+  const limJanela = agora - janelaH() * 3600000;
+  let expirados = 0;
+  for (const lado of ['saiu', 'entrou']) {
+    for (const u of Object.keys(d.soltos[lado])) {
+      const x = d.soltos[lado][u];
+      if (!x || !(x.d >= limJanela)) { delete d.soltos[lado][u]; expirados++; }
+    }
+  }
 
   const antes = d.ref.itens;
-  const saiu = Object.keys(antes).filter((u) => !(u in atual));
+  let saiu = Object.keys(antes).filter((u) => !(u in atual));
   let entrou = Object.keys(atual).filter((u) => !(u in antes));
 
   // Item que tinha sumido (falha do Rolimon's) e voltou não conta como "entrou".
   const voltaram = entrou.filter((u) => u in d.sumidos);
-  for (const u of voltaram) delete d.sumidos[u];
+  for (const u of voltaram) { delete d.sumidos[u]; delete d.soltos.saiu[u]; }
   entrou = entrou.filter((u) => voltaram.indexOf(u) < 0);
+
+  // Item que entrou solto e saiu de novo (comprou e revendeu): um anula o outro.
+  const idaVolta = saiu.filter((u) => u in d.soltos.entrou);
+  for (const u of idaVolta) delete d.soltos.entrou[u];
+  saiu = saiu.filter((u) => idaVolta.indexOf(u) < 0);
 
   // Pergunta cujos itens "saídos" voltaram ao inventário: era falha, some sozinha.
   const antesPend = d.pendentes.length;
   d.pendentes = d.pendentes.filter((p) => !p.saiu.some((x) => x.u in atual));
   const canceladas = antesPend - d.pendentes.length;
 
-  let resumo;
-  if (saiu.length && entrou.length) {
+  // Todo item que sai fica 48h em "sumidos": se voltar, era falha do Rolimon's.
+  for (const u of saiu) d.sumidos[u] = agora;
+
+  const novosSaiu = saiu.map((u) => itemDoEvento(u, antes[u], porUaid, dados.rolimons));
+  const novosEntrou = entrou.map((u) => itemDoEvento(u, atual[u], porUaid, dados.rolimons));
+  const soltosSaiu = Object.keys(d.soltos.saiu).map((u) => d.soltos.saiu[u]);
+  const soltosEntrou = Object.keys(d.soltos.entrou).map((u) => d.soltos.entrou[u]);
+  const limpo = (x) => ({ u: x.u, a: x.a, n: x.n, v: x.v });
+
+  const novaPergunta = (s, e, data, partes) => {
     d.seq += 1;
     d.pendentes.push({
       id: d.seq,
-      data: agora,
+      data,
       origem,
-      saiu: saiu.slice(0, MAX_ITENS_EVENTO).map((u) => itemDoEvento(u, antes[u], porUaid, dados.rolimons)),
-      entrou: entrou.slice(0, MAX_ITENS_EVENTO).map((u) => itemDoEvento(u, atual[u], porUaid, dados.rolimons)),
+      partes,
+      saiu: s.slice(0, MAX_ITENS_EVENTO).map(limpo),
+      entrou: e.slice(0, MAX_ITENS_EVENTO).map(limpo),
     });
     if (d.pendentes.length > MAX_PENDENTES) d.pendentes = d.pendentes.slice(-MAX_PENDENTES);
+  };
+
+  let resumo;
+  if (saiu.length && entrou.length) {
+    // Os dois lados na mesma consulta: pergunta só com eles (igual à v6.1).
+    novaPergunta(novosSaiu, novosEntrou, agora, 1);
     resumo = 'nova pergunta: saíram ' + saiu.length + ', entraram ' + entrou.length;
-  } else if (saiu.length) {
-    for (const u of saiu) d.sumidos[u] = agora;
-    resumo = 'só saíram ' + saiu.length + ' (sem pergunta)';
-  } else if (entrou.length) {
-    resumo = 'só entraram ' + entrou.length + ' (sem pergunta)';
+  } else if (saiu.length || entrou.length) {
+    const soSaiu = saiu.length > 0;
+    const novos = soSaiu ? novosSaiu : novosEntrou;
+    const outroLado = soSaiu ? soltosEntrou : soltosSaiu;
+    const aberta = (() => {
+      for (let k = d.pendentes.length - 1; k >= 0; k--) if (d.pendentes[k].data >= limJanela) return d.pendentes[k];
+      return null;
+    })();
+    if (outroLado.length) {
+      // A outra metade já estava esperando: junta os soltos dos dois lados com a consulta de agora.
+      const usados = soltosSaiu.concat(soltosEntrou);
+      const vistas = {};
+      let data = agora;
+      for (const x of usados) { vistas[x.d] = 1; if (x.d < data) data = x.d; }
+      const partes = Object.keys(vistas).length + 1;
+      novaPergunta(soltosSaiu.concat(soSaiu ? novos : []), soltosEntrou.concat(soSaiu ? [] : novos), data, partes);
+      d.soltos = { saiu: {}, entrou: {} };
+      resumo = 'nova pergunta juntando ' + partes + ' consultas: saíram ' + d.pendentes[d.pendentes.length - 1].saiu.length +
+        ', entraram ' + d.pendentes[d.pendentes.length - 1].entrou.length;
+    } else if (aberta) {
+      // Item atrasado de uma trade que já gerou pergunta (ainda sem resposta).
+      const lista = soSaiu ? aberta.saiu : aberta.entrou;
+      const tem = {};
+      for (const x of lista) tem[x.u] = 1;
+      let somados = 0;
+      for (const x of novos) {
+        if (tem[x.u] || lista.length >= MAX_ITENS_EVENTO) continue;
+        lista.push(limpo(x));
+        somados++;
+      }
+      aberta.partes = (Number(aberta.partes) || 1) + 1;
+      if (aberta.origem !== origem) aberta.origem = 'misto';
+      resumo = 'somou ' + somados + (soSaiu ? ' saída(s)' : ' entrada(s)') + ' na pergunta #' + aberta.id;
+    } else {
+      // Fica esperando a outra metade (até a janela acabar).
+      const alvo = soSaiu ? d.soltos.saiu : d.soltos.entrou;
+      for (const x of novos) alvo[x.u] = Object.assign(limpo(x), { d: agora });
+      const chaves = Object.keys(alvo).sort((p, q) => alvo[p].d - alvo[q].d);
+      for (let k = 0; k < chaves.length - MAX_SOLTOS; k++) delete alvo[chaves[k]];
+      resumo = 'só ' + (soSaiu ? 'saíram ' : 'entraram ') + novos.length + ' (esperando o par por até ' + janelaH() + 'h)';
+    }
   } else {
     resumo = 'sem mudança';
   }
   if (voltaram.length) resumo += ' · ' + voltaram.length + ' voltaram';
+  if (idaVolta.length) resumo += ' · ' + idaVolta.length + ' entraram e saíram';
   if (canceladas) resumo += ' · ' + canceladas + ' pergunta(s) cancelada(s)';
+  const esperando = Object.keys(d.soltos.saiu).length + Object.keys(d.soltos.entrou).length;
+  if (esperando) resumo += ' · ' + esperando + ' esperando par';
+  if (expirados) resumo += ' · ' + expirados + ' sem par esquecido(s)';
 
   d.ref = { data: agora, itens: atual };
   gravar(store, d);
@@ -167,7 +259,7 @@ function paraPagina(store, rolimons, userId) {
   return {
     comecou: !!d.ref && mesmaConta,
     pendentes: mesmaConta
-      ? d.pendentes.map((p) => ({ id: p.id, data: p.data, origem: p.origem, saiu: p.saiu.map(hoje), entrou: p.entrou.map(hoje) }))
+      ? d.pendentes.map((p) => ({ id: p.id, data: p.data, origem: p.origem, partes: Number(p.partes) || 1, saiu: p.saiu.map(hoje), entrou: p.entrou.map(hoje) }))
       : [],
     trades: d.trades
       .filter((t) => t.userId === userId)
@@ -336,7 +428,7 @@ function script(dadosJson, ponteJson, miniJson) {
     var ab = !!perguntaAberta[p.id];
     var h = '<div class="dia-card dq' + (ab ? ' aberta' : '') + '" data-id="' + p.id + '">' +
       '<button type="button" class="dq-lin" data-abrir-p="1" aria-expanded="' + ab + '">' +
-      '<span class="dq-txt"><b>Você fez esta trade?<small>' + esc(quando(p.data)) + (p.origem === 'widget' ? ' · pelo widget' : '') + '</small></b>' +
+      '<span class="dq-txt"><b>Você fez esta trade?<small>' + esc(quando(p.data)) + (p.partes > 1 ? ' · ' + p.partes + ' consultas' : p.origem === 'widget' ? ' · pelo widget' : '') + '</small></b>' +
       '<span class="dq-mini" aria-label="Saíram ' + p.saiu.length + ', entraram ' + p.entrou.length + '">' + mini(p.saiu) + '<span class="seta">→</span>' + mini(p.entrou) + '</span></span>' +
       '<span class="dq-dif"><b class="' + cor(dif) + '">' + sinal(dif) + '</b><small>value de hoje</small></span>' +
       '<span class="dq-chev" aria-hidden="true">›</span></button>';
@@ -417,7 +509,7 @@ function script(dadosJson, ponteJson, miniJson) {
       }).join('') + '</div>';
     }
     h += '<p class="nota">' + (n || np
-      ? 'Value de hoje do que entrou − value de hoje do que saiu + Robux. Toque numa trade para ver os itens. Duas trades entre consultas aparecem juntas; compra e venda também podem gerar pergunta.'
+      ? 'Value de hoje do que entrou − value de hoje do que saiu + Robux. Toque numa trade para ver os itens. Se o que saiu e o que entrou aparecerem em consultas diferentes, o app junta os dois numa pergunta só (em até ${janelaH()}h). Duas trades entre consultas aparecem juntas; compra e venda também podem gerar pergunta.'
       : D.comecou
         ? 'O app compara os seus itens a cada consulta (painel e widget). Quando itens saírem e outros entrarem, ele pergunta no topo do Inventário se foi uma trade.'
         : 'A partir desta abertura o app passa a acompanhar os seus itens. Quando itens saírem e outros entrarem, ele pergunta no topo do Inventário se foi uma trade.') + '</p>';

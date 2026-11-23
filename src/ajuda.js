@@ -457,6 +457,7 @@ function capitulo4(cfg) {
     <li><b>Lucro até hoje:</b> o value de hoje do que entrou, menos o value de hoje do que saiu, mais os Robux. Mostra se as suas trades estão dando certo com o tempo.</li>
     <li><b>Lucro acumulado:</b> o gráfico soma as trades da mais antiga até hoje. Embaixo: a melhor e a pior trade, a média e quantas deram lucro.</li>
     <li><b>Por que ele pergunta:</b> o app não vê as suas trades de verdade (não tem login). Duas trades entre uma consulta e outra aparecem juntas, e compra ou venda também podem gerar pergunta.</li>
+    <li><b>Trade vista em duas vezes:</b> às vezes o Rolimon's mostra o item saindo numa consulta e o novo chegando só na seguinte (ou no widget). O app guarda a metade sem par por até ${cfg.DIARIO_JANELA_H}h e junta as duas numa pergunta só, marcada "· 2 consultas". Se a pergunta ainda está aberta e chega um item atrasado, ele entra nela. Se a outra metade nunca chegar (venda, compra, presente), nada é perguntado.</li>
     <li>Toque numa trade do diário para ver os itens ou apagá-la.</li>
   </ul>
 
