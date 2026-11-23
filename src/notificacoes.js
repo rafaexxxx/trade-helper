@@ -1,8 +1,16 @@
 // v6.2: notificação-resumo do widget (só a conta principal).
 // Quando o widget atualiza, avisa numa notificação só:
-//  - anúncio novo "Vale muito a pena" para você (pede seus itens ou tem uma
-//    combinação sua), com a mesma análise da aba Anúncios (criarAnalisador);
+//  - anúncio novo bom para você, com a mesma análise da aba Anúncios (criarAnalisador);
 //  - item seu que virou projected ou ficou com demanda terrível.
+// v6.15 (regra do Rafael, "chegavam demais"): só avisa de PEDIDOS (anúncio que
+// pede itens seus; as combinações sugeridas pelo app ficam só na aba):
+//  - seu upgrade (você dá mais itens): só no "Vale muito";
+//  - seu downgrade (você recebe mais itens): a partir de NOTIF_DOWNGRADE_MIN_PCT;
+//  - mesmo número de itens dos dois lados (1v1): não avisa;
+//  - e só se o item principal que você recebe (o de maior value) GIRA: vendas/dia
+//    guardadas (dados/cartoes.json) a partir de 1/dia; sem elas, demanda do
+//    Rolimon's Normal ou melhor; sem nenhum dado, não avisa. O widget não busca
+//    página nenhuma: só lê o que o painel já guardou.
 // Nada se repete: o que já foi visto fica em dados/notificacoes.json.
 // Silêncio (config.js): anúncios desse horário são descartados; os alertas de
 // risco esperam o silêncio acabar.
@@ -11,6 +19,7 @@ const anuncios = require('anuncios');
 const avaliador = require('avaliador');
 const analise = require('analise');
 const hist = require('historico');
+const cartao = require('cartao');
 
 const ARQ = 'notificacoes';
 
@@ -49,10 +58,39 @@ function riscosAtuais(itens) {
   return r;
 }
 
+// v6.15: o pedido passa na régua da notificação? (a análise já descartou o
+// que fica abaixo de "Vale a pena" e o "Cuidado")
+function passaNaRegua(r, cfg) {
+  if (r.modo !== 'itens' || !r.v) return false;
+  if (r.tipo === 'upgrade') return r.v.nivel === 4;
+  if (r.tipo === 'downgrade') return r.v.nivel >= 3 && r.pct != null && r.pct >= cfg.NOTIF_DOWNGRADE_MIN_PCT;
+  return false;
+}
+
+// v6.15: o item principal recebido gira? { gira, texto } ou null (sem dado).
+// Mesma regra do selo "gira"/"parado" da aba Anúncios (a partir de Normal na
+// escala das vendas/dia); sem vendas guardadas, a demanda do Rolimon's.
+function giroDoPrincipal(rec, guardados) {
+  let m = null;
+  const valor = (i) => (i.value != null ? i.value : i.rap || 0);
+  for (const i of rec || []) if (!m || valor(i) > valor(m)) m = i;
+  if (!m) return null;
+  const ln = guardados ? cartao.linha(guardados, m.id) : null;
+  if (ln && ln.v != null) return { gira: cartao.demandaPorVendas(ln.v) >= 2, texto: ln.tv };
+  if (typeof m.dem === 'number' && m.dem >= 0) return { gira: m.dem >= 2, texto: 'demanda ' + analise.demandaCurta(m.dem) };
+  return null;
+}
+
 // Analisa os anúncios novos (os mais recentes primeiro) até o limite de tempo.
-// Retorna os "Vale muito a pena" e quantos ficaram para a próxima atualização.
+// Retorna os que passam na régua e giram, e quantos ficaram para a próxima atualização.
 function analisarNovos(pendentes, o, limite) {
   const cfg = o.cfg;
+  let guardados = null;
+  try {
+    guardados = cartao.lerGuardados(o.store);
+  } catch (e) {
+    // sem as vendas guardadas: fica só a demanda do Rolimon's
+  }
   let base = null;
   try {
     base = hist.baseCatalogo24h(o.dirDados, o.agora);
@@ -64,6 +102,7 @@ function analisarNovos(pendentes, o, limite) {
   A.montarMeus(D.inventario);
   const bons = [];
   const vistos = [];
+  const corte = { parados: 0, semDado: 0 };
   let faltaram = 0;
   pendentes.sort((x, y) => y[1] - x[1]);
   for (const ad of pendentes) {
@@ -78,27 +117,36 @@ function analisarNovos(pendentes, o, limite) {
       r = { descarte: 'erro' };
     }
     vistos.push(ad);
-    if (!r.descarte && r.v && r.v.nivel === 4) bons.push(r);
+    if (r.descarte || !passaNaRegua(r, cfg)) continue;
+    const g = giroDoPrincipal(r.rec, guardados);
+    if (!g) corte.semDado++;
+    else if (!g.gira) corte.parados++;
+    else {
+      r.giro = g;
+      bons.push(r);
+    }
   }
-  return { bons, vistos, faltaram };
+  return { bons, vistos, faltaram, corte };
 }
 
 // Textos da notificação (formato aprovado: título com a contagem, o melhor
 // anúncio em destaque, "+N outros", e os alertas de risco).
+// v6.15 ("item primeiro"): "🟢 Seu Shaggy → Bighead" e embaixo "+13% · gira (4,5/dia)".
+function nomesLado(itens) {
+  const nomes = [];
+  itens.forEach((i) => { if (nomes.indexOf(i.nome) < 0) nomes.push(i.nome); });
+  if (itens.length === 1) return nomes[0];
+  if (nomes.length === 1) return itens.length + '× ' + nomes[0];
+  if (itens.length === 2) return nomes.join(' + ');
+  return itens.length + ' itens';
+}
+
 function linhaAnuncio(r) {
-  const quem = r.ad[3] || 'Jogador ' + r.ad[2];
-  let oque;
-  if (r.modo === 'itens') {
-    const nomes = [];
-    r.dou.forEach((i) => { if (nomes.indexOf(i.nome) < 0) nomes.push(i.nome); });
-    if (r.dou.length === 1) oque = ' pede seu ' + nomes[0];
-    else if (nomes.length <= 2) oque = ' pede seus ' + nomes.join(' + ');
-    else oque = ' pede ' + r.dou.length + ' itens seus';
-  } else {
-    oque = ': combinação sua';
-  }
-  const pct = r.pct != null ? analise.fmtPctSinal(r.pct) : '';
-  return '🟢 ' + quem + oque + (pct ? ': ' + pct : '') + ' (' + r.v.titulo + ')';
+  const dou = (r.dou.length === 1 ? 'Seu ' : 'Seus ') + nomesLado(r.dou);
+  let rec = r.rec.length ? nomesLado(r.rec) : '';
+  if (r.robux > 0) rec += (rec ? ' + ' : '') + analise.fmtNum(r.robux) + ' Robux';
+  const pct = r.pct != null ? analise.fmtPctSinal(r.pct) + ' · ' : '';
+  return '🟢 ' + dou + ' → ' + rec + '\n' + pct + 'gira (' + r.giro.texto + ')';
 }
 
 function linhaRisco(x) {
@@ -183,17 +231,20 @@ async function verificar(o) {
     }
   }
   let faltaram = 0;
+  let corte = { parados: 0, semDado: 0 };
   if (pendentes.length) {
     const r = analisarNovos(pendentes, o, t0 + cfg.NOTIF_TEMPO_MAX_S * 1000);
     r.vistos.forEach((ad) => { est.anuncios[ad[0]] = ad[1]; });
     bons = r.bons;
     faltaram = r.faltaram;
+    corte = r.corte;
   }
   const limite = o.agora - (cfg.ANUNCIOS_GUARDAR_HORAS + 1) * 3600000;
   for (const id of Object.keys(est.anuncios)) if (!(est.anuncios[id] >= limite)) delete est.anuncios[id];
 
   L.push('anúncios: ' + res.lista.length + ' guardados (' + res.origem + (res.erro ? ', erro: ' + res.erro : '') + '), ' +
-    (pendentes.length - faltaram) + ' analisados agora, ' + bons.length + ' "Vale muito"' +
+    (pendentes.length - faltaram) + ' analisados agora, ' + bons.length + ' bons que giram' +
+    (corte.parados || corte.semDado ? ' (cortados: ' + corte.parados + ' parados, ' + corte.semDado + ' sem dado de giro)' : '') +
     (faltaram ? ', ' + faltaram + ' ficaram para a próxima' : '') + ', ' + descartados + ' descartados (velhos/silêncio)');
   L.push('riscos: ' + Object.keys(atuais).length + ' agora, ' + riscos.length + ' novos' + (primeira ? ' (primeira vez: só registrou)' : ''));
   if (silencio) L.push('em silêncio');

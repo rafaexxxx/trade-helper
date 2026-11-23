@@ -133,8 +133,8 @@ module.exports = {
 
   // ===== Notificações (v6.2) =====
   // Quando o widget atualiza, manda UMA notificação-resumo (só a conta principal):
-  // anúncio novo "Vale muito a pena" para você e item seu que virou projected ou
-  // ficou com demanda terrível. O mesmo aviso nunca se repete.
+  // anúncio novo bom para você e item seu que virou projected ou ficou com
+  // demanda terrível. O mesmo aviso nunca se repete.
   NOTIFICACOES_LIGADAS: true,
   // Silêncio: das X h até as Y h nada é avisado (0 e 8 = da meia-noite às 8h).
   // Anúncios desse horário são descartados; alertas de risco esperam o silêncio
@@ -143,6 +143,10 @@ module.exports = {
   SILENCIO_FIM_H: 8,
   // Só avisa de anúncios criados há no máximo X min (os mais velhos já devem ter fechado).
   NOTIF_ANUNCIO_IDADE_MAX_MIN: 60,
+  // v6.15: só avisa de anúncios que pedem itens seus (as combinações sugeridas
+  // ficam só na aba). Seu upgrade avisa só no "Vale muito"; seu downgrade, a
+  // partir deste ganho (%). E só se o item principal que você recebe gira.
+  NOTIF_DOWNGRADE_MIN_PCT: 10,
   // Tempo máximo (segundos) da análise dentro do widget. Passou disso, os
   // anúncios que faltaram ficam para a próxima atualização.
   NOTIF_TEMPO_MAX_S: 8,

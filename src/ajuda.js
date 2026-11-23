@@ -462,7 +462,15 @@ function capitulo4(cfg) {
   </ul>
 
   <h3 id="aj-notif">Notificações</h3>
-  <p>Quando o widget atualiza, o app pode mandar <b>uma notificação-resumo</b> com anúncios novos "Vale muito a pena" para você e com itens seus que viraram projected ou ficaram com demanda terrível. O mesmo aviso não se repete, e das ${cfg.SILENCIO_INICIO_H}h às ${cfg.SILENCIO_FIM_H}h fica em silêncio. Como depende do widget, o aviso pode atrasar: quem decide a hora é o iOS.</p>
+  <p>Quando o widget atualiza, o app pode mandar <b>uma notificação-resumo</b> com anúncios novos bons para você e com itens seus que viraram projected ou ficaram com demanda terrível. O mesmo aviso não se repete, e das ${cfg.SILENCIO_INICIO_H}h às ${cfg.SILENCIO_FIM_H}h fica em silêncio. Como depende do widget, o aviso pode atrasar: quem decide a hora é o iOS.</p>
+  <p>Para não avisar demais, só entram os anúncios que <b>pedem itens seus</b>. As combinações que o app sugere aparecem só na aba Anúncios.</p>
+  <ul class="aj-lista">
+    <li><b>Seu upgrade</b> (você dá mais itens): só no "Vale muito".</li>
+    <li><b>Seu downgrade</b> (você recebe mais itens): a partir de ${cfg.NOTIF_DOWNGRADE_MIN_PCT}% de ganho.</li>
+    <li><b>Mesmo número de itens dos dois lados</b> (1 por 1): não avisa.</li>
+    <li><b>Só item que gira:</b> o item de maior value que você recebe precisa ter pelo menos 1 venda por dia. O widget usa as vendas que o painel já guardou; sem elas, usa a demanda do Rolimon's (Normal ou melhor). Sem nenhum dos dois, não avisa.</li>
+  </ul>
+  <p>A notificação mostra o que você dá → o que recebe e, embaixo, a % e o giro (ex.: "+13% · gira (4,5/dia)").</p>
 
   <h3 id="aj-temas">Temas</h3>
   <p>Menu ⋯ &gt; Temas. O toque aplica na hora e fica salvo neste iPhone. Sem tema escolhido, o painel segue o claro ou escuro do iPhone.</p>
