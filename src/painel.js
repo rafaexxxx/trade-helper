@@ -1,6 +1,4 @@
 // Ponto de entrada: decide entre painel completo (no app) e widget (tela inicial).
-// v6.13.2: hora em que o código começou a rodar (antes de carregar os módulos).
-const T_INICIO = Date.now();
 const cfg = require('config');
 const hist = require('historico');
 const api = require('api');
@@ -12,104 +10,6 @@ const anuncios = require('anuncios');
 const diario = require('diario');
 const notificacoes = require('notificacoes');
 const cartao = require('cartao');
-const T_MODULOS = Date.now();
-
-// ---------- v6.13.2: medição da abertura (só medição; nada muda no app) ----------
-// Cada etapa anota quanto tempo levou e se veio da rede ou do que estava guardado.
-// O tempo do loader (consulta ao GitHub e leitura do código) fica de fora.
-function criarCronometro() {
-  let ult = Date.now();
-  const etapas = [{ etapa: 'módulos', ms: T_MODULOS - T_INICIO, origem: null, extra: null }];
-  return {
-    etapas,
-    marcar(etapa, origem, extra) {
-      const ag = Date.now();
-      etapas.push({ etapa, ms: ag - ult, origem: origem || null, extra: extra || null });
-      ult = ag;
-    },
-    juntar(lista) {
-      for (const x of lista || []) etapas.push(x);
-      ult = Date.now();
-    },
-  };
-}
-
-function fmtMs(ms) {
-  if (!(ms >= 0)) return '?';
-  if (ms >= 1000) return (ms / 1000).toFixed(1).replace('.', ',') + ' s';
-  return Math.round(ms) + ' ms';
-}
-
-// A versão nova foi baixada nesta abertura? (o loader grava codigo.json logo
-// antes de rodar o código; a pasta dele fica ao lado da pasta dados).
-function baixouVersaoNova(dirDados) {
-  try {
-    const fm = FileManager.local();
-    const p = fm.joinPath(dirDados.replace(/\/dados\/?$/, ''), 'codigo.json');
-    if (!fm.fileExists(p)) return false;
-    const meta = JSON.parse(fm.readString(p));
-    return !!(meta && meta.atualizadoEm && T_INICIO - meta.atualizadoEm < 60000);
-  } catch (e) {
-    return false;
-  }
-}
-
-// Texto do Diagnóstico: esta abertura em detalhe + as últimas 5 em uma linha cada.
-function textoTempos(atual, lista) {
-  const partes = atual.etapas.map((x) => {
-    const info = [x.origem, x.extra].filter(Boolean).join(', ');
-    return x.etapa + ' ' + fmtMs(x.ms) + (info ? ' (' + info + ')' : '');
-  });
-  const L = [
-    '⏱️ Esta abertura: ' + fmtMs(atual.total) + ' até a tela (sem o loader)' + (atual.versaoNova ? ' · baixou versão nova' : ''),
-    partes.join(' · '),
-  ];
-  const p = atual.pagina;
-  if (p) {
-    const d = [];
-    if (p.html != null) d.push('HTML rodando ' + fmtMs(p.html));
-    if (p.dom != null) d.push('DOM pronto ' + fmtMs(p.dom));
-    if (p.fontes != null) d.push('fontes ' + fmtMs(p.fontes));
-    if (p.nImgs != null) d.push(p.nImgs + ' imagens até ' + fmtMs(p.imgs));
-    if (p.load != null) d.push('load ' + fmtMs(p.load));
-    L.push('Página: ' + p.kb + ' KB · dentro da página: ' + (d.length ? d.join(' · ') : 'sem dados'));
-  }
-  L.push('Últimas aberturas:');
-  for (const t of lista) {
-    const buscas = t.etapas.filter((x) => x.origem === 'rede').reduce((s, x) => s + x.ms, 0);
-    const pag = t.etapas.find((x) => x.etapa === 'carregar a página');
-    L.push(analise.fmtData(t.em) + ' · ' + fmtMs(t.total) + ' · rede ' + fmtMs(buscas) +
-      ' · carregar a página ' + (pag ? fmtMs(pag.ms) : '?') + (t.versaoNova ? ' · versão nova' : ''));
-  }
-  return L.join('\n');
-}
-
-// Lê os tempos de dentro da página, grava as últimas 5 aberturas e mostra no Diagnóstico.
-async function registrarTempos(wv, store, crono, kb, dirDados) {
-  let pagina = { kb };
-  try {
-    const t = JSON.parse(await wv.evaluateJavaScript('JSON.stringify(window.TH_TEMPOS || null)', false));
-    if (t) Object.assign(pagina, t);
-  } catch (e) {
-    // sem os tempos de dentro da página
-  }
-  // O total vai até a página carregada (logo antes de mostrar), não até agora.
-  const atual = {
-    em: Date.now(),
-    total: crono.etapas.reduce((s, x) => s + x.ms, 0),
-    versaoNova: baixouVersaoNova(dirDados),
-    etapas: crono.etapas,
-    pagina,
-  };
-  let lista = store.ler('tempos_abertura') || [];
-  if (!Array.isArray(lista)) lista = [];
-  lista = [atual].concat(lista).slice(0, 5);
-  store.gravar('tempos_abertura', lista);
-  await wv.evaluateJavaScript(
-    'window.receberTempos && window.receberTempos(' + avaliador.serializar(textoTempos(atual, lista)) + ')',
-    false
-  );
-}
 
 // v6.2: aba pedida ao abrir pelo toque na notificação (?aba=anuncios no
 // scriptable:///run/..., ou o userInfo da notificação). args é global do
@@ -199,14 +99,11 @@ async function imagensParaWidget(dirDados, itens, miniaturas, limite) {
 
 async function executar(ctx) {
   const noWidget = config.runsInWidget;
-  const crono = criarCronometro();
   const store = hist.criarArmazenamento(ctx.dirDados);
   let ajustes = store.ler('ajustes') || {};
   const avisosIniciais = [];
-  let perguntou = false;
 
   if (!ajustes.username || (ctx.trocarUsername && !noWidget)) {
-    perguntou = true;
     if (noWidget) throw new Error('Abra o Trade Helper no app do Scriptable uma vez para informar o username.');
     // A conta 2 salva continua (o TROCAR_USERNAME do loader não a apaga).
     const conta2Antes = ajustes.conta2 || null;
@@ -226,14 +123,11 @@ async function executar(ctx) {
     }
     store.gravar('ajustes', ajustes);
   }
-  crono.marcar('ajustes', null, perguntou ? 'perguntou o username' : null);
 
   const dados = await api.carregarTudo(store, ajustes, { widget: noWidget });
-  crono.juntar(dados.tempos);
   const { itens, fonte, divergencia } = analise.montarItens(dados);
   const totais = analise.calcularTotais(itens);
   const agora = Date.now();
-  crono.marcar('montar itens');
 
   // v6.1: diário de trades (só a conta principal). Painel e widget comparam os
   // itens com a consulta anterior e guardam a pergunta; só o painel pergunta.
@@ -244,7 +138,6 @@ async function executar(ctx) {
   } catch (e) {
     diarioResumo = 'erro: ' + (e.message || String(e));
   }
-  crono.marcar('diário (conferir trades)');
 
   // Só compara com retratos feitos a partir da mesma fonte de itens.
   const salvo = hist.lerSnapshot(store);
@@ -254,7 +147,6 @@ async function executar(ctx) {
   // Painel e widget alimentam o histórico por hora (depois de calcular a base de 24h).
   const atual = analise.criarSnapshot(itens, totais, fonte);
   hist.registrarHistorico(store, atual, cfg);
-  crono.marcar('histórico 24h');
 
   // Retrato do catálogo (variação de 24h no avaliador). Painel e widget gravam,
   // mas nunca a partir de um cache antigo (seria um retrato com data errada).
@@ -266,10 +158,8 @@ async function executar(ctx) {
       retratoCatalogo.erro = e.message || String(e);
     }
   }
-  crono.marcar('retrato do catálogo', null, retratoCatalogo.gravou ? 'gravou agora' : null);
 
   const miniaturas = await api.buscarMiniaturas(store, itens.map((i) => String(i.assetId)));
-  crono.marcar('miniaturas', null, Object.keys(miniaturas).length + '/' + itens.length);
   const avisos = (ctx.avisos || []).concat(avisosIniciais, dados.avisos);
   const robloxItens = dados.roblox ? dados.roblox.itens : [];
 
@@ -356,7 +246,6 @@ async function executar(ctx) {
 
   // Só o painel grava o retrato da "última consulta".
   hist.gravarSnapshot(store, atual);
-  crono.marcar('notificações e retrato');
 
   // v6.11: vendas/dia e Best Price na linha do item, do que ficou guardado no
   // iPhone (nada de rede aqui). A fila por trás atualiza depois que a tela abre.
@@ -367,7 +256,6 @@ async function executar(ctx) {
     guardados = { v: 1, itens: {} };
   }
   resultado.linhas = cartao.linhas(guardados, itens);
-  crono.marcar('linhas guardadas');
 
   // Avaliador de trade: catálogo enxuto + variação de 24h + miniaturas conhecidas.
   // Se algo falhar aqui, só a aba do avaliador mostra o erro; o inventário segue.
@@ -398,7 +286,6 @@ async function executar(ctx) {
     base24hCatalogo: baseCatalogo ? analise.fmtData(baseCatalogo.data) : null,
     erro: resultado.avaliador.erro,
   };
-  crono.marcar('dados do Avaliar', null, resultado.diag.avaliador.tamanhoDadosKB != null ? resultado.diag.avaliador.tamanhoDadosKB + ' KB' : null);
 
   // v6.1: perguntas e trades do diário, com o value de hoje e as miniaturas.
   try {
@@ -409,7 +296,6 @@ async function executar(ctx) {
   } catch (e) {
     resultado.diario = { dados: null, miniaturas: {}, erro: e.message || String(e) };
   }
-  crono.marcar('diário (tela)');
 
   const wv = new WebView();
 
@@ -873,24 +759,8 @@ async function executar(ctx) {
     }
     return true;
   };
-  const pagina = html.gerar(resultado, cfg);
-  const kbPagina = Math.round(pagina.length / 1024);
-  crono.marcar('montar a página', null, kbPagina + ' KB');
-  await wv.loadHTML(pagina);
-  crono.marcar('carregar a página');
-  // v6.13.2: a tela aparece primeiro; os tempos são lidos e gravados com ela já aberta.
-  const apresentar = wv.present(true);
-  try {
-    await registrarTempos(wv, store, crono, kbPagina, ctx.dirDados);
-  } catch (e) {
-    try {
-      await wv.evaluateJavaScript('window.receberTempos && window.receberTempos(' +
-        avaliador.serializar('⏱️ Erro ao medir: ' + (e.message || String(e))) + ')', false);
-    } catch (e2) {
-      // página fechada: ignora
-    }
-  }
-  await apresentar;
+  await wv.loadHTML(html.gerar(resultado, cfg));
+  await wv.present(true);
 }
 
 module.exports = { executar };

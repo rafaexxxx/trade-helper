@@ -245,18 +245,8 @@ async function carregarJogador(store, conta, minutos) {
 async function carregarTudo(store, ajustes, opcoes) {
   const noWidget = !!(opcoes && opcoes.widget);
   const avisos = [];
-  // v6.13.2: tempo de cada busca (só medição; aparece no Diagnóstico).
-  const tempos = [];
-  let t0 = Date.now();
-  const medir = (etapa, origem, extra) => {
-    const ag = Date.now();
-    tempos.push({ etapa, ms: ag - t0, origem: origem || null, extra: extra || null });
-    t0 = ag;
-  };
 
-  const idNovo = await garantirId(ajustes);
-  if (idNovo) store.gravar('ajustes', ajustes);
-  medir('usuário', idNovo ? 'rede' : 'guardado');
+  if (await garantirId(ajustes)) store.gravar('ajustes', ajustes);
   const usuario = { id: ajustes.userId, nome: ajustes.nomeReal || ajustes.username };
 
   // Fonte principal dos itens: Rolimon's. Conferência: Roblox.
@@ -272,7 +262,6 @@ async function carregarTudo(store, ajustes, opcoes) {
   } catch (e) {
     erroJogador = e;
   }
-  medir("itens no Rolimon's", jogador ? jogador.origem : 'falhou');
   // v6.13.1: no widget, com os itens do Rolimon's em mãos, o inventário do Roblox
   // não é baixado (são várias páginas): usa o que o painel salvou, de qualquer
   // idade, só para completar os holds. Sem Rolimon's, busca normalmente (reserva).
@@ -289,8 +278,6 @@ async function carregarTudo(store, ajustes, opcoes) {
       erroRoblox = e;
     }
   }
-  medir('inventário no Roblox', roblox ? roblox.origem : 'falhou',
-    roblox && roblox.origem === 'rede' && roblox.dados && roblox.dados.paginas ? roblox.dados.paginas + ' pág.' : null);
   if (!jogador && !roblox) throw erroJogador || erroRoblox;
   if (!jogador) avisos.push("Rolimon's indisponível (" + erroJogador.message + '). Itens vindos só do Roblox.');
   if (!roblox) avisos.push('Não deu para conferir com o Roblox (' + erroRoblox.message + ').');
@@ -300,7 +287,6 @@ async function carregarTudo(store, ajustes, opcoes) {
     store, 'cache_catalogo', cfg.CACHE_ROLIMONS_MIN,
     buscarItensRolimons, avisos, "os values do Rolimon's"
   );
-  medir('catálogo', rol.origem, rol.dados.qtd + ' itens');
   if (rol.dados.versao !== 'v2') {
     avisos.push("Catálogo novo do Rolimon's indisponível, usando o antigo. Itens recentes podem ficar sem dados.");
   }
@@ -318,7 +304,6 @@ async function carregarTudo(store, ajustes, opcoes) {
       values: rol.origem,
     },
     avisos,
-    tempos,
   };
 }
 
