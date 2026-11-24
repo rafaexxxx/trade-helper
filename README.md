@@ -149,7 +149,8 @@ A forma é vista do **seu** lado, pela contagem de itens:
 2. Os anúncios já vistos ficam guardados no iPhone por **2h**, então a lista cresce a cada consulta. Um anúncio guardado pode já ter sido fechado.
 3. A lista é **única**, em linhas curtas (jogador, itens, % e veredito). Tocar numa linha abre o cartão completo; tocar num item abre a **tela do item** (v6.12), com as mudanças de RAP e value em 24h no fim e o "Ver no Rolimon's" embaixo; os botões levam ao **jogador no Rolimon's** ou abrem a **trade no Roblox** (quem monta e envia a trade é você).
 4. **Filtros**:
-   - **"Um item seu"**: só os anúncios que envolvem aquele item.
+   - **"Um item ▾"**: só os anúncios que envolvem aquele item.
+   - **"Meus itens ▾"** (v6.20): marca e desmarca quais itens seus entram nas sugestões, aqui e na aba Plano. O item desmarcado (um ovo de 200 Robux, por exemplo) não entra em nenhuma sugestão, nem como add. A escolha fica salva no iPhone, separada por conta, e o chip mostra "2 de 3 itens" enquanto houver algum desmarcado.
    - **Todos / Seu upgrade / Seu downgrade** (v6.8): a forma da trade do **seu** lado, com a contagem em cada botão.
      - Seu upgrade: você dá vários itens e recebe 1.
      - Seu downgrade: você dá 1 item e recebe 2 ou 3.

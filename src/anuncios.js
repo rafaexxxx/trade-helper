@@ -202,7 +202,9 @@ function secao(cfg, erro) {
     '<button type="button" data-f="downgrade">Seu downgrade<small></small></button>' +
     '</div>' +
     '<div class="an-sel"><button type="button" class="chip" id="an-filtro"></button>' +
-    '<button type="button" class="chip" id="an-ordem"></button></div>' +
+    '<button type="button" class="chip" id="an-ordem"></button>' +
+    // v6.20: quais itens seus entram nas sugestões (aqui e no Plano).
+    '<button type="button" class="chip" id="an-meus"></button></div>' +
     '<div class="an-status"><p class="meta" id="an-info">Os anúncios são buscados quando você abre esta aba.</p>' +
     '<button type="button" class="mais" id="an-atualizar" aria-label="Atualizar anúncios">↻</button></div>' +
     '</div>' +
@@ -238,6 +240,13 @@ function folha() {
     '<p class="an-fl-info">Mostra só os anúncios em que esse item entra no seu lado (Dou). Nos de upgrade e downgrade, a sugestão é refeita com ele.</p>' +
     '<div class="an-fl-lista" id="an-fl-lista"></div>' +
     '</div>' +
+    // v6.20: folha "Meus itens" (marca e desmarca os itens que entram nas sugestões).
+    '<div id="am-fundo" class="fundo oculto"></div>' +
+    '<div id="am-folha" class="an-fl oculto">' +
+    '<div class="an-fl-topo"><b>Meus itens</b><button type="button" id="am-fechar">Fechar</button></div>' +
+    '<p class="an-fl-info">Só os itens marcados entram nas sugestões (inclusive como add), aqui e na aba Plano. Toque para marcar ou desmarcar.</p>' +
+    '<div class="an-fl-lista" id="am-lista"></div>' +
+    '</div>' +
     '<div id="ao-fundo" class="fundo oculto"></div>' +
     '<div id="ao-folha" class="folha oculto">' +
     '<p>Ordem dos anúncios</p>' +
@@ -256,7 +265,8 @@ function css() {
 #an-forma button{flex:auto;white-space:nowrap;font-size:13px;padding:7px 4px}
 #an-forma small{margin-left:4px;font-size:11px;font-weight:700;opacity:.7;font-variant-numeric:tabular-nums}
 #an-forma small:empty{display:none}
-.an-sel{display:flex;gap:6px;align-items:center;min-width:0}
+.an-sel{display:flex;flex-wrap:wrap;gap:6px;align-items:center;min-width:0}
+#an-meus{flex:none}
 .an-sel .chip{display:inline-flex;align-items:center;gap:6px;min-width:0;padding:6px 12px;font-size:13px}
 #an-filtro{max-width:64%}
 #an-filtro.com-item{padding-left:6px}
@@ -440,6 +450,10 @@ button.pl-linha:active,.pl-tr.aberto>.pl-linha{background:var(--card2)}
 .an-fl-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
 .an-fl-txt b{font-size:15px;font-weight:600;overflow-wrap:anywhere}
 .an-fl-txt span{font-size:12px;color:var(--sub)}
+/* v6.20: folha "Meus itens" (marcado = entra nas sugestões). */
+#am-lista .an-fl-op:not(.on) :is(.thumb,.an-fl-txt){opacity:.5}
+.am-ck{flex:none;display:grid;place-items:center;width:24px;height:24px;border:2px solid var(--borda);border-radius:50%;font-size:13px;font-weight:700;color:transparent}
+#am-lista .an-fl-op.on .am-ck{background:var(--acc-fundo);border-color:var(--acc);color:var(--on-acc)}
 #diag-anuncios{white-space:pre-wrap;overflow-wrap:anywhere}
 `;
 }
@@ -453,12 +467,17 @@ button.pl-linha:active,.pl-tr.aberto>.pl-linha{background:var(--card2)}
 function criarAnalisador(D, P, PA) {
   var C = D.catalogo;
   // meuId = dono do inventário (os anúncios dele ficam de fora).
-  var A = { meus: [], porAsset: {}, emHold: {}, meusOrdenados: [], meuId: PA.meuId };
+  var A = { meus: [], porAsset: {}, emHold: {}, meusOrdenados: [], todosOrdenados: [], ocultos: {}, meuId: PA.meuId };
   var memoCombinacao = {};
 
   // Seus itens disponíveis (sem hold e com dados no Rolimon's).
-  A.montarMeus = function (inv) {
+  // v6.20 (filtro "Meus itens"), ocultos opcional = { assetId: 1 } itens que você
+  // desmarcou: não entram em nenhuma sugestão (nem como add) nem no Plano.
+  // todosOrdenados = todos os disponíveis, desmarcados inclusive (para a folha).
+  A.montarMeus = function (inv, ocultos) {
+    ocultos = ocultos || {};
     var meus = [];
+    var todos = [];
     var porAsset = {};
     var emHold = {};
     inv.forEach(function (x) {
@@ -473,13 +492,17 @@ function criarAnalisador(D, P, PA) {
       i.serial = x[2];
       i.doInventario = true;
       i.vb = valorEfetivo(i);
+      todos.push(i);
+      if (ocultos[i.id]) return;
       meus.push(i);
       (porAsset[i.id] = porAsset[i.id] || []).push(i);
     });
     A.meus = meus;
     A.porAsset = porAsset;
     A.emHold = emHold;
+    A.ocultos = ocultos;
     A.meusOrdenados = meus.slice().sort(function (x, y) { return y.vb - x.vb; });
+    A.todosOrdenados = todos.sort(function (x, y) { return y.vb - x.vb; });
     // As combinações guardadas valiam para o inventário anterior.
     memoCombinacao = {};
   };
@@ -716,6 +739,7 @@ function criarAnalisador(D, P, PA) {
         var livres = (porAsset[id] || []).filter(function (c) { return !excluir[c.uaid]; });
         var n = usados[id] || 0;
         if (n >= livres.length) {
+          if (A.ocultos[id]) return { descarte: 'pede item seu desmarcado em Meus itens' };
           return { descarte: emHold[id] && n < livres.length + emHold[id] ? 'pede item seu que está em hold' : 'pede itens que você não tem' };
         }
         dou.push(livres[n]);
@@ -896,8 +920,22 @@ function paginaAnuncios(D, P, PA) {
   // do filtro "Um item seu" guardado no iPhone ('' na sua conta, '-c2' na outra).
   var AN = criarAnalisador(D, P, PA);
   var chaveConta = '';
+  // v6.20: itens desmarcados em "Meus itens" ({ assetId: 1 }), guardados no
+  // iPhone por conta ('an-ocultos' + chave). Item novo no inventário entra marcado.
+  function lerOcultos(chave) {
+    var r = {};
+    try {
+      var l = JSON.parse(lerSalvo('an-ocultos' + chave, '[]'));
+      if (Array.isArray(l)) l.forEach(function (id) { r[String(id)] = 1; });
+    } catch (e) {}
+    return r;
+  }
+  estado.ocultos = lerOcultos('');
+  function invAtual() {
+    return chaveConta ? estado.invConta || [] : D.inventario;
+  }
   function montarMeus(inv) {
-    AN.montarMeus(inv);
+    AN.montarMeus(inv, estado.ocultos);
     // O item salvo no filtro pode ter saído do inventário (ou entrado em hold).
     if (estado.item && !AN.porAsset[estado.item]) estado.item = '';
   }
@@ -1569,8 +1607,16 @@ function paginaAnuncios(D, P, PA) {
     } else {
       b.className = 'chip';
       b.setAttribute('aria-label', 'Escolher um item seu');
-      b.innerHTML = '<span class="t">Todos os seus itens</span><span class="v" aria-hidden="true">▾</span>';
+      b.innerHTML = '<span class="t">Um item</span><span class="v" aria-hidden="true">▾</span>';
     }
+    // v6.20: chip "Meus itens". Com algum desmarcado, destaca e mostra "2 de 3 itens".
+    var nTodos = distintos(AN.todosOrdenados).length;
+    var nUsa = distintos(AN.meusOrdenados).length;
+    var bm = $('an-meus');
+    bm.className = nUsa < nTodos ? 'chip filtro on' : 'chip';
+    bm.setAttribute('aria-label', 'Escolher quais itens seus entram nas sugestões');
+    bm.innerHTML = '<span class="t">' + (nUsa < nTodos ? nUsa + ' de ' + nTodos + ' itens' : 'Meus itens') +
+      '</span><span class="v" aria-hidden="true">▾</span>';
     $('an-ordem').innerHTML = '<span class="t">' + esc(NOMES_ORDEM[estado.ordem]) + '</span><span class="v" aria-hidden="true">▾</span>';
     // v6.8: forma, com quantos anúncios cada uma tem (já com o filtro do item).
     var fs = document.querySelectorAll('#an-forma button');
@@ -1892,9 +1938,10 @@ function paginaAnuncios(D, P, PA) {
     estado.invConta = dados ? dados.inventario : null;
     AN.meuId = dados ? Number(dados.meuId) || 0 : PA.meuId;
     estado.item = lerSalvo('an-filtro-item' + chaveConta, '');
+    estado.ocultos = lerOcultos(chaveConta);
     estado.aberto = null;
     // (montarMeus também limpa as combinações guardadas)
-    montarMeus(dados ? dados.inventario || [] : D.inventario);
+    montarMeus(invAtual());
     var el = $('an-conta');
     if (el) {
       el.textContent = dados ? 'Cruzados com os itens de ' + (dados.nome || 'conta 2') + '. O lado Dou mostra os itens dessa conta.' : '';
@@ -1908,6 +1955,7 @@ function paginaAnuncios(D, P, PA) {
     if (estado.carregou) desenhar();
     else desenharFiltro();
     if (!$('an-folha').classList.contains('oculto')) desenharFolha();
+    if (!$('am-folha').classList.contains('oculto')) desenharMeus();
   };
 
   // ---------- Filtro "Um item seu" ----------
@@ -1927,6 +1975,53 @@ function paginaAnuncios(D, P, PA) {
         miniatura(i.id) + '<span class="an-fl-txt"><b>' + esc(i.nome) + '</b><span>' + sub + '</span></span></button>';
     });
     $('an-fl-lista').innerHTML = h;
+  }
+  // ---------- v6.20: folha "Meus itens" ----------
+  // Uma linha por item (as cópias contam juntas), do maior value.
+  function distintos(l) {
+    var vistos = {};
+    return l.filter(function (i) {
+      if (vistos[i.id]) return false;
+      vistos[i.id] = true;
+      return true;
+    });
+  }
+  function desenharMeus() {
+    var h = '';
+    var todos = distintos(AN.todosOrdenados);
+    todos.forEach(function (i) {
+      var usa = !estado.ocultos[i.id];
+      var copias = AN.todosOrdenados.filter(function (c) { return c.id === i.id; }).length;
+      var sub = fmtNum(i.vb) + ' ' + (i.value != null ? 'value' : 'RAP') +
+        (copias > 1 ? ' · ' + copias + ' cópias' : '') + (usa ? '' : ' · fora das sugestões');
+      h += '<button type="button" class="an-fl-op' + (usa ? ' on' : '') + '" data-id="' + esc(i.id) + '" aria-pressed="' + usa + '">' +
+        miniatura(i.id) + '<span class="an-fl-txt"><b>' + esc(i.nome) + '</b><span>' + sub + '</span></span>' +
+        '<span class="am-ck" aria-hidden="true">✓</span></button>';
+    });
+    $('am-lista').innerHTML = h || '<p class="vazio">Nenhum item seu fora de hold.</p>';
+  }
+  function abrirMeus() {
+    desenharMeus();
+    $('am-fundo').classList.remove('oculto');
+    $('am-folha').classList.remove('oculto');
+    pedirMiniaturas(distintos(AN.todosOrdenados).map(function (i) { return i.id; }));
+  }
+  function fecharMeus() {
+    $('am-fundo').classList.add('oculto');
+    $('am-folha').classList.add('oculto');
+  }
+  function alternarMeu(id) {
+    if (!id) return;
+    if (estado.ocultos[id]) delete estado.ocultos[id];
+    else estado.ocultos[id] = 1;
+    gravarSalvo('an-ocultos' + chaveConta, JSON.stringify(Object.keys(estado.ocultos)));
+    estado.aberto = null;
+    // (montarMeus refaz a lista, limpa as combinações e desfaz o "Um item" desmarcado)
+    montarMeus(invAtual());
+    gravarSalvo('an-filtro-item' + chaveConta, estado.item);
+    desenharMeus();
+    if (estado.carregou) processar();
+    else desenhar();
   }
   function abrirFolha() {
     desenharFolha();
@@ -1964,6 +2059,14 @@ function paginaAnuncios(D, P, PA) {
   });
   $('an-fundo').addEventListener('click', fecharFolha);
   $('an-fechar').addEventListener('click', fecharFolha);
+  // v6.20: chip e folha "Meus itens".
+  $('an-meus').addEventListener('click', abrirMeus);
+  $('am-lista').addEventListener('click', function (ev) {
+    var b = ev.target.closest('.an-fl-op');
+    if (b) alternarMeu(b.getAttribute('data-id'));
+  });
+  $('am-fundo').addEventListener('click', fecharMeus);
+  $('am-fechar').addEventListener('click', fecharMeus);
   // v6.13: a ordem fica numa folha pequena (chip "Ordem ▾").
   function fecharOrdem() {
     $('ao-fundo').classList.add('oculto');
