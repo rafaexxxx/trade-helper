@@ -11,9 +11,10 @@
 // continuam simples.
 // v6.19 (protótipos dos lotes 1 a 4 + rodada de botões): saem Rosinha, Vermelho,
 // Chromecore, MetalHeart, Veludo e Fita Perdida (com os sustos e a camada de fita);
-// quem estava num deles vai para o parecido (ANTIGOS). Entram 9 temas no grupo
+// quem estava num deles vai para o parecido (ANTIGOS). Entram temas no grupo
 // "Novos", as melhorias da Galáxia, Noir, Abissal, Obsidiana, Acid, Aero, Dark Aero,
-// Metro, Soft Club e Gatinhos, e os botões novos dos 22 (CSS_NOVOS).
+// Metro, Soft Club e Gatinhos, e os botões novos de todos (CSS_NOVOS).
+// v6.19.1: sai a Floresta Escura (fica com 21 temas; quem estava nela vai para o Noir).
 
 function esc(s) {
   const mapa = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
@@ -40,7 +41,6 @@ const TEMAS = [
   { id: 'archangel', nome: 'Archangel', g: 'n', e: 'dark', f: 'Cormorant+Garamond:ital,wght@1,600' },
   { id: 'gotico', nome: 'Romantic Gothic', g: 'n', e: 'dark', f: 'Pinyon+Script&family=Cormorant+Garamond:wght@600' },
   { id: 'luar', nome: 'Moonlight', g: 'n', e: 'dark', f: 'Italiana' },
-  { id: 'floresta', nome: 'Floresta Escura', g: 'n', e: 'dark', f: 'Spectral+SC:wght@500' },
   { id: 'barbie', nome: 'Barbiecore', g: 'n', e: 'light', f: 'Yellowtail' },
   { id: 'dreamcore', nome: 'Dreamcore', g: 'n', e: 'light', f: 'Poiret+One' },
   { id: 'elixir', nome: 'Elixir', g: 'n', e: 'dark', f: 'Syne:wght@800' },
@@ -48,7 +48,8 @@ const TEMAS = [
 ];
 
 // v6.19: temas que saíram -> o parecido que entra no lugar (escolha do usuário).
-const ANTIGOS = { veludo: 'gotico', rosinha: 'barbie', chromecore: 'archangel', metalheart: 'obsidiana', horror: 'noir', vermelho: 'dark' };
+// v6.19.1: a Floresta Escura também saiu (vai para o Noir, o outro preto e branco).
+const ANTIGOS = { veludo: 'gotico', rosinha: 'barbie', chromecore: 'archangel', metalheart: 'obsidiana', horror: 'noir', vermelho: 'dark', floresta: 'noir' };
 
 // v5.3.1: confere se um id de tema existe (usado pela ponte que grava o tema).
 function temaValido(id) {
@@ -666,7 +667,7 @@ const CSS_NOVOS = `
 
 /* =====================================================================
    TEMAS · LOTE 1 (novos): Angel Core, Romantic Gothic,
-   Moonlight e Floresta Escura. Mesmo molde dos Temáticos da v6.4:
+   e Moonlight. Mesmo molde dos Temáticos da v6.4:
    tokens de cor + tokens de forma (--r-*, --clip-*) + camadas .ceu k1..k5.
    Animação de tela cheia só com transform/opacity; sem backdrop-filter.
    Laranja = paga (--warn), verde = ganha (--pos), vermelho = desce (--neg).
@@ -730,39 +731,22 @@ const CSS_NOVOS = `
   --c2:#7cc6ec;--c2-fundo:linear-gradient(165deg,#eefaff 0%,#b8e4f8 40%,#6fb7e0 75%,#4a93c2 100%);--c2-press:#4a93c2;--c2-on:#061a28;--c2-t:#a8dcf4;--c2-bg:rgba(124,198,236,.12);
   --c2-heroi:radial-gradient(circle at 89% 30%,#fbfdff 0 14px,rgba(225,245,255,.55) 15px,rgba(170,220,255,.18) 28px,transparent 50px),radial-gradient(ellipse 90% 70% at 50% 120%,rgba(90,170,230,.38),transparent 70%),linear-gradient(170deg,#13294a 0%,#0b1834 60%,#07102a 100%);--c2-heroi-borda:rgba(180,225,255,.35)}
 
-/* ---------- Floresta Escura: floresta de pinheiros em preto e branco com neblina (feita só com código), tudo em cinza frio ---------- */
-[data-tema=floresta]{color-scheme:dark;--body-fundo:transparent;
-  --topo:#0c0d0c;--bg:#050605;--card:rgba(10,12,11,.80);--card2:rgba(30,33,31,.84);--borda:rgba(220,228,224,.10);--card-borda:rgba(220,228,224,.16);--fg:#e6eae7;--sub:#9ba39f;
-  --acc:#c9cfcb;--acc-fundo:linear-gradient(180deg,#e2e6e3 0%,#bcc3bf 55%,#9aa29d 100%);--acc-press:#8e9691;--on-acc:#0b0d0c;--acc-t:#d6ddd9;--rap:#a9bcd6;
-  --heroi:radial-gradient(ellipse 80% 70% at 50% 0%,rgba(215,225,220,.14),transparent 70%),linear-gradient(180deg,rgba(16,19,17,.66),rgba(6,7,6,.82));
-  --heroi-borda:rgba(220,228,224,.2);--on-heroi:#eef1ef;--heroi-linha:rgba(220,228,224,.14);
-  --pos:#8fe0a6;--pos-bg:rgba(30,80,45,.45);--warn:#f0aa72;--warn-bg:rgba(90,55,20,.45);--neg:#ff8c98;--neg-bg:rgba(95,25,35,.45);
-  --on-status:#050605;--dou-bg:rgba(220,228,224,.06);--rec-bg:rgba(143,224,166,.07);
-  --sombra:0 12px 30px rgba(0,0,0,.6);--vidro:none;--folha:#0e100f;
-  --btn-sombra:inset 0 1px 0 rgba(255,255,255,.55),0 4px 16px rgba(0,0,0,.55);
-  --c2-btn-sombra:inset 0 1px 0 rgba(255,255,255,.55),0 4px 16px rgba(0,0,0,.55);
-  --r-btn:10px;--r-chip:8px;--r-card:12px;--r-heroi:14px;--r-thumb:8px;--r-seg:10px;--r-seg-b:8px;--r-campo:10px;--r-mais:10px;
-  --f-titulo:"Spectral SC",Georgia,serif;--t-peso:500;--t-tam:32px;--t-esp:.05em;--t-cor:#e4e8e5;--t-sombra:0 2px 18px rgba(0,0,0,.9);
-  --ceu:radial-gradient(ellipse 45% 32% at 50% 52%,rgba(160,166,162,.38),transparent 70%),radial-gradient(ellipse 80% 40% at 50% 60%,rgba(110,116,112,.22),transparent 72%),linear-gradient(180deg,#0b0c0b 0%,#191b1a 45%,#141615 70%,#070807 100%);
-  --c2:#8a9cbd;--c2-fundo:linear-gradient(180deg,#e0e6f1 0%,#b4c0d6 55%,#8c9bb8 100%);--c2-press:#7b8aa8;--c2-on:#0b1220;--c2-t:#bccae6;--c2-bg:rgba(138,156,189,.14);
-  --c2-heroi:radial-gradient(ellipse 80% 70% at 50% 0%,rgba(190,205,235,.16),transparent 70%),linear-gradient(180deg,rgba(14,18,28,.68),rgba(5,7,12,.84));--c2-heroi-borda:rgba(190,205,235,.22)}
-
-/* ---------- Formas comuns aos 5 (mesmas regras dos Temáticos, com os tokens de cada um) ---------- */
-:is([data-tema=angel],[data-tema=gotico],[data-tema=luar],[data-tema=floresta]) h1{letter-spacing:var(--t-esp,-.02em);color:var(--t-cor,var(--fg))}
-:is([data-tema=angel],[data-tema=gotico],[data-tema=luar],[data-tema=floresta]) :is(.secao>h2,details.bloco>summary){letter-spacing:var(--t-esp,-.01em)}
-:is([data-tema=angel],[data-tema=gotico],[data-tema=luar],[data-tema=floresta]) .btn{position:relative;border-radius:var(--r-btn,12px);box-shadow:var(--btn-sombra,none)}
-:is([data-tema=angel],[data-tema=gotico],[data-tema=luar],[data-tema=floresta]) .btn.sec{box-shadow:none}
-:is([data-tema=angel],[data-tema=gotico],[data-tema=luar],[data-tema=floresta]) .seg.abas button.on{position:relative;box-shadow:var(--btn-sombra,none)}
-:is([data-tema=angel],[data-tema=gotico],[data-tema=luar],[data-tema=floresta]) :is(.chip,.chip-conta,.cont,.tag,.faixa-conta){border-radius:var(--r-chip,999px)}
-:is([data-tema=angel],[data-tema=gotico],[data-tema=luar],[data-tema=floresta]) :is(.grupo,.vazio,.an-grupo,.av-proposta,.veredito,.av-resumo,.dia-card,.dia-lucro,.ti-graf,.ct-c,.ti-bloco){border-radius:var(--r-card,16px)}
-:is([data-tema=angel],[data-tema=gotico],[data-tema=luar],[data-tema=floresta]) .faixa{position:relative;overflow:hidden;isolation:isolate;border-radius:var(--r-heroi,18px)}
-:is([data-tema=angel],[data-tema=gotico],[data-tema=luar],[data-tema=floresta]) .folha{border-radius:var(--r-card,16px);clip-path:var(--clip-card,none)}
-:is([data-tema=angel],[data-tema=gotico],[data-tema=luar],[data-tema=floresta]) input[type=search]{border-radius:var(--r-campo,12px);clip-path:var(--clip-seg,none)}
-:is([data-tema=angel],[data-tema=gotico],[data-tema=luar],[data-tema=floresta]) .seg{border-radius:var(--r-seg,12px)}
-:is([data-tema=angel],[data-tema=gotico],[data-tema=luar],[data-tema=floresta]) .seg button{border-radius:var(--r-seg-b,9px)}
-:is([data-tema=angel],[data-tema=gotico],[data-tema=luar],[data-tema=floresta]) .thumb{border-radius:var(--r-thumb,12px);clip-path:var(--clip-thumb,none)}
-:is([data-tema=angel],[data-tema=gotico],[data-tema=luar],[data-tema=floresta]) .mais{border-radius:var(--r-mais,50%)}
-:is([data-tema=angel],[data-tema=gotico],[data-tema=luar],[data-tema=floresta]) :is(.ti-voltar,.ti-acao){border-radius:var(--r-btn,14px)}
+/* ---------- Formas comuns aos 3 (mesmas regras dos Temáticos, com os tokens de cada um) ---------- */
+:is([data-tema=angel],[data-tema=gotico],[data-tema=luar]) h1{letter-spacing:var(--t-esp,-.02em);color:var(--t-cor,var(--fg))}
+:is([data-tema=angel],[data-tema=gotico],[data-tema=luar]) :is(.secao>h2,details.bloco>summary){letter-spacing:var(--t-esp,-.01em)}
+:is([data-tema=angel],[data-tema=gotico],[data-tema=luar]) .btn{position:relative;border-radius:var(--r-btn,12px);box-shadow:var(--btn-sombra,none)}
+:is([data-tema=angel],[data-tema=gotico],[data-tema=luar]) .btn.sec{box-shadow:none}
+:is([data-tema=angel],[data-tema=gotico],[data-tema=luar]) .seg.abas button.on{position:relative;box-shadow:var(--btn-sombra,none)}
+:is([data-tema=angel],[data-tema=gotico],[data-tema=luar]) :is(.chip,.chip-conta,.cont,.tag,.faixa-conta){border-radius:var(--r-chip,999px)}
+:is([data-tema=angel],[data-tema=gotico],[data-tema=luar]) :is(.grupo,.vazio,.an-grupo,.av-proposta,.veredito,.av-resumo,.dia-card,.dia-lucro,.ti-graf,.ct-c,.ti-bloco){border-radius:var(--r-card,16px)}
+:is([data-tema=angel],[data-tema=gotico],[data-tema=luar]) .faixa{position:relative;overflow:hidden;isolation:isolate;border-radius:var(--r-heroi,18px)}
+:is([data-tema=angel],[data-tema=gotico],[data-tema=luar]) .folha{border-radius:var(--r-card,16px);clip-path:var(--clip-card,none)}
+:is([data-tema=angel],[data-tema=gotico],[data-tema=luar]) input[type=search]{border-radius:var(--r-campo,12px);clip-path:var(--clip-seg,none)}
+:is([data-tema=angel],[data-tema=gotico],[data-tema=luar]) .seg{border-radius:var(--r-seg,12px)}
+:is([data-tema=angel],[data-tema=gotico],[data-tema=luar]) .seg button{border-radius:var(--r-seg-b,9px)}
+:is([data-tema=angel],[data-tema=gotico],[data-tema=luar]) .thumb{border-radius:var(--r-thumb,12px);clip-path:var(--clip-thumb,none)}
+:is([data-tema=angel],[data-tema=gotico],[data-tema=luar]) .mais{border-radius:var(--r-mais,50%)}
+:is([data-tema=angel],[data-tema=gotico],[data-tema=luar]) :is(.ti-voltar,.ti-acao){border-radius:var(--r-btn,14px)}
 
 /* ---------- Angel Core: detalhes ---------- */
 /* Botões de pérola com um brilho que passa; asas e auréola no value; penas caindo. */
@@ -853,45 +837,14 @@ const CSS_NOVOS = `
   background:radial-gradient(ellipse 9% 75% at 84% 0%,rgba(230,220,255,.35),transparent 70%),repeating-linear-gradient(0deg,rgba(200,190,255,.07) 0 1px,transparent 1px 7px),linear-gradient(transparent,rgba(30,30,90,.5));
   -webkit-mask-image:linear-gradient(transparent,#000 40%);mask-image:linear-gradient(transparent,#000 40%)}
 
-/* ---------- Floresta Escura: detalhes ---------- */
-/* Foto de fundo com aproximação bem lenta, escurecida nas pontas; duas faixas de névoa passando; grão de filme. */
-[data-tema=floresta] .btn.sec{background:rgba(10,12,11,.55);border-color:rgba(220,228,224,.3)}
-[data-tema=floresta] .chip{background:rgba(10,12,11,.7)}
-[data-tema=floresta] .chip.on{background:var(--acc-fundo);box-shadow:inset 0 1px 0 rgba(255,255,255,.55)}
-[data-tema=floresta] .chip.filtro.on{background:var(--neg-bg);box-shadow:none}
-[data-tema=floresta] .seg{background:rgba(10,12,11,.7)}
-[data-tema=floresta] .mais{background:rgba(10,12,11,.7)}
-[data-tema=floresta] :is(.grupo,.an-grupo,.av-proposta){border-top-color:rgba(230,236,232,.26)}
-[data-tema=floresta] .secao>h2::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,rgba(220,228,224,.35),transparent)}
-[data-tema=floresta] :is(h1,.secao>h2){text-shadow:var(--t-sombra)}
-[data-tema=floresta] .meta{text-shadow:0 1px 8px rgba(0,0,0,.9)}
-/* Camada 1: árvores de longe, apagadas e desfocadas pela névoa (aproxima bem devagar). */
-[data-tema=floresta] body>.ceu .k1{top:-3%;left:-3%;right:-3%;bottom:-3%;z-index:1;will-change:transform;animation:thFoto 60s ease-in-out infinite alternate;
-  background:url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 800' preserveAspectRatio='xMidYMax slice'><defs><path id='t' d='M20 0L34 34H27L38 60H30L40 86H23V100H17V86H0L10 60H2L13 34H6Z'/><filter id='b'><feGaussianBlur stdDeviation='3.2'/></filter></defs><g fill='%233b3e3c' filter='url(%23b)'><rect x='52' y='130' width='5' height='670'/><rect x='118' y='70' width='7' height='730'/><rect x='196' y='210' width='4' height='590'/><rect x='252' y='110' width='6' height='690'/><rect x='318' y='160' width='5' height='640'/><use href='%23t' transform='translate(150 330) scale(2.4)'/><use href='%23t' transform='translate(212 280) scale(3)'/><use href='%23t' transform='translate(90 420) scale(1.8)'/><use href='%23t' transform='translate(280 400) scale(2)'/></g></svg>") center bottom/cover no-repeat}
-/* Camada 3: árvores do meio, mais escuras e só um pouco desfocadas. */
-[data-tema=floresta] body>.ceu .k2{top:0;left:0;right:0;bottom:0;z-index:3;
-  background:url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 800' preserveAspectRatio='xMidYMax slice'><defs><path id='t' d='M20 0L34 34H27L38 60H30L40 86H23V100H17V86H0L10 60H2L13 34H6Z'/><filter id='b'><feGaussianBlur stdDeviation='1.3'/></filter></defs><g fill='%231c1e1d' filter='url(%23b)'><path d='M20 0 H34 L36 800 H16Z'/><path d='M96 0 H112 L115 800 H93Z'/><path d='M232 40 H242 L244 800 H230Z'/><path d='M298 0 H316 L319 800 H295Z'/><path d='M372 0 H386 L388 800 H370Z'/><use href='%23t' transform='translate(60 640) scale(1.4)'/><use href='%23t' transform='translate(170 610) scale(1.8)'/><use href='%23t' transform='translate(330 660) scale(1.2)'/><use href='%23t' transform='translate(250 690) scale(1)'/></g></svg>") center bottom/cover no-repeat}
-/* Camada 5: troncos de perto (quase pretos), copa escura no alto e mato no chão. */
-[data-tema=floresta] body>.ceu .k3{top:0;left:0;right:0;bottom:0;z-index:5;
-  background:url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 800' preserveAspectRatio='xMidYMax slice'><g fill='%23070807'><path d='M-10 0 H44 L50 800 H-10Z'/><path d='M332 0 H392 L400 800 H326Z'/><path d='M0 0 H400 V70 Q370 110 340 84 Q318 128 286 96 Q262 140 228 104 Q206 132 178 100 Q150 136 122 102 Q98 134 70 98 Q44 126 20 92 Q8 110 0 100Z'/><path d='M0 800 V752 L8 736 L14 754 L22 728 L30 756 L40 740 L48 758 L60 734 L68 756 L80 742 L92 760 L104 738 L114 758 L128 744 L140 762 L152 740 L164 760 L178 746 L190 764 L204 742 L216 762 L230 748 L244 764 L258 744 L270 762 L284 746 L298 764 L312 742 L324 760 L338 746 L352 764 L366 744 L380 760 L392 742 L400 756 V800Z'/></g></svg>") center bottom/cover no-repeat}
-/* Grão de filme e cantos escuros por cima de tudo (o texto continua por cima). */
-[data-tema=floresta] body>.ceu::after{z-index:6;opacity:1;animation:none;background:url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .07 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>") 0 0/180px 180px,radial-gradient(ellipse at 50% 50%,transparent 45%,rgba(0,0,0,.6) 100%)}
-/* Camadas 4 e 5: névoa de verdade (manchas largas e suaves) passando devagar em sentidos opostos. */
-[data-tema=floresta] body>.ceu :is(.k4,.k5){left:0;width:calc(100% + 900px);height:420px;will-change:transform;
-  background:radial-gradient(ellipse 260px 90px at 150px 210px,rgba(210,216,213,.13),transparent 72%),radial-gradient(ellipse 320px 110px at 520px 180px,rgba(210,216,213,.10),transparent 72%),radial-gradient(ellipse 240px 80px at 780px 240px,rgba(210,216,213,.12),transparent 72%) 0 0/900px 420px repeat-x}
-[data-tema=floresta] body>.ceu .k4{top:32%;z-index:2;animation:thNevoa1 150s linear infinite}
-[data-tema=floresta] body>.ceu .k5{top:58%;z-index:4;opacity:.85;animation:thNevoa1 110s linear -60s infinite reverse}
-
 /* ---------- Reação ao toque ---------- */
 [data-tema=angel] .toque{animation:thAureola .55s ease-out}
 [data-tema=gotico] .toque{animation:thLacre .35s ease-out}
 [data-tema=luar] .toque{animation:thLua .55s ease-out}
-[data-tema=floresta] .toque{animation:thNevoa .5s ease-out}
 
 @keyframes thAureola{0%{box-shadow:0 0 0 0 rgba(255,255,255,.95),0 0 0 0 rgba(170,185,235,.6);filter:brightness(1.06)}100%{box-shadow:0 0 0 12px rgba(255,255,255,0),0 0 0 22px rgba(170,185,235,0);filter:none}}
 @keyframes thLacre{0%{transform:none}35%{transform:scale(.93);filter:brightness(1.3)}100%{transform:none;filter:none}}
 @keyframes thLua{0%{box-shadow:0 0 0 0 rgba(205,190,255,.85);filter:brightness(1.3)}100%{box-shadow:0 0 0 16px rgba(205,190,255,0);filter:none}}
-@keyframes thNevoa{0%{opacity:.45;transform:translateY(1px)}100%{opacity:1;transform:none}}
 @keyframes thPerola{0%{transform:translateX(-160%) skewX(-18deg)}55%,100%{transform:translateX(360%) skewX(-18deg)}}
 @keyframes thRaios{from{opacity:.45}to{opacity:.95}}
 @keyframes thNuvem600{from{transform:translateX(0)}to{transform:translateX(-600px)}}
@@ -902,12 +855,11 @@ const CSS_NOVOS = `
 @keyframes thLuar{from{opacity:.8}to{opacity:1}}
 @keyframes thAgua{from{transform:translateX(-8px)}to{transform:translateX(8px)}}
 @keyframes thNevoa1{from{transform:translateX(0)}to{transform:translateX(-900px)}}
-@keyframes thFoto{from{transform:scale(1)}to{transform:scale(1.07)}}
 
 /* "Reduzir movimento" no iPhone: tudo parado. */
 @media (prefers-reduced-motion:reduce){
-  :is([data-tema=angel],[data-tema=gotico],[data-tema=luar],[data-tema=floresta]) :is(.ceu>span,h1,.faixa,.btn,.chip,.seg button,.grupo,.toque){animation:none!important}
-  :is([data-tema=angel],[data-tema=gotico],[data-tema=luar],[data-tema=floresta]) :is(.faixa,h1,.btn,.seg button)::before,:is([data-tema=angel],[data-tema=gotico],[data-tema=luar],[data-tema=floresta]) :is(.faixa,h1,.btn,.seg button)::after{animation:none!important}
+  :is([data-tema=angel],[data-tema=gotico],[data-tema=luar]) :is(.ceu>span,h1,.faixa,.btn,.chip,.seg button,.grupo,.toque){animation:none!important}
+  :is([data-tema=angel],[data-tema=gotico],[data-tema=luar]) :is(.faixa,h1,.btn,.seg button)::before,:is([data-tema=angel],[data-tema=gotico],[data-tema=luar]) :is(.faixa,h1,.btn,.seg button)::after{animation:none!important}
 }
 
 
@@ -1428,10 +1380,6 @@ ${X}[data-tema=gotico] .btn:not(.sec){padding-left:36px;
 /* Moonlight: pedra-da-lua com o reflexo azulado passando e uma lua crescente. */
 ${X}[data-tema=luar] .btn:not(.sec){padding-left:36px;
   background:url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'><path d='M8 1 A5.5 5.5 0 1 0 11 9 A4.4 4.4 0 1 1 8 1Z' fill='%2314113a'/></svg>") 16px 50%/12px 12px no-repeat,linear-gradient(115deg,transparent 35%,rgba(190,220,255,.5) 48%,transparent 60%),var(--acc-fundo)}
-/* Floresta Escura: pedra de névoa (formato irregular) com um pinheiro antes do texto. */
-${X}[data-tema=floresta] .btn:not(.sec){padding-left:32px;border-radius:12px 8px 14px 9px / 9px 13px 8px 12px;
-  background:url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 100'><path d='M20 0L34 34H27L38 60H30L40 86H23V100H17V86H0L10 60H2L13 34H6Z' fill='%230b0d0c'/></svg>") 15px 50%/8px 18px no-repeat,repeating-linear-gradient(0deg,rgba(0,0,0,.035) 0 1px,transparent 1px 3px),var(--acc-fundo)}
-${X}[data-tema=floresta] .chip.on{border-radius:10px 7px 11px 8px / 8px 11px 7px 10px}
 /* Barbiecore: bala com brilho e um brilhinho antes do texto. */
 ${X}[data-tema=barbie] .btn:not(.sec){padding-left:38px;background:url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'><path d='M6 0 L7.4 4.6 12 6 7.4 7.4 6 12 4.6 7.4 0 6 4.6 4.6Z' fill='white'/></svg>") 18px 50%/13px 13px no-repeat,var(--acc-fundo)}
 /* Dreamcore: algodão-doce fofo (bolinhas de luz dentro) com uma nuvenzinha antes do texto. */

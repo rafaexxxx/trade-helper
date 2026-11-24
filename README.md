@@ -7,7 +7,7 @@ Painel de Limiteds do Roblox para iPhone, feito para rodar no app **[Scriptable]
 - 📣 **Anúncios**: cruza os Trade Ads recentes do Rolimon's com os seus itens e sugere combinações
 - 🧭 **Plano**: o próximo degrau da escadinha para os seus itens (subir, descer ou os dois), com o anúncio que serve agora, alvos do catálogo e a escadinha projetada
 - 🔀 **Conta 2**: acompanhe outra conta (itens e anúncios) com um toque
-- 🎨 **22 temas**, ❓ **Ajuda** para iniciantes e 🔔 **notificações** pelo widget
+- 🎨 **21 temas**, ❓ **Ajuda** para iniciantes e 🔔 **notificações** pelo widget
 - 🖤 Widgets pequeno, médio e grande (tema OLED) e da tela bloqueada
 - 🔒 **Somente leitura**: não usa login, cookie nem envia trades. Usa só APIs públicas.
 
@@ -208,16 +208,16 @@ A 4ª aba (v6.18, no lugar do cartão da v6.17 nos Anúncios) diz o **próximo d
 
 ## 🎨 Temas
 
-No menu **⋯ → Temas**, com 22 opções que ficam salvas no iPhone:
+No menu **⋯ → Temas**, com 21 opções que ficam salvas no iPhone:
 
 - **Clássicos:** Azul, Dark e OLED.
 - **Estéticos:** Galáxia, Frutiger Aero, Gen X Soft Club, Gatinhos, Dark Aero e Frutiger Metro.
 - **Temáticos:** Abissal, Noir, Obsidiana e Acid.
-- **Novos:** Angel Core, Archangel, Romantic Gothic, Moonlight, Floresta Escura, Barbiecore, Dreamcore, Elixir e Zen.
+- **Novos:** Angel Core, Archangel, Romantic Gothic, Moonlight, Barbiecore, Dreamcore, Elixir e Zen.
 
 Cada tema muda as cores, a forma e o material dos botões, os cartões, o fundo animado e a reação ao toque. Sem tema escolhido, o painel segue o iPhone (Azul no claro, Dark no escuro). Cada tema tem uma cor própria para a conta 2.
 
-Na v6.19 saíram Rosinha, Vermelho, Chromecore, MetalHeart, Veludo e Fita Perdida; quem usava um deles passa para o tema mais parecido.
+Na v6.19 saíram Rosinha, Vermelho, Chromecore, MetalHeart, Veludo e Fita Perdida (e a Floresta Escura, na v6.19.1); quem usava um deles passa para o tema mais parecido.
 
 ## ❓ Ajuda
 
