@@ -494,8 +494,16 @@ function capitulo4(cfg) {
 
   <h3 id="aj-temas">Temas</h3>
   <p>Menu ⋯ &gt; Temas. O toque aplica na hora e fica salvo neste iPhone. Sem tema escolhido, o painel segue o claro ou escuro do iPhone.</p>
-  <p>São três grupos: <b>Clássicos</b>, <b>Estéticos</b> e <b>Temáticos</b>. Cada tema tem cores próprias, a forma dos botões e cartões, um fundo animado e um jeito de reagir ao toque (no Azul sai uma ondinha, nos Gatinhos aparece uma patinha). Sem tema escolhido, o painel usa o Azul ou o Dark simples, seguindo o iPhone.</p>
-  <p>A <b>Fita Perdida</b> tem sustos de vez em quando. Com ela escolhida, aparece na tela de Temas o interruptor <b>Sustos da Fita Perdida</b>: desligado, fica só a imagem de fita velha. Se o iPhone estiver com <b>Reduzir movimento</b> ligado (Ajustes &gt; Acessibilidade &gt; Movimento), as animações dos temas ficam paradas.</p>
+  <p>São 22 temas em quatro grupos:</p>
+  <ul>
+    <li><b>Clássicos:</b> Azul, Dark e OLED.</li>
+    <li><b>Estéticos:</b> Galáxia, Frutiger Aero, Gen X Soft Club, Gatinhos, Dark Aero e Frutiger Metro.</li>
+    <li><b>Temáticos:</b> Abissal, Noir, Obsidiana e Acid.</li>
+    <li><b>Novos:</b> Angel Core, Archangel (o Angel Core em preto), Romantic Gothic, Moonlight, Floresta Escura, Barbiecore, Dreamcore, Elixir e Zen.</li>
+  </ul>
+  <p>Cada tema tem cores próprias, a forma e o material dos botões (com um pequeno desenho no botão principal), cartões, um fundo animado e um jeito de reagir ao toque (no Azul sai uma ondinha, nos Gatinhos aparece uma patinha). Sem tema escolhido, o painel usa o Azul ou o Dark simples, seguindo o iPhone.</p>
+  <p>Na versão 6.19 saíram Rosinha, Vermelho, Chromecore, MetalHeart, Veludo e Fita Perdida (com os sustos). Quem estava num deles passa para o mais parecido: Veludo vira Romantic Gothic, Rosinha vira Barbiecore, Chromecore vira Archangel, MetalHeart vira Obsidiana, Fita Perdida vira Noir e Vermelho vira Dark.</p>
+  <p>Se o iPhone estiver com <b>Reduzir movimento</b> ligado (Ajustes &gt; Acessibilidade &gt; Movimento), as animações dos temas ficam paradas.</p>
 
   <h3 id="aj-widget">Widget</h3>
   <p>Há os tamanhos pequeno, médio e grande, com o value total e os seus maiores itens. O widget pede para atualizar a cada ${cfg.WIDGET_ATUALIZAR_MIN} min, mas quem decide a hora é o iOS. Ele usa sempre o tema OLED (fundo preto), seja qual for o tema do painel. Item em hold aparece com a etiqueta amarela <b>HOLD</b>, e a contagem mostra quantos estão travados (ex.: "3 hold"). O widget não sabe quando o hold acaba, só se o item está travado.</p>

@@ -444,7 +444,7 @@ function gerar(r, cfg) {
   const dia = r.diario && r.diario.dados ? r.diario : null;
 
   return `<!doctype html>
-<html lang="pt-BR"${r.tema ? ' data-tema="' + esc(r.tema) + '"' : ''}${r.sustos === false ? ' data-sustos="0"' : ''}><head>
+<html lang="pt-BR"${r.tema ? ' data-tema="' + esc(r.tema) + '"' : ''}><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
@@ -552,7 +552,7 @@ ${cartao.tela()}
   <button type="button" class="op" id="m-ajuda">Ajuda</button>
   <button type="button" class="op cancelar" id="m-cancelar">Cancelar</button>
 </div>
-${temas.folhaTemas(r.sustos)}
+${temas.folhaTemas()}
 <div id="f-fundo" class="fundo oculto"></div>
 <form id="f-folha" class="folha c2-form oculto" autocomplete="off">
   <h3>Conta 2</h3>
@@ -1007,10 +1007,9 @@ ${ajuda.secao(cfg)}
 ${av.erro ? '' : avaliador.script(av.json, cfg) + anuncios.script(cfg, r.usuario.id)}
 ${cartao.script(avaliador.serializar(avaliador.PONTE))}
 ${ajuda.script()}
-${temas.vhs()}
 ${temas.script(avaliador.PONTE)}
 ${dia ? diario.script(avaliador.serializar(dia.dados), avaliador.serializar(avaliador.PONTE), avaliador.serializar(dia.miniaturas || {})) : ''}
 </body></html>`;
 }
 
-module.exports = { gerar, inventario, temaValido: temas.temaValido };
+module.exports = { gerar, inventario, temaValido: temas.temaValido, temaAtual: temas.temaAtual };
