@@ -156,10 +156,16 @@ module.exports = {
   SILENCIO_FIM_H: 8,
   // Só avisa de anúncios criados há no máximo X min (os mais velhos já devem ter fechado).
   NOTIF_ANUNCIO_IDADE_MAX_MIN: 60,
-  // v6.15: só avisa de anúncios que pedem itens seus (as combinações sugeridas
-  // ficam só na aba). Seu upgrade avisa só no "Vale muito"; seu downgrade, a
-  // partir deste ganho (%). E só se o item principal que você recebe gira.
+  // v6.15: anúncio que pede itens seus: seu upgrade avisa só no "Vale muito"; seu
+  // downgrade, a partir deste ganho (%). E só se o item principal que você
+  // recebe gira.
   NOTIF_DOWNGRADE_MIN_PCT: 10,
+  // v6.21: combinação sugerida pelo app: só downgrade seu, com a ABERTURA a partir
+  // deste ganho (%) e o item principal girando nos degraus.
+  NOTIF_SUGESTAO_MIN_PCT: 10,
+  // v6.21: no máximo X notificações de anúncio por dia (os alertas de risco não
+  // contam). Passou disso, os anúncios ficam só na aba.
+  NOTIF_MAX_DIA: 5,
   // Tempo máximo (segundos) da análise dentro do widget. Passou disso, os
   // anúncios que faltaram ficam para a próxima atualização.
   NOTIF_TEMPO_MAX_S: 8,

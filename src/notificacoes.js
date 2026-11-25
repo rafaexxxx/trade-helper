@@ -2,8 +2,13 @@
 // Quando o widget atualiza, avisa numa notificação só:
 //  - anúncio novo bom para você, com a mesma análise da aba Anúncios (criarAnalisador);
 //  - item seu que virou projected ou ficou com demanda terrível.
-// v6.15 (regra do Rafael, "chegavam demais"): só avisa de PEDIDOS (anúncio que
-// pede itens seus; as combinações sugeridas pelo app ficam só na aba):
+// v6.21 (com a regra da v6.15 não chegava nada): as combinações sugeridas pelo app
+// voltam a avisar, mas só as fortes: downgrade seu, abertura a partir de
+// NOTIF_SUGESTAO_MIN_PCT e item principal que gira nos degraus. No máximo
+// NOTIF_MAX_DIA notificações de anúncio por dia. Os itens desmarcados em "Meus
+// itens" (dados/meusitens.json) não entram em aviso nenhum de anúncio.
+// v6.15 (regra do Rafael, "chegavam demais"), para os PEDIDOS (anúncio que pede
+// itens seus):
 //  - seu upgrade (você dá mais itens): só no "Vale muito";
 //  - seu downgrade (você recebe mais itens): a partir de NOTIF_DOWNGRADE_MIN_PCT;
 //  - mesmo número de itens dos dois lados (1v1): não avisa;
@@ -31,8 +36,15 @@ function ler(store) {
     anuncios: d.anuncios && typeof d.anuncios === 'object' ? d.anuncios : {},
     // "assetId|motivo" -> data do aviso (some quando o risco some, para avisar de novo se voltar)
     riscos: d.riscos && typeof d.riscos === 'object' ? d.riscos : {},
+    // v6.21: { d: dia local, n: notificações de anúncio já enviadas nele }
+    dia: d.dia && typeof d.dia === 'object' ? d.dia : null,
     ultima: d.ultima || null,
   };
+}
+
+function diaLocal(ms) {
+  const d = new Date(ms);
+  return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
 }
 
 function emSilencio(ms, cfg) {
@@ -99,10 +111,18 @@ function analisarNovos(pendentes, o, limite) {
   }
   const D = avaliador.prepararDados(o.dados.rolimons, o.itens, base, {});
   const A = anuncios.criarAnalisador(D, avaliador.parametros(cfg), anuncios.parametros(cfg, o.dados.usuario.id));
-  A.montarMeus(D.inventario);
+  let ocultos = {};
+  try {
+    ocultos = anuncios.ocultosDe(o.store, o.dados.usuario.id);
+  } catch (e) {
+    // sem o arquivo: todos os itens contam
+  }
+  A.montarMeus(D.inventario, ocultos);
   const bons = [];
   const vistos = [];
-  const corte = { parados: 0, semDado: 0 };
+  // v6.21: quantos anúncios caíram em cada filtro (para o Diagnóstico).
+  const corte = {};
+  const cortar = (motivo) => { corte[motivo] = (corte[motivo] || 0) + 1; };
   let faltaram = 0;
   pendentes.sort((x, y) => y[1] - x[1]);
   for (const ad of pendentes) {
@@ -110,23 +130,44 @@ function analisarNovos(pendentes, o, limite) {
       faltaram++;
       continue;
     }
+    // Anúncio que pede itens = pedido (regra da v6.15). Que pede só tags = sugestão:
+    // v6.21, só a forma de downgrade seu (o anúncio pode aceitar as duas formas).
+    const pedido = ad[6].length > 0;
     let r;
     try {
-      r = A.analisar(ad, '');
+      r = pedido ? A.analisar(ad, '') : A.analisar(ad, '', 'downgrade');
     } catch (e) {
-      r = { descarte: 'erro' };
+      r = { descarte: 'erro na análise' };
     }
     vistos.push(ad);
-    if (r.descarte || !passaNaRegua(r, cfg)) continue;
-    const g = giroDoPrincipal(r.rec, guardados);
-    if (!g) corte.semDado++;
-    else if (!g.gira) corte.parados++;
+    if (r.descarte) {
+      cortar(r.forma ? 'sugestão que não é downgrade seu' : r.descarte);
+      continue;
+    }
+    if (pedido ? !passaNaRegua(r, cfg) : !sugestaoForte(r, cfg)) {
+      cortar(pedido ? 'pedido fora da regra' : 'sugestão abaixo de +' + cfg.NOTIF_SUGESTAO_MIN_PCT + '% na abertura');
+      continue;
+    }
+    // O item principal tem que girar (na sugestão, em todos os degraus).
+    const giros = (pedido ? [r] : r.degraus).map((g) => giroDoPrincipal(g.rec, guardados));
+    if (giros.some((g) => !g)) cortar('sem dado de giro');
+    else if (giros.some((g) => !g.gira)) cortar('item principal parado');
     else {
-      r.giro = g;
+      r.giro = giros[0];
+      r.sugestao = !pedido;
       bons.push(r);
     }
   }
   return { bons, vistos, faltaram, corte };
+}
+
+// v6.21: a combinação sugerida passa? Downgrade seu (nunca 1v1), com a abertura (o
+// 1º degrau, a oferta que você manda) a partir de NOTIF_SUGESTAO_MIN_PCT. O 2º
+// degrau não entra na conta: ele mira o mínimo (perto de +7%) de propósito.
+function sugestaoForte(r, cfg) {
+  if (r.modo !== 'tag' || r.tipo !== 'downgrade' || !r.degraus || !r.degraus.length) return false;
+  const a = r.degraus[0];
+  return a.pct != null && a.pct >= cfg.NOTIF_SUGESTAO_MIN_PCT;
 }
 
 // Textos da notificação (formato aprovado: título com a contagem, o melhor
@@ -141,7 +182,25 @@ function nomesLado(itens) {
   return itens.length + ' itens';
 }
 
+// v6.21: "💡 Seu Atomic → A + B" e embaixo "peça +14% · mínimo +8% · gira (4,5/dia)".
+// Com uma combinação só, não há mínimo separado.
+function linhaSugestao(r) {
+  const ab = r.degraus[0];
+  const min = r.degraus.length > 1 ? r.degraus[r.degraus.length - 1] : null;
+  return '💡 ' + (ab.dou.length === 1 ? 'Seu ' : 'Seus ') + nomesLado(ab.dou) + ' → ' + nomesLado(ab.rec) +
+    '\npeça ' + analise.fmtPctSinal(ab.pct) +
+    (min && min.pct != null ? ' · mínimo ' + analise.fmtPctSinal(min.pct) : '') +
+    ' · gira (' + r.giro.texto + ')';
+}
+
+// Ganho que ordena os avisos (na sugestão, o da abertura).
+function ganhoDoAviso(r) {
+  const p = r.sugestao ? r.degraus[0].pct : r.pct;
+  return p == null ? -1e9 : p;
+}
+
 function linhaAnuncio(r) {
+  if (r.sugestao) return linhaSugestao(r);
   const dou = (r.dou.length === 1 ? 'Seu ' : 'Seus ') + nomesLado(r.dou);
   let rec = r.rec.length ? nomesLado(r.rec) : '';
   if (r.robux > 0) rec += (rec ? ' + ' : '') + analise.fmtNum(r.robux) + ' Robux';
@@ -157,7 +216,8 @@ function linhaRisco(x) {
 function montarTexto(bons, riscos) {
   const linhas = [];
   if (bons.length) {
-    bons.sort((x, y) => (y.pct == null ? -1e9 : y.pct) - (x.pct == null ? -1e9 : x.pct));
+    // Pedidos primeiro (o dono já quer os seus itens); depois, o maior ganho.
+    bons.sort((x, y) => (x.sugestao ? 1 : 0) - (y.sugestao ? 1 : 0) || ganhoDoAviso(y) - ganhoDoAviso(x));
     linhas.push(linhaAnuncio(bons[0]));
     const resto = bons.length - 1;
     if (resto) linhas.push('+' + resto + (resto === 1 ? ' outro anúncio bom' : ' outros anúncios bons'));
@@ -231,7 +291,7 @@ async function verificar(o) {
     }
   }
   let faltaram = 0;
-  let corte = { parados: 0, semDado: 0 };
+  let corte = {};
   if (pendentes.length) {
     const r = analisarNovos(pendentes, o, t0 + cfg.NOTIF_TEMPO_MAX_S * 1000);
     r.vistos.forEach((ad) => { est.anuncios[ad[0]] = ad[1]; });
@@ -244,10 +304,22 @@ async function verificar(o) {
 
   L.push('anúncios: ' + res.lista.length + ' guardados (' + res.origem + (res.erro ? ', erro: ' + res.erro : '') + '), ' +
     (pendentes.length - faltaram) + ' analisados agora, ' + bons.length + ' bons que giram' +
-    (corte.parados || corte.semDado ? ' (cortados: ' + corte.parados + ' parados, ' + corte.semDado + ' sem dado de giro)' : '') +
     (faltaram ? ', ' + faltaram + ' ficaram para a próxima' : '') + ', ' + descartados + ' descartados (velhos/silêncio)');
   L.push('riscos: ' + Object.keys(atuais).length + ' agora, ' + riscos.length + ' novos' + (primeira ? ' (primeira vez: só registrou)' : ''));
   if (silencio) L.push('em silêncio');
+
+  // v6.21: limite de notificações de anúncio por dia (zera à meia-noite). O que
+  // passar do limite já foi marcado como visto e fica só na aba.
+  const hoje = diaLocal(o.agora);
+  if (!est.dia || est.dia.d !== hoje) est.dia = { d: hoje, n: 0 };
+  if (bons.length && est.dia.n >= cfg.NOTIF_MAX_DIA) {
+    L.push('limite do dia: ' + bons.length + ' ficaram só na aba');
+    bons = [];
+  }
+  if (bons.length) est.dia.n++;
+  L.push('notificações de anúncio hoje: ' + est.dia.n + '/' + cfg.NOTIF_MAX_DIA);
+  const cortes = Object.keys(corte).sort((x, y) => corte[y] - corte[x]);
+  if (cortes.length) L.push('cortados: ' + cortes.map((m) => corte[m] + ' ' + m).join(', '));
 
   // Grava ANTES de enviar: se o widget for interrompido, nada é avisado duas vezes.
   est.iniciado = est.iniciado || o.agora;
@@ -264,6 +336,8 @@ async function verificar(o) {
       enviada = texto.titulo;
     } catch (e) {
       erroEnvio = e.message || String(e);
+      // não saiu: não conta no limite do dia
+      if (bons.length) est.dia.n--;
     }
     est.ultima.enviada = enviada || 'falhou: ' + erroEnvio;
     est.ultima.ms = Date.now() - t0;

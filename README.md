@@ -150,7 +150,7 @@ A forma é vista do **seu** lado, pela contagem de itens:
 3. A lista é **única**, em linhas curtas (jogador, itens, % e veredito). Tocar numa linha abre o cartão completo; tocar num item abre a **tela do item** (v6.12), com as mudanças de RAP e value em 24h no fim e o "Ver no Rolimon's" embaixo; os botões levam ao **jogador no Rolimon's** ou abrem a **trade no Roblox** (quem monta e envia a trade é você).
 4. **Filtros**:
    - **"Um item ▾"**: só os anúncios que envolvem aquele item.
-   - **"Meus itens ▾"** (v6.20): marca e desmarca quais itens seus entram nas sugestões, aqui e na aba Plano. O item desmarcado (um ovo de 200 Robux, por exemplo) não entra em nenhuma sugestão, nem como add. A escolha fica salva no iPhone, separada por conta, e o chip mostra "2 de 3 itens" enquanto houver algum desmarcado.
+   - **"Meus itens ▾"** (v6.20): marca e desmarca quais itens seus entram nas sugestões, aqui e na aba Plano. O item desmarcado (um ovo de 200 Robux, por exemplo) não entra em nenhuma sugestão, nem como add. A escolha fica salva num arquivo do iPhone (v6.21), separada por conta, e vale também para as notificações da conta principal. O chip mostra "2 de 3 itens" enquanto houver algum desmarcado.
    - **Todos / Seu upgrade / Seu downgrade** (v6.8): a forma da trade do **seu** lado, com a contagem em cada botão.
      - Seu upgrade: você dá vários itens e recebe 1.
      - Seu downgrade: você dá 1 item e recebe 2 ou 3.
@@ -226,11 +226,14 @@ No menu **⋯ → Ajuda**: guia em capítulos (o básico, upgrade e downgrade, d
 
 ## 🔔 Notificações (pelo widget)
 
-> ⚠️ Ainda **não testadas** no iPhone.
+> ⚠️ As regras da v6.21 ainda **não foram testadas** no iPhone.
 
 - Quando o widget atualiza, ele pode mandar **uma notificação-resumo** com:
-  - anúncio novo **"Vale muito a pena"** para você;
+  - anúncio que **pede itens seus**: seu upgrade só no "Vale muito"; seu downgrade a partir de +10%;
+  - **sugestão do app** (v6.21): só downgrade seu, com a abertura a partir de +10%;
   - item seu que **virou projected** ou ficou com **demanda terrível**.
+- Nos anúncios, o item principal que você recebe precisa **girar**, e nunca entra 1v1 nem item desmarcado em **Meus itens**.
+- No máximo **5 notificações de anúncio por dia** (v6.21; os alertas de risco não contam). O resto fica só na aba.
 - O mesmo aviso nunca se repete. Tocar na notificação abre o Trade Helper (nos Anúncios, quando houver anúncio).
 - **Silêncio** de 0h a 8h: anúncios desse horário são descartados; alertas de risco esperam o silêncio acabar.
 - Só a conta principal. Liga e desliga em `NOTIFICACOES_LIGADAS`.
@@ -274,6 +277,9 @@ Ficam em [`src/config.js`](src/config.js):
 | `NOTIFICACOES_LIGADAS` | true | Liga/desliga as notificações do widget |
 | `SILENCIO_INICIO_H` / `SILENCIO_FIM_H` | 0 / 8 | Horário sem notificações (números iguais = sem silêncio) |
 | `NOTIF_ANUNCIO_IDADE_MAX_MIN` | 60 | Só avisa de anúncios criados há no máximo X min |
+| `NOTIF_DOWNGRADE_MIN_PCT` | 10 | Notificação: ganho mínimo (%) do seu downgrade em anúncio que pede itens seus |
+| `NOTIF_SUGESTAO_MIN_PCT` | 10 | Notificação: ganho mínimo (%) da abertura na sugestão do app (seu downgrade) |
+| `NOTIF_MAX_DIA` | 5 | Máximo de notificações de anúncio por dia (alertas de risco não contam) |
 | `NOTIF_TEMPO_MAX_S` | 8 | Tempo máximo (s) da análise de anúncios dentro do widget |
 | `CARTAO_CACHE_MIN` | 10 | Tela do item: por quantos minutos a página do item vale |
 | `CARTAO_LINHA_PAGINA_H` | 24 | Linha do item: por quantas horas valem as vendas/dia (página do Rolimon's) |

@@ -241,6 +241,11 @@ async function executar(ctx) {
     resultado.diag.notificacoes = 'erro: ' + (e.message || String(e));
   }
 
+  // v6.21: itens desmarcados em "Meus itens" (arquivo), por conta.
+  resultado.meusItens = anuncios.lerMeusItens(store);
+  resultado.diag.meusItens = 'desmarcados nesta conta: ' +
+    (Object.keys(anuncios.ocultosDe(store, dados.usuario.id)).join(', ') || 'nenhum');
+
   // Só o painel grava o retrato da "última consulta".
   hist.gravarSnapshot(store, atual);
 
@@ -441,6 +446,26 @@ async function executar(ctx) {
         store.gravar('ajustes', ajustes);
       } catch (e) {
         // sem gravar: o tema vale só até fechar o app
+      }
+    });
+  }
+
+  // v6.21: ponte de "Meus itens": PONTE + 'meusitens?u=<userId>&ids=1,2&t=<ms>' grava
+  // os itens desmarcados da conta (lista vazia = todos marcados). Um pedido mais
+  // antigo que o último (toques rápidos) é ignorado.
+  let ultimoMeus = 0;
+  function atenderMeusItens(url) {
+    const mu = /[?&]u=(\d+)/.exec(url);
+    const mi = /[?&]ids=([\d,]*)/.exec(url);
+    const mt = /[?&]t=(\d+)/.exec(url);
+    const t = mt ? Number(mt[1]) : 0;
+    if (!mu || !mi || t < ultimoMeus) return;
+    ultimoMeus = t;
+    filaPonte = filaPonte.then(() => {
+      try {
+        anuncios.gravarMeusItens(store, mu[1], mi[1].split(',').filter(Boolean));
+      } catch (e) {
+        // sem gravar: a escolha vale só até fechar o app
       }
     });
   }
@@ -721,6 +746,10 @@ async function executar(ctx) {
     }
     if (url.indexOf(avaliador.PONTE + 'tema') === 0) {
       atenderTema(url);
+      return false;
+    }
+    if (url.indexOf(avaliador.PONTE + 'meusitens') === 0) {
+      atenderMeusItens(url);
       return false;
     }
     if (url.indexOf(avaliador.PONTE + 'sustos') === 0) {

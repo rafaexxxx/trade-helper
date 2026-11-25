@@ -920,17 +920,28 @@ function paginaAnuncios(D, P, PA) {
   // do filtro "Um item seu" guardado no iPhone ('' na sua conta, '-c2' na outra).
   var AN = criarAnalisador(D, P, PA);
   var chaveConta = '';
-  // v6.20: itens desmarcados em "Meus itens" ({ assetId: 1 }), guardados no
-  // iPhone por conta ('an-ocultos' + chave). Item novo no inventário entra marcado.
-  function lerOcultos(chave) {
+  // v6.20: itens desmarcados em "Meus itens" ({ assetId: 1 }), por conta (id do
+  // dono do inventário). Item novo no inventário entra marcado.
+  // v6.21: ficam num arquivo do iPhone (ponte 'meusitens'), porque o localStorage do
+  // WebView não guarda depois de fechar o app; o widget lê o mesmo arquivo.
+  var meusItens = PA.meusItens || {};
+  function lerOcultos() {
     var r = {};
-    try {
-      var l = JSON.parse(lerSalvo('an-ocultos' + chave, '[]'));
-      if (Array.isArray(l)) l.forEach(function (id) { r[String(id)] = 1; });
-    } catch (e) {}
+    var l = meusItens[String(AN.meuId)];
+    if (Array.isArray(l)) l.forEach(function (id) { r[String(id)] = 1; });
     return r;
   }
-  estado.ocultos = lerOcultos('');
+  function gravarOcultos() {
+    if (!AN.meuId) return;
+    var ids = Object.keys(estado.ocultos);
+    meusItens[String(AN.meuId)] = ids;
+    var f = document.createElement('iframe');
+    f.style.display = 'none';
+    f.src = P.ponte + 'meusitens?u=' + AN.meuId + '&ids=' + ids.join(',') + '&t=' + Date.now();
+    document.body.appendChild(f);
+    setTimeout(function () { if (f.parentNode) f.parentNode.removeChild(f); }, 5000);
+  }
+  estado.ocultos = lerOcultos();
   function invAtual() {
     return chaveConta ? estado.invConta || [] : D.inventario;
   }
@@ -1938,7 +1949,7 @@ function paginaAnuncios(D, P, PA) {
     estado.invConta = dados ? dados.inventario : null;
     AN.meuId = dados ? Number(dados.meuId) || 0 : PA.meuId;
     estado.item = lerSalvo('an-filtro-item' + chaveConta, '');
-    estado.ocultos = lerOcultos(chaveConta);
+    estado.ocultos = lerOcultos();
     estado.aberto = null;
     // (montarMeus também limpa as combinações guardadas)
     montarMeus(invAtual());
@@ -1948,6 +1959,7 @@ function paginaAnuncios(D, P, PA) {
       el.classList.toggle('oculto', !dados);
     }
     fecharFolha();
+    fecharMeus();
     if (estado.carregou) processar();
     else desenhar();
   };
@@ -2014,7 +2026,7 @@ function paginaAnuncios(D, P, PA) {
     if (!id) return;
     if (estado.ocultos[id]) delete estado.ocultos[id];
     else estado.ocultos[id] = 1;
-    gravarSalvo('an-ocultos' + chaveConta, JSON.stringify(Object.keys(estado.ocultos)));
+    gravarOcultos();
     estado.aberto = null;
     // (montarMeus refaz a lista, limpa as combinações e desfaz o "Um item" desmarcado)
     montarMeus(invAtual());
@@ -2152,14 +2164,45 @@ function paginaAnuncios(D, P, PA) {
 
 // <script> da aba. Vem depois do script do avaliador (usa TH_D, TH_P e as funções dele).
 // v6.2: criarAnalisador vai junto (é o mesmo código que o widget usa nas notificações).
-function script(cfg, meuId) {
+// v6.21: meusItens = { userId: [assetIds desmarcados em "Meus itens"] }.
+function script(cfg, meuId, meusItens) {
+  const PA = parametros(cfg, meuId);
+  PA.meusItens = meusItens || {};
   return (
     '<script>\n' +
     criarAnalisador.toString() + '\n' +
     'if (typeof TH_D !== "undefined") (' + paginaAnuncios.toString() + ')(TH_D, TH_P, ' +
-    avaliador.serializar(parametros(cfg, meuId)) + ');\n' +
+    avaliador.serializar(PA) + ');\n' +
     '</script>'
   );
 }
 
-module.exports = { TAGS, lerAnuncio, carregar, parametros, criarAnalisador, secao, secaoPlano, folha, css, script };
+// ---------- v6.21: "Meus itens" em arquivo (dados/meusitens.json) ----------
+// { userId: [assetIds desmarcados] }. A página grava pela ponte; o painel manda
+// de volta ao abrir, e o widget usa nas notificações.
+const ARQ_MEUS = 'meusitens';
+
+function lerMeusItens(store) {
+  const d = store.ler(ARQ_MEUS);
+  return d && typeof d === 'object' && !Array.isArray(d) ? d : {};
+}
+
+function gravarMeusItens(store, userId, ids) {
+  const d = lerMeusItens(store);
+  if (ids.length) d[String(userId)] = ids.map(String);
+  else delete d[String(userId)];
+  store.gravar(ARQ_MEUS, d);
+}
+
+// { assetId: 1 } dos desmarcados de uma conta (formato do montarMeus).
+function ocultosDe(store, userId) {
+  const l = lerMeusItens(store)[String(userId)];
+  const r = {};
+  if (Array.isArray(l)) for (const id of l) r[String(id)] = 1;
+  return r;
+}
+
+module.exports = {
+  TAGS, lerAnuncio, carregar, parametros, criarAnalisador, secao, secaoPlano, folha, css, script,
+  lerMeusItens, gravarMeusItens, ocultosDe,
+};

@@ -1004,7 +1004,7 @@ ${ajuda.secao(cfg)}
   });
 })();
 </script>
-${av.erro ? '' : avaliador.script(av.json, cfg) + anuncios.script(cfg, r.usuario.id)}
+${av.erro ? '' : avaliador.script(av.json, cfg) + anuncios.script(cfg, r.usuario.id, r.meusItens)}
 ${cartao.script(avaliador.serializar(avaliador.PONTE))}
 ${ajuda.script()}
 ${temas.script(avaliador.PONTE)}

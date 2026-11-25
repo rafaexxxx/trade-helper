@@ -457,7 +457,7 @@ function capitulo4(cfg) {
   <ul class="aj-lista">
     <li><b>O que aparece:</b> anúncios recentes do Rolimon's com vantagem para você. Os que pedem itens seus entram a partir de "Vale a pena". Os que só pedem uma tag ganham uma sugestão montada com os seus itens.</li>
     <li><b>O que fica de fora:</b> ofertas com item projected, com demanda terrível ou com o RAP subindo mais de ${pct(cfg.ALERTA_RAP_24H_PCT)} em 24h. Seus itens em hold não entram. Trade com o mesmo item dos dois lados só aparece se você não perder value.</li>
-    <li><b>Topo:</b> na primeira linha, a forma da trade (com quantos anúncios cada uma tem). Na segunda, os chips <b>Um item ▾</b> (só os anúncios com aquele item seu), <b>Ordem ▾</b> e <b>Meus itens ▾</b>, que abrem uma folha. Em <b>Meus itens</b> você desmarca o que não quer ver nas sugestões (um ovo de 200 Robux, por exemplo): o item some de todas, inclusive como add, e também da aba Plano. A escolha fica salva, e o chip mostra <b>"2 de 3 itens"</b> enquanto houver algum desmarcado. Na terceira, quantos anúncios foram vistos e o botão <b>↻</b>, que busca de novo.</li>
+    <li><b>Topo:</b> na primeira linha, a forma da trade (com quantos anúncios cada uma tem). Na segunda, os chips <b>Um item ▾</b> (só os anúncios com aquele item seu), <b>Ordem ▾</b> e <b>Meus itens ▾</b>, que abrem uma folha. Em <b>Meus itens</b> você desmarca o que não quer ver nas sugestões (um ovo de 200 Robux, por exemplo): o item some de todas, inclusive como add, e também da aba Plano. A escolha fica salva no iPhone e vale também para as notificações da conta principal. O chip mostra <b>"2 de 3 itens"</b> enquanto houver algum desmarcado. Na terceira, quantos anúncios foram vistos e o botão <b>↻</b>, que busca de novo.</li>
     <li><b>Filtro de um item seu:</b> mostra só os anúncios em que esse item vai no seu lado. Com um item escolhido, o chip mostra o item; o ✕ tira o filtro.</li>
     <li><b>Selo "gira" ou "parado":</b> fica na linha fechada, ao lado do que você recebe. Usa as vendas por dia do item de maior value desse lado: "gira" a partir de 1 venda por dia, "parado" abaixo disso. As vendas são buscadas por trás, um item por vez (enquanto isso aparece "…"), e ficam guardadas por ${cfg.CARTAO_LINHA_PAGINA_H} h. Ao abrir o cartão, o selo some e cada item mostra a própria linha.</li>
     <li><b>Linha de cada item do cartão aberto (ex.: Alta · 15/dia · OP dar 0–6%):</b> a mesma do Avaliar. Em Recebo, o OP dar (laranja); em Dou, o OP pedir (verde).</li>
@@ -483,14 +483,16 @@ function capitulo4(cfg) {
 
   <h3 id="aj-notif">Notificações</h3>
   <p>Quando o widget atualiza, o app pode mandar <b>uma notificação-resumo</b> com anúncios novos bons para você e com itens seus que viraram projected ou ficaram com demanda terrível. O mesmo aviso não se repete, e das ${cfg.SILENCIO_INICIO_H}h às ${cfg.SILENCIO_FIM_H}h fica em silêncio. Como depende do widget, o aviso pode atrasar: quem decide a hora é o iOS.</p>
-  <p>Para não avisar demais, só entram os anúncios que <b>pedem itens seus</b>. As combinações que o app sugere aparecem só na aba Anúncios.</p>
+  <p>Para não avisar demais, são no máximo <b>${cfg.NOTIF_MAX_DIA} notificações de anúncio por dia</b> (os alertas de risco não contam), e só entram:</p>
   <ul class="aj-lista">
-    <li><b>Seu upgrade</b> (você dá mais itens): só no "Vale muito".</li>
-    <li><b>Seu downgrade</b> (você recebe mais itens): a partir de ${cfg.NOTIF_DOWNGRADE_MIN_PCT}% de ganho.</li>
+    <li><b>Anúncio que pede itens seus, no seu upgrade</b> (você dá mais itens): só no "Vale muito".</li>
+    <li><b>Anúncio que pede itens seus, no seu downgrade</b> (você recebe mais itens): a partir de ${cfg.NOTIF_DOWNGRADE_MIN_PCT}% de ganho.</li>
+    <li><b>Sugestão do app:</b> só downgrade seu, com a abertura (a primeira oferta que você manda) a partir de ${cfg.NOTIF_SUGESTAO_MIN_PCT}%.</li>
+    <li><b>Meus itens:</b> o item que você desmarcou nos Anúncios não entra em nenhum aviso de anúncio. Os alertas de risco valem para todos os seus itens.</li>
     <li><b>Mesmo número de itens dos dois lados</b> (1 por 1): não avisa.</li>
     <li><b>Só item que gira:</b> o item de maior value que você recebe precisa ter pelo menos 1 venda por dia. O widget usa as vendas que o painel já guardou; sem elas, usa a demanda do Rolimon's (Normal ou melhor). Sem nenhum dos dois, não avisa.</li>
   </ul>
-  <p>A notificação mostra o que você dá → o que recebe e, embaixo, a % e o giro (ex.: "+13% · gira (4,5/dia)").</p>
+  <p>A notificação mostra o que você dá → o que recebe e, embaixo, a % e o giro (ex.: "+13% · gira (4,5/dia)"). Na sugestão do app (💡), aparecem a % que você pede e o mínimo a aceitar (ex.: "peça +14% · mínimo +8% · gira (4,5/dia)").</p>
 
   <h3 id="aj-temas">Temas</h3>
   <p>Menu ⋯ &gt; Temas. O toque aplica na hora e fica salvo neste iPhone. Sem tema escolhido, o painel segue o claro ou escuro do iPhone.</p>
