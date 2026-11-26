@@ -1058,11 +1058,27 @@ ${ajuda.secao(cfg)}
     $('t-fundo').classList.add('oculto');
     $('t-folha').classList.add('oculto');
   }
+  // v7.0: carrossel. As fontes dos títulos ("Aa") das miniaturas são pedidas só
+  // na primeira abertura; a miniatura do tema atual vem para o meio.
+  var TH_FONTES_AMOSTRAS = ${avaliador.serializar(temas.fontesAmostras())};
   $('m-temas').addEventListener('click', function(){
     fecharMenu();
     marcarTemas();
+    if (TH_FONTES_AMOSTRAS && !$('fonte-amostras')) {
+      try {
+        var l = document.createElement('link');
+        l.id = 'fonte-amostras';
+        l.rel = 'stylesheet';
+        l.href = TH_FONTES_AMOSTRAS;
+        document.head.appendChild(l);
+      } catch (e) {}
+    }
     $('t-fundo').classList.remove('oculto');
     $('t-folha').classList.remove('oculto');
+    try {
+      var on = document.querySelector('#t-car .t-op.on'), car = $('t-car');
+      if (on && car) car.scrollLeft = Math.max(0, on.offsetLeft - (car.clientWidth - on.offsetWidth) / 2);
+    } catch (e) {}
   });
   // ---------- Diário (v6.13: tela própria pelo menu ⋯) ----------
   // O número de perguntas aparece no bloco ("1 pergunta esperando"); diario.js avisa quando muda.

@@ -1,5 +1,5 @@
 // Tela de Ajuda (v5.4): guia para quem é novo em trade.
-// Abre por cima do painel pelo menu ⋯ > Ajuda e pelos links "Ver na Ajuda" das
+// Abre por cima do painel pelo Mais > Ajuda (v7.0; antes, menu ⋯) e pelos links "Ver na Ajuda" das
 // abas (qualquer elemento com data-ajuda="<tópico>" abre direto no tópico).
 // Os exemplos usam os componentes do próprio painel (linha de item, veredito,
 // cartão de anúncio) e seguem o tema escolhido. Os números dos exemplos são
@@ -407,6 +407,12 @@ function capitulo4(cfg) {
   <div class="aj-cab"><span class="aj-eb">Capítulo 4</span><h2>Como usar o app</h2></div>
   <div class="aj-dica"><b>O app só lê.</b> Ele não faz login, não envia trades e não mexe na sua conta. Os botões "Abrir trade" e "Ver no Rolimon's" só abrem o site.</div>
 
+  <h3 id="aj-nav">Barra de baixo e "Mais"</h3>
+  <ul class="aj-lista">
+    <li><b>Barra de baixo:</b> Inventário, Avaliar, Anúncios, Plano e Mais. A tela em que você está fica marcada. Na conta 2 o Avaliar some. Com o teclado aberto (ao digitar Robux), a barra se esconde.</li>
+    <li><b>Mais:</b> abre blocos grandes com o Diário de trades (e quantas perguntas esperam), a Conta 2, os Temas (com o tema de agora), a Ajuda e o Diagnóstico.</li>
+  </ul>
+
   <h3 id="aj-inv">Inventário</h3>
   <span class="aj-exemplo">Exemplo · faixa de totais</span>
   <div class="faixa aj-faixa">
@@ -414,21 +420,21 @@ function capitulo4(cfg) {
       <div class="f-col"><span class="f-rot">Value</span><span class="f-num">152.300</span><span class="f-var">▲ 2,1% em 24h</span></div>
       <div class="f-col"><span class="f-rot">RAP</span><span class="f-num">147.910</span><span class="f-var">▼ 0,8% em 24h</span></div>
     </div>
-    <div class="f-pe"><span class="f-info">Variação em 24h</span><span class="f-info">14 itens · 1 em hold</span></div>
   </div>
   <ul class="aj-lista">
-    <li><b>Faixa de totais:</b> a soma do value e do RAP dos seus itens e quanto mudou em 24h.</li>
-    <li><b>Setas ▲ ▼:</b> aparecem no número quando o value ou o RAP do item mudou ${pct(cfg.LIMITE_MUDANCA_PCT)} ou mais em 24h.</li>
-    <li><b>Etiqueta colorida:</b> só para o que não aparece em outro lugar da linha (Projected, RAP longe do value). Queda de preço fica na seta vermelha; demanda e tendência, coloridas na linha de baixo. O chip "Com alerta" mostra todos os itens com algum risco, com ou sem etiqueta.</li>
-    <li><b>Vendas por dia (ex.: 15/dia):</b> na linha de baixo, depois da demanda e da tendência. É a média de 30 dias, colorida pela mesma escala da demanda: verde gira bem, vermelho quase não vende.</li>
-    <li><b>Best:</b> embaixo do RAP, o menor preço à venda agora.</li>
+    <li><b>Faixa de totais:</b> a soma do value e do RAP dos seus itens, lado a lado, e quanto cada um mudou em 24h.</li>
+    <li><b>Vitrine:</b> um cartão por item, em duas colunas: a foto grande, o Value e o RAP lado a lado e, embaixo, a demanda, as vendas por dia e o Best. Item em hold fica com a foto apagada e a etiqueta "hold".</li>
+    <li><b>Setas ▲ ▼:</b> aparecem em cima do número quando o value ou o RAP do item mudou ${pct(cfg.LIMITE_MUDANCA_PCT)} ou mais em 24h.</li>
+    <li><b>Etiqueta colorida na foto:</b> só para o que não aparece em outro lugar do cartão (Projected, RAP longe do value). Queda de preço fica na seta vermelha; a demanda fica colorida na linha de baixo. Os outros alertas ficam na tela do item.</li>
+    <li><b>Vendas por dia (ex.: 15/dia):</b> na linha de baixo, depois da demanda. É a média de 30 dias, colorida pela mesma escala da demanda: verde gira bem, vermelho quase não vende.</li>
+    <li><b>Best:</b> na mesma linha, o menor preço à venda agora.</li>
     <li><b>De onde vêm:</b> os dois são buscados por trás, uns segundos depois de a tela abrir, um item por vez, do mais valioso para o menos valioso (nas duas contas). Ficam guardados no iPhone: as vendas por ${cfg.CARTAO_LINHA_PAGINA_H}h (página do item no Rolimon's) e o Best por ${cfg.CARTAO_LINHA_BEST_MIN} min (Roblox). Se a busca falhar, fica o último valor guardado; item que nunca teve dado fica sem eles. O Diagnóstico mostra como foi a busca.</li>
-    <li><b>Chips de ordem:</b> Value, RAP, Demanda, Tendência, Vendas e Nome. Toque de novo para inverter. Em Vendas, os itens ainda sem dado ficam no fim.</li>
+    <li><b>Ordem ▾:</b> Value, RAP ou Vendas por dia, do maior para o menor. Em Vendas, os itens ainda sem dado ficam no fim. Ao lado, quantos itens você tem e quantos estão em hold; o "!" mostra avisos gerais (dados guardados, fonte que não respondeu).</li>
     <li><b>Toque no item:</b> abre a tela do item, com os alertas (como o item é), as mudanças em 24h (o que mudou, com antes → depois) e os links para o Rolimon's e o Roblox. ${ir('aj-cartao', 'Ver a tela do item')}</li>
   </ul>
 
   <h3 id="aj-cartao">Tela do item</h3>
-  <p>Abre ao tocar num item no Inventário, no Avaliar e nos Anúncios. O botão "‹ Voltar", fixo embaixo, fecha. Os dados vêm da página do item no Rolimon's, buscada nesse toque e guardada por ${cfg.CARTAO_CACHE_MIN} min. Se a busca por trás do Inventário acabou de trazer a página, a tela abre na hora.</p>
+  <p>Abre ao tocar num item no Inventário, no Avaliar e nos Anúncios. O botão "‹ Voltar", fixo embaixo, fecha. Em cima ficam a foto, o nome e o value e o RAP; logo embaixo, o gráfico; depois, os números numa lista, um por linha. Os dados vêm da página do item no Rolimon's, buscada nesse toque e guardada por ${cfg.CARTAO_CACHE_MIN} min. Se a busca por trás do Inventário acabou de trazer a página, a tela abre na hora.</p>
   <ul class="aj-lista">
     <li><b>Cores:</b> laranja é o que você paga; verde é o que você ganha ou o que sobe; vermelho é o que desce ou não gira.</li>
     <li><b>Gráfico:</b> o RAP dos últimos ${cfg.CARTAO_DIAS} dias, com 1 ponto por dia. Embaixo: o maior (verde) e o menor (vermelho) RAP do período, o de hoje e quanto ele mudou.</li>
@@ -443,12 +449,15 @@ function capitulo4(cfg) {
 
   <h3 id="aj-avaliar">Avaliar trade</h3>
   <ul class="aj-lista">
-    <li><b>Dou:</b> escolha itens do seu inventário. Também dá para pegar do catálogo; aí a proposta vira uma simulação.</li>
+    <li><b>Duas colunas:</b> Dou à esquerda e Recebo à direita, cada uma com o total em cima, um bloco por item (até ${cfg.MAX_ITENS_POR_LADO}), "+ Adicionar" e o campo de Robux no fim.</li>
+    <li><b>Dou:</b> escolha itens do seu inventário. Também dá para pegar do catálogo; aí a proposta vira uma simulação (o bloco mostra "simulação").</li>
     <li><b>Recebo:</b> busque o item pelo nome ou pela sigla.</li>
-    <li><b>Robux:</b> digite nos dois lados; o que você recebe já entra com o desconto de ${Math.round(cfg.TAXA_ROBUX * 100)}%.</li>
-    <li><b>Veredito:</b> aparece quando os dois lados têm algo. Use a régua da forma da trade. ${ir('aj-regua', 'Ver as réguas')}</li>
-    <li><b>Resumo e Alertas:</b> a conta lado a lado e tudo que merece atenção. "Limpar proposta" pede dois toques.</li>
-    <li><b>Linha de cada item (ex.: Alta · 15/dia · OP dar 0–6%):</b> depois da demanda vêm as vendas por dia (mesmas cores do Inventário) e só o OP que vale para aquele lado. Em <b>Recebo</b>, o <b>OP dar</b> (laranja): quanto pagar a mais para pegar o item. Em <b>Dou</b>, o <b>OP pedir</b> (verde): quanto pedir a mais por ele. São os mesmos números da tela do item, e o valor em Robux fica nela. Isso <b>não muda o veredito</b>.</li>
+    <li><b>Value base:</b> o número grande de cada item é o value do Rolimon's; item sem value entra pelo RAP, com "RAP" ao lado do número.</li>
+    <li><b>Robux:</b> digite nos dois lados. Os totais já incluem os Robux, e o que você recebe já entra com o desconto de ${Math.round(cfg.TAXA_ROBUX * 100)}% do Roblox (quem recebe fica com ${Math.round((1 - cfg.TAXA_ROBUX) * 100)}%).</li>
+    <li><b>Barra do veredito:</b> fica presa embaixo, acima da barra das telas, com a % na cor do veredito, o selo e a forma da trade. Aparece quando os dois lados têm algo. ${ir('aj-regua', 'Ver as réguas')}</li>
+    <li><b>Régua da forma:</b> no upgrade (você dá mais itens e recebe menos, porém maiores), pagar até ${pct(-cfg.VEREDITO_UPGRADE_PCT[3])} a mais é ótimo e acima de ${pct(-cfg.VEREDITO_UPGRADE_PCT[1])} não vale. No downgrade (você recebe mais itens, porém menores), o normal é receber a mais: abaixo de +${pct(cfg.VEREDITO_DOWNGRADE_PCT[1])} não compensa e a partir de +${pct(cfg.VEREDITO_DOWNGRADE_PCT[2])} vale a pena.</li>
+    <li><b>Embaixo das colunas:</b> os motivos do veredito, logo abaixo os alertas em vermelho e laranja (sempre abertos) e a comparação linha a linha do item principal de cada lado: RAP, vendas por dia, demanda e OP. "Limpar proposta" pede dois toques.</li>
+    <li><b>OP da comparação:</b> em <b>Recebo</b>, o OP para <b>dar</b> (laranja): quanto pagar a mais para pegar o item. Em <b>Dou</b>, o OP para <b>pedir</b> (verde): quanto pedir a mais por ele. São os mesmos números da tela do item, e o valor em Robux fica nela. Isso <b>não muda o veredito</b>.</li>
     <li><b>De onde vêm as vendas:</b> do que já está guardado no iPhone (a busca do Inventário guarda por ${cfg.CARTAO_LINHA_PAGINA_H}h). Ao abrir esta aba e ao adicionar um item, os que faltam são buscados por trás, um por vez e na frente da fila do Inventário; enquanto isso aparece "…/dia". Item sem demanda no Rolimon's espera as vendas para calcular o OP com a demanda estimada.</li>
     <li><b>Toque num item da proposta:</b> abre a tela do item; "Remover da proposta" fica no fim dela. ${ir('aj-cartao', 'Ver a tela do item')}</li>
   </ul>
@@ -457,28 +466,28 @@ function capitulo4(cfg) {
   <ul class="aj-lista">
     <li><b>O que aparece:</b> anúncios recentes do Rolimon's com vantagem para você. Os que pedem itens seus entram a partir de "Vale a pena". Os que só pedem uma tag ganham uma sugestão montada com os seus itens.</li>
     <li><b>O que fica de fora:</b> ofertas com item projected, com demanda terrível ou com o RAP subindo mais de ${pct(cfg.ALERTA_RAP_24H_PCT)} em 24h. Seus itens em hold não entram. Trade com o mesmo item dos dois lados só aparece se você não perder value.</li>
-    <li><b>Topo:</b> na primeira linha, a forma da trade (com quantos anúncios cada uma tem). Na segunda, os chips <b>Um item ▾</b> (só os anúncios com aquele item seu), <b>Ordem ▾</b> e <b>Meus itens ▾</b>, que abrem uma folha. Em <b>Meus itens</b> você desmarca o que não quer ver nas sugestões (um ovo de 200 Robux, por exemplo): o item some de todas, inclusive como add, e também da aba Plano. A escolha fica salva no iPhone e vale também para as notificações da conta principal. O chip mostra <b>"2 de 3 itens"</b> enquanto houver algum desmarcado. Na terceira, quantos anúncios foram vistos e o botão <b>↻</b>, que busca de novo.</li>
-    <li><b>Filtro de um item seu:</b> mostra só os anúncios em que esse item vai no seu lado. Com um item escolhido, o chip mostra o item; o ✕ tira o filtro.</li>
-    <li><b>Selo "gira" ou "parado":</b> fica na linha fechada, ao lado do que você recebe. Usa as vendas por dia do item de maior value desse lado: "gira" a partir de 1 venda por dia, "parado" abaixo disso. As vendas são buscadas por trás, um item por vez (enquanto isso aparece "…"), e ficam guardadas por ${cfg.CARTAO_LINHA_PAGINA_H} h. Ao abrir o cartão, o selo some e cada item mostra a própria linha.</li>
-    <li><b>Linha de cada item do cartão aberto (ex.: Alta · 15/dia · OP dar 0–6%):</b> a mesma do Avaliar. Em Recebo, o OP dar (laranja); em Dou, o OP pedir (verde).</li>
+    <li><b>Topo:</b> na primeira linha, a forma da trade (com quantos anúncios cada uma tem). Na segunda, os chips <b>Ordem ▾</b> e <b>Meus itens ▾</b>, que abrem uma folha. Na terceira, quantos anúncios foram vistos e o botão <b>↻</b>, que busca de novo.</li>
+    <li><b>Meus itens:</b> só os itens marcados entram nos anúncios: nos que pedem seus itens, nas sugestões (inclusive como add) e no Plano. Desmarque o que não quer trocar (um ovo de 200 Robux, por exemplo); marque só um para ver só os anúncios dele. A folha mostra em quantos anúncios cada item é pedido. A escolha fica salva no iPhone e vale também para as notificações da conta principal. O chip mostra <b>"2 de 3 itens"</b> enquanto houver algum desmarcado.</li>
+    <li><b>Um por vez:</b> a fila em cima passa para o lado (a % e a forma de cada anúncio); toque num para abrir. Embaixo fica UM anúncio aberto: Dou e Recebo lado a lado com as fotos grandes e a % no meio, e a comparação linha a linha do item principal de cada lado (itens, RAP, vendas por dia, demanda e OP).</li>
+    <li><b>Degraus:</b> quando a sugestão tem duas ofertas (abertura e teto, ou abertura e mínimo), toque numa caixa para ver a cena daquela oferta. Com uma oferta só, a segunda caixa é o limite em número.</li>
     <li><b>Todos, Seu upgrade, Seu downgrade:</b> a forma da trade do seu lado. Seu upgrade: você dá vários itens e recebe 1. Seu downgrade: você dá 1 e recebe 2 ou 3. Vale para anúncios que pedem seus itens e para as sugestões; sidegrade e "por Robux" só aparecem em Todos. Se o anúncio aceita as duas formas, cada filtro monta a sugestão daquela forma, e por isso os números podem somar mais que Todos.</li>
     <li><b>Ordem:</b> maior ganho, mais recentes ou maior value recebido.</li>
-    <li><b>Toque num item do cartão aberto:</b> abre a tela do item, com as mudanças de RAP e value em 24h no fim. O "Ver no Rolimon's" fica embaixo dela. ${ir('aj-cartao', 'Ver a tela do item')}</li>
+    <li><b>Toque na foto de um item:</b> abre a tela do item, com as mudanças de RAP e value em 24h no fim. O "Ver no Rolimon's" fica embaixo dela. ${ir('aj-cartao', 'Ver a tela do item')}</li>
     <li><b>↻ (atualizar):</b> os anúncios são buscados ao abrir a aba, no máximo a cada ${cfg.ANUNCIOS_CACHE_MIN} min. Os vistos ficam guardados por ${cfg.ANUNCIOS_GUARDAR_HORAS} h e podem já ter sido fechados.</li>
   </ul>
 
   <h3 id="aj-conta2">Conta 2</h3>
-  <p>No menu ⋯, "Adicionar conta 2" guarda o username de outra conta (só neste iPhone). O chip com ⇄ embaixo do título troca entre as contas. Na conta 2 o painel muda de cor, mostra "Vendo a conta de …" e um botão Voltar. Inventário e Anúncios passam a ser os dela; o Avaliar some.</p>
+  <p>Em Mais &gt; Conta 2, "Adicionar conta 2" guarda o username de outra conta (só neste iPhone); depois, o mesmo bloco troca ou remove a conta. O chip com ⇄ embaixo do título troca entre as contas. Na conta 2 o painel muda de cor, mostra "Vendo a conta de …" e um botão Voltar. Inventário e Anúncios passam a ser os dela; o Avaliar some.</p>
 
   <h3 id="aj-diario">Diário de trades</h3>
-  <p>Abre pelo menu ⋯ &gt; <b>Diário de trades</b>, numa tela própria (só na sua conta principal). A cada consulta (painel e widget), o app compara os seus itens com os da vez anterior. Quando itens saem e outros entram, ele pergunta no topo do Inventário: <b>"Você fez esta trade?"</b>.</p>
+  <p>Abre por Mais &gt; <b>Diário de trades</b>, numa tela própria (só na sua conta principal). A cada consulta (painel e widget), o app compara os seus itens com os da vez anterior. Quando itens saem e outros entram, ele pergunta no topo do Inventário: <b>"Você fez esta trade?"</b>.</p>
   <ul class="aj-lista">
-    <li><b>A pergunta:</b> uma faixa curta com as miniaturas do que saiu → do que entrou e a diferença pelo value de hoje. Responda Sim ou Não foi trade. Toque na faixa para ver os itens e, se quiser, colocar os Robux que entraram ou saíram. Enquanto houver pergunta, o menu ⋯ mostra "· 1 pergunta" ao lado do Diário.</li>
-    <li><b>Lucro até hoje:</b> o value de hoje do que entrou, menos o value de hoje do que saiu, mais os Robux. Mostra se as suas trades estão dando certo com o tempo.</li>
+    <li><b>A pergunta:</b> no Inventário, uma faixa curta com as miniaturas do que saiu → do que entrou e a diferença pelo value de hoje. Responda Sim ou Não foi trade. Toque na faixa para ver os itens e, se quiser, colocar os Robux que entraram ou saíram. Na tela do Diário a mesma pergunta aparece frente a frente (Saiu | Entrou), com os Robux (Recebi ou Paguei) e "Sim, fiz". Enquanto houver pergunta, o bloco do Diário no Mais mostra quantas esperam.</li>
+    <li><b>Lucro até hoje:</b> o value de hoje do que entrou, menos o value de hoje do que saiu, mais os Robux. Fica no bloco de destaque e mostra se as suas trades estão dando certo com o tempo.</li>
     <li><b>Lucro acumulado:</b> o gráfico soma as trades da mais antiga até hoje. Embaixo: a melhor e a pior trade, a média e quantas deram lucro.</li>
     <li><b>Por que ele pergunta:</b> o app não vê as suas trades de verdade (não tem login). Duas trades entre uma consulta e outra aparecem juntas, e compra ou venda também podem gerar pergunta.</li>
     <li><b>Trade vista em duas vezes:</b> às vezes o Rolimon's mostra o item saindo numa consulta e o novo chegando só na seguinte (ou no widget). O app guarda a metade sem par por até ${cfg.DIARIO_JANELA_H}h e junta as duas numa pergunta só, marcada "· 2 consultas". Se a pergunta ainda está aberta e chega um item atrasado, ele entra nela. Se a outra metade nunca chegar (venda, compra, presente), nada é perguntado.</li>
-    <li>Toque numa trade do diário para ver os itens ou apagá-la.</li>
+    <li>Cada trade aparece frente a frente (Dei | Recebi) com a data, os Robux e o lucro. Toque numa trade para apagá-la (o segundo toque confirma).</li>
   </ul>
 
   <h3 id="aj-notif">Notificações</h3>
@@ -495,7 +504,7 @@ function capitulo4(cfg) {
   <p>A notificação mostra o que você dá → o que recebe e, embaixo, a % e o giro (ex.: "+13% · gira (4,5/dia)"). Na sugestão do app (💡), aparecem a % que você pede e o mínimo a aceitar (ex.: "peça +14% · mínimo +8% · gira (4,5/dia)").</p>
 
   <h3 id="aj-temas">Temas</h3>
-  <p>Menu ⋯ &gt; Temas. O toque aplica na hora e fica salvo neste iPhone. Sem tema escolhido, o painel segue o claro ou escuro do iPhone.</p>
+  <p>Mais &gt; Temas. A folha fica baixa, com as miniaturas passando para o lado, separadas por grupo; o app em cima já mostra o tema tocado. O toque aplica na hora e fica salvo neste iPhone; "Pronto" fecha. Sem tema escolhido, o painel segue o claro ou escuro do iPhone.</p>
   <p>São 21 temas em quatro grupos:</p>
   <ul>
     <li><b>Clássicos:</b> Azul, Dark e OLED.</li>
@@ -511,7 +520,7 @@ function capitulo4(cfg) {
   <p>Há os tamanhos pequeno, médio e grande, com o value total e os seus maiores itens. O widget pede para atualizar a cada ${cfg.WIDGET_ATUALIZAR_MIN} min, mas quem decide a hora é o iOS. Ele usa sempre o tema OLED (fundo preto), seja qual for o tema do painel. Item em hold aparece com a etiqueta amarela <b>HOLD</b>, e a contagem mostra quantos estão travados (ex.: "3 hold"). O widget não sabe quando o hold acaba, só se o item está travado.</p>
 
   <h3 id="aj-diag">Diagnóstico</h3>
-  <p>No fim do painel. Se algo der errado, abra, copie o texto e mande para quem cuida do app.</p>
+  <p>Em Mais &gt; Diagnóstico (com a versão do app). Se algo der errado, abra, copie o texto e mande para quem cuida do app.</p>
   ${subir()}
 </section>`;
 }

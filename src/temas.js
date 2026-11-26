@@ -218,6 +218,23 @@ const CSS_TEMAS = `
 .amostra .a-l.c{width:60%;background:var(--acc-fundo);border:0}
 .amostra .ok{position:absolute;right:5px;bottom:5px;z-index:2;width:18px;height:18px;border-radius:50%;background:var(--fg);color:var(--bg);font-size:11px;font-weight:700;display:none;place-items:center}
 .t-op.on .ok{display:grid}
+/* v7.0: carrossel (folha baixa, sem escurecer o app: ele é o preview). */
+.fundo.t-fundo{background:none}
+.t-folha{max-height:none}
+.t-car{position:relative;display:flex;align-items:flex-start;gap:10px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding:12px 14px 14px;border-bottom:1px solid var(--borda);scrollbar-width:none}
+.t-car::-webkit-scrollbar{display:none}
+.t-car .t-op{flex:none;width:104px}
+.t-sep{flex:none;align-self:center;writing-mode:vertical-rl;transform:rotate(180deg);font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--sub)}
+.t-car .amostra{height:160px}
+.amostra .a-ti{font-family:var(--f-titulo);font-style:var(--t-estilo);font-weight:var(--t-peso);font-size:18px;line-height:1;color:var(--t-cor,var(--fg));text-align:left;text-shadow:var(--t-sombra)}
+.t-car .amostra .a-h{height:30px}
+.amostra .a-cs{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:4px}
+.amostra .a-cs>span{display:flex;flex-direction:column;justify-content:flex-end;padding:3px;border-radius:5px;background:var(--card);border:1px solid var(--card-borda)}
+.amostra .a-cs i{display:block;width:70%;height:4px;border-radius:2px;background:var(--rap)}
+.amostra .a-nv{display:grid;grid-template-columns:repeat(5,1fr);gap:3px;padding:3px;border-radius:5px;background:var(--folha)}
+.amostra .a-nv i{height:7px;border-radius:3px;background:var(--borda)}
+.amostra .a-nv i.on{background:var(--acc-fundo)}
+.t-car .amostra .ok{top:5px;bottom:auto}
 `;
 // ---------- Temáticos (v6.4, protótipo N6) ----------
 // Só valem dentro de [data-tema=<um destes>], então os temas acima não mudam.
@@ -1423,22 +1440,35 @@ function ceu() {
 
 // v5.3: folha do menu ⋯ > Temas, com uma miniatura de cada tema.
 // v6.19: 4 grupos (Clássicos, Estéticos, Temáticos e Novos) e sem o interruptor dos sustos.
+// v7.0 (protótipo C · Carrossel): folha baixa, miniaturas passando para o lado,
+// separadas por grupo; o app em cima é o preview ao vivo (sem fundo escuro).
+// Miniatura nova: título "Aa" no estilo do tema, bloco dos totais, 2 cartões e
+// a barra de baixo.
 function folhaTemas() {
   const op = (t) =>
     '<button type="button" class="t-op" data-t="' + t.id + '">' +
     '<span class="amostra" data-tema="' + t.id + '"><span class="ceu"><i></i><b></b></span>' +
-    '<span class="a-x"><span class="a-h"></span><span class="a-l"></span><span class="a-l c"></span></span><span class="ok">✓</span></span>' +
+    '<span class="a-x"><span class="a-ti">Aa</span><span class="a-h"></span>' +
+    '<span class="a-cs"><span><i></i></span><span><i></i></span></span>' +
+    '<span class="a-nv"><i class="on"></i><i></i><i></i><i></i><i></i></span></span><span class="ok">✓</span></span>' +
     '<span>' + esc(t.nome) + '<span class="tipo">' + (t.e === 'dark' ? 'escuro' : 'claro') + '</span></span></button>';
   const grupo = (g, titulo) =>
-    '<div class="t-grupo">' + titulo + '</div><div class="temas">' + TEMAS.filter((t) => t.g === g).map(op).join('') + '</div>';
+    '<span class="t-sep">' + titulo + '</span>' + TEMAS.filter((t) => t.g === g).map(op).join('');
   return (
-    '<div id="t-fundo" class="fundo oculto"></div>' +
-    '<div id="t-folha" class="folha oculto">' +
+    '<div id="t-fundo" class="fundo t-fundo oculto"></div>' +
+    '<div id="t-folha" class="folha t-folha oculto">' +
     '<p>Temas · fica salvo neste iPhone</p>' +
-    grupo('c', 'Clássicos') + grupo('e', 'Estéticos') + grupo('t', 'Temáticos') + grupo('n', 'Novos') +
+    '<div class="t-car" id="t-car">' + grupo('c', 'Clássicos') + grupo('e', 'Estéticos') + grupo('t', 'Temáticos') + grupo('n', 'Novos') + '</div>' +
     '<button type="button" class="op cancelar" id="t-pronto">Pronto</button>' +
     '</div>'
   );
+}
+
+// v7.0: as fontes dos títulos de todos os temas, só com as letras "Aa" (bem
+// leve), para as miniaturas do carrossel mostrarem o estilo de cada tema.
+function fontesAmostras() {
+  const fs = TEMAS.filter((t) => t.f).map((t) => 'family=' + t.f);
+  return fs.length ? 'https://fonts.googleapis.com/css2?' + fs.join('&') + '&text=Aa&display=swap' : '';
 }
 
 // Script da página: reação ao toque (v6.5: em todos os temas escolhidos; no Azul
@@ -1484,4 +1514,4 @@ function script() {
 </script>`;
 }
 
-module.exports = { TEMAS, ANTIGOS, temaValido, temaAtual, mapaTemas, css, ceu, folhaTemas, script };
+module.exports = { TEMAS, ANTIGOS, temaValido, temaAtual, mapaTemas, css, ceu, folhaTemas, fontesAmostras, script };
