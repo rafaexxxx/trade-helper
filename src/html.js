@@ -197,6 +197,9 @@ function varTotal(v, per) {
   return '<span class="f-var">' + s + a.fmtPct(Math.abs(v.pct)) + ' ' + esc(per.curto) + '</span>';
 }
 
+// v7.1: seletor dos temas escuros (as cores de upgrade/downgrade ficam mais claras neles).
+const temasEscuros = temas.TEMAS.filter((t) => t.e === 'dark').map((t) => '[data-tema=' + t.id + ']').join(',');
+
 // Paleta v4 (aprovada no protótipo L), agora em temas. Os nomes antigos (--cab,
 // --linha, --link, --rotulo) ficam como apelidos para nada sem cor escapar.
 const CSS_BASE = `
@@ -339,6 +342,16 @@ input[type=search]::placeholder{color:var(--sub)}
 .fundo{z-index:30}
 .folha,.an-fl,.folha-busca{z-index:31}
 
+/* v7.1 (protótipo de ajustes, opção A): as fotos dos itens ficam soltas, só com
+   uma sombra leve. Os temas põem moldura, recorte e animação na miniatura
+   pequena (.thumb); nas fotos grandes das telas novas isso sai. */
+:is(.vit-ft,.an-fts,.an-fila,.av-tile,.pz-mi,.pz-al,.dd-fts,.dt-l,.ti-topo) .thumb{box-shadow:none!important;border:0!important;border-radius:0!important;clip-path:none!important;animation:none!important;outline:0!important;background:none!important;object-fit:contain;filter:drop-shadow(0 6px 8px rgba(0,0,0,.25))}
+/* v7.1: cores da forma da trade (do seu lado): upgrade roxo, downgrade laranja. */
+:root{--c-up:#7c3aed;--c-down:#d9620b}
+@media (prefers-color-scheme: dark){:root:not([data-tema]){--c-up:#b794ff;--c-down:#ff9f5a}}
+${temasEscuros}{--c-up:#b794ff;--c-down:#ff9f5a}
+.f-up{color:var(--c-up)}.f-down{color:var(--c-down)}
+
 /* v7.0: menu "Mais" em blocos grandes + Diagnóstico. */
 .blocos{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:12px}
 .folha .blocos button{display:flex;flex-direction:column;align-items:flex-start;gap:6px;width:auto;min-height:104px;padding:14px 13px;border:0;border-radius:var(--r-card,16px);background:var(--card2);color:var(--fg);text-align:left;font-size:15px;-webkit-tap-highlight-color:transparent}
@@ -377,9 +390,11 @@ footer{color:var(--sub);font-size:13px;text-align:center}
 
 /* v5.2: topo com o menu ⋯, alternador de conta e a cor da conta 2 (vinho).
    A conta 2 só troca os tokens de destaque: todo o resto segue igual. */
-.cab{display:flex;align-items:flex-end;justify-content:space-between;gap:10px}
-.cab h1{min-width:0}
-.cab .meta{margin:0;flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:5px;font-size:12.5px;text-align:right}
+.cab{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:6px 10px}
+/* v7.1: o título nunca passa da largura da tela; se ele e a conta não cabem
+   juntos, a conta e a hora descem para a linha de baixo (à direita). */
+.cab h1{min-width:0;max-width:100%;font-size:min(var(--t-tam),11vw);overflow-wrap:anywhere;padding-right:.08em}
+.cab .meta{margin:0 0 0 auto;flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:5px;font-size:12.5px;text-align:right}
 .chip-conta{display:inline-flex;align-items:center;gap:6px;max-width:100%;padding:3px 10px 3px 3px;border:1px solid var(--borda);border-radius:999px;background:var(--card);color:var(--fg);font-size:13px;font-weight:600;-webkit-tap-highlight-color:transparent}
 .chip-conta:active{background:var(--card2)}
 .chip-conta .n{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -487,9 +502,10 @@ function botaoBarra(id, nome, aba) {
 }
 
 function barra() {
+  // v7.1: ordem escolhida pelo Rafael (da direita para a esquerda, com o Inventário na ponta).
   return '<div class="barra" id="barra"><nav class="seg abas" id="abas">' +
-    botaoBarra('inv', 'Inventário', true) + botaoBarra('avaliar', 'Avaliar', true) + botaoBarra('anuncios', 'Anúncios', true) +
-    botaoBarra('plano', 'Plano', true) + botaoBarra('mais', 'Mais', false) +
+    botaoBarra('mais', 'Mais', false) + botaoBarra('plano', 'Plano', true) + botaoBarra('avaliar', 'Avaliar', true) +
+    botaoBarra('anuncios', 'Anúncios', true) + botaoBarra('inv', 'Inventário', true) +
     '</nav></div>';
 }
 
