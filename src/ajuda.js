@@ -518,7 +518,9 @@ function capitulo4(cfg) {
   <p>Se o iPhone estiver com <b>Reduzir movimento</b> ligado (Ajustes &gt; Acessibilidade &gt; Movimento), as animações dos temas ficam paradas.</p>
 
   <h3 id="aj-widget">Widget</h3>
-  <p>Há os tamanhos pequeno, médio e grande, com o value total e os seus maiores itens. O widget pede para atualizar a cada ${cfg.WIDGET_ATUALIZAR_MIN} min, mas quem decide a hora é o iOS. Ele usa sempre o tema OLED (fundo preto), seja qual for o tema do painel. Item em hold aparece com a etiqueta amarela <b>HOLD</b>, e a contagem mostra quantos estão travados (ex.: "3 hold"). O widget não sabe quando o hold acaba, só se o item está travado.</p>
+  <p>Há os tamanhos pequeno, médio e grande. O <b>pequeno</b> mostra o value total e as fotos dos seus 4 maiores itens, cada uma com o valor do item. O <b>médio</b> mostra o value total e uma ficha para cada um dos 4 maiores itens, com o valor, a variação de 24h, a demanda, as vendas por dia e o Best Price. O <b>grande</b> mostra os totais, até ${cfg.WIDGET_MAX_ITENS_GRANDE} itens, os alertas e as mudanças. O widget pede para atualizar a cada ${cfg.WIDGET_ATUALIZAR_MIN} min, mas quem decide a hora é o iOS.</p>
+  <p>O pequeno e o médio têm 3 temas próprios, que não dependem do tema do painel. Para escolher, segure o widget, toque em <b>Editar widget</b> e escreva no campo <b>Parameter</b>: <b>claro</b> (clarinho), <b>oled</b> (preto) ou <b>iphone</b> (fica claro ou escuro junto com o iPhone). Com o campo vazio, vale o <b>iphone</b>. No modo tingido do iPhone, quem pinta o widget é o próprio iOS. O grande usa sempre o OLED.</p>
+  <p>Item em hold aparece com a foto apagada e um cadeado (no grande, com a etiqueta <b>HOLD</b>). O widget não sabe quando o hold acaba, só se o item está travado. As vendas por dia e o Best vêm do que o painel já guardou, então um item novo aparece sem eles até você abrir o app.</p>
 
   <h3 id="aj-diag">Diagnóstico</h3>
   <p>Em Mais &gt; Diagnóstico (com a versão do app). Se algo der errado, abra, copie o texto e mande para quem cuida do app.</p>

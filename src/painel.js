@@ -215,6 +215,13 @@ async function executar(ctx) {
 
   if (noWidget) {
     resultado.imagens = await imagensParaWidget(ctx.dirDados, itens, miniaturas, cfg.WIDGET_MAX_ITENS_GRANDE);
+    // v7.3: vendas/dia e Best dos 4 maiores para o médio, do que o painel já
+    // guardou (dados/cartoes.json). O widget não busca nada novo.
+    try {
+      resultado.linhasWidget = cartao.linhas(cartao.lerGuardados(store), itens.slice(0, 4));
+    } catch (e) {
+      resultado.linhasWidget = {};
+    }
     Script.setWidget(widget.montar(resultado, cfg));
     // v6.2: notificação-resumo (anúncios "Vale muito a pena" e riscos dos seus
     // itens). Depois do widget pronto; se algo falhar, o widget segue igual.

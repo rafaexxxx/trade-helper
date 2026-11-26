@@ -1,7 +1,11 @@
 // Widgets da tela inicial (grande, médio, pequeno) e da tela bloqueada.
 // A variação mostrada é sempre a de ~24h. O widget não grava a "última consulta",
 // só alimenta o histórico por hora.
+// v7.3: pequeno ("valor em cada foto") e médio ("grade 2×2") novos, com 3 temas
+// próprios (claro, oled, iphone) escolhidos no campo Parameter do widget.
+// O grande e a tela bloqueada seguem como antes (sempre OLED).
 const a = require('analise');
+const cartaoMod = require('cartao');
 
 // Paleta v5.4.1: sempre OLED (fundo preto puro, independe do tema do painel e do
 // modo claro/escuro do iPhone). Os totais ficam num cartão quase preto com borda
@@ -36,6 +40,80 @@ const CORES = {
   // Textos secundários dentro do cartão dos totais.
   brancoSuave: new Color('#ffffff', 0.78),
 };
+
+// ---------- v7.3: temas do pequeno e do médio ----------
+// claro = estilo Angel Core; oled = preto puro; iphone = cores padrão do iOS,
+// claro ou escuro junto com o iPhone (Color.dynamic). No modo tingido do iOS
+// quem pinta o widget é o próprio sistema.
+const TW = {
+  claro: { fundo: '#f6f7fc', grad: ['#dbe4fa', '#ecf0fb', '#f6f7fc'], ficha: '#ffffff', borda: '#d8dcec', fg: '#262b44', sub: '#6b7190', pos: '#1d8656', neg: '#c2365a', negFundo: '#fbe5ec', veu: ['#f6f7fc', 0.62], cadeado: '#6b7190' },
+  oled: { fundo: '#000000', ficha: '#0e0e10', borda: '#2a2a2e', fg: '#f5f5f7', sub: '#8e8e93', pos: '#7ee0ae', neg: '#ff8fa3', negFundo: '#2a1218', veu: ['#000000', 0.6], cadeado: '#8e8e93' },
+  iosClaro: { fundo: '#ffffff', ficha: '#f2f2f7', fg: '#000000', sub: '#8e8e93', pos: '#248a3d', neg: '#d70015', negFundo: '#ffe5e7' },
+  iosEscuro: { fundo: '#1c1c1e', ficha: '#2c2c2e', fg: '#ffffff', sub: '#8e8e93', pos: '#30d158', neg: '#ff453a', negFundo: '#3a1a1a' },
+};
+const CHAVES_TW = ['fundo', 'ficha', 'fg', 'sub', 'pos', 'neg', 'negFundo'];
+
+// Tema escolhido no campo Parameter do widget (segurar > Editar widget).
+// Vazio ou desconhecido = iphone.
+function temaWidget() {
+  let p = '';
+  try {
+    if (typeof args !== 'undefined' && args && args.widgetParameter) p = String(args.widgetParameter);
+  } catch (e) {
+    p = '';
+  }
+  p = p.trim().toLowerCase();
+  try {
+    p = p.normalize('NFD').replace(/[̀-ͯ]/g, '');
+  } catch (e) {
+    // segue sem tirar acentos
+  }
+  if (p === 'claro' || p === 'angel' || p === 'light') return 'claro';
+  if (p === 'oled' || p === 'preto' || p === 'black') return 'oled';
+  return 'iphone';
+}
+
+// Cores (objetos Color) do tema. O véu e o cadeado das fotos em hold são
+// desenhados numa imagem, por isso não podem ser dinâmicos.
+function coresTema(nome) {
+  const k = { nome };
+  if (nome === 'iphone') {
+    const din = typeof Color.dynamic === 'function';
+    for (const c of CHAVES_TW) {
+      const l = new Color(TW.iosClaro[c]);
+      const d = new Color(TW.iosEscuro[c]);
+      k[c] = din ? Color.dynamic(l, d) : d;
+    }
+    k.borda = null;
+    k.veu = new Color('#8e8e93', 0.5);
+    k.cadeado = new Color('#8e8e93');
+    return k;
+  }
+  const t = TW[nome];
+  for (const c of CHAVES_TW) k[c] = new Color(t[c]);
+  k.borda = t.borda ? new Color(t.borda) : null;
+  k.grad = t.grad || null;
+  k.veu = new Color(t.veu[0], t.veu[1]);
+  k.cadeado = new Color(t.cadeado);
+  return k;
+}
+
+function aplicarFundoTema(w, k) {
+  if (k.grad && typeof LinearGradient !== 'undefined' && typeof Point !== 'undefined') {
+    try {
+      const g = new LinearGradient();
+      g.colors = k.grad.map((h) => new Color(h));
+      g.locations = [0, 0.4, 1];
+      g.startPoint = new Point(0, 0);
+      g.endPoint = new Point(0.25, 1);
+      w.backgroundGradient = g;
+      return;
+    } catch (e) {
+      // sem degradê: cor lisa
+    }
+  }
+  w.backgroundColor = k.fundo;
+}
 
 // Size pode não existir em algum contexto; sem ele, seguimos sem.
 function tam(w, h) {
@@ -140,47 +218,9 @@ function nomeCurto(i, limite) {
   return i.nome.length > limite && i.sigla ? i.sigla : i.nome;
 }
 
-// Linha do widget médio: [img] Nome ....... value
-//                              RAP x  +y%
-// O nome disputa espaço só com o value (sem coluna fixa), então usa toda a sobra.
-function linhaItemEmpilhada(pilha, i, img, op) {
-  const s = pilha.addStack();
-  s.layoutHorizontally();
-  s.centerAlignContent();
-  if (img) {
-    const wi = s.addImage(img);
-    const t = tam(op.img, op.img);
-    if (t) wi.imageSize = t;
-    wi.cornerRadius = 7;
-    s.addSpacer(8);
-  }
-  const dir = s.addStack();
-  dir.layoutVertically();
-
-  const l1 = dir.addStack();
-  l1.layoutHorizontally();
-  l1.centerAlignContent();
-  const nome = op.limiteNome ? nomeCurto(i, op.limiteNome) : i.nome;
-  texto(l1, nome, Font.mediumSystemFont(op.fonte), CORES.texto, 1);
-  l1.addSpacer(6);
-  l1.addSpacer();
-  texto(l1, i.value != null ? a.fmtNum(i.value) : '—', Font.boldSystemFont(op.fonte), CORES.texto, 1);
-
-  const vr = varRap(i, op.base);
-  const l2 = dir.addStack();
-  l2.layoutHorizontally();
-  l2.spacing = 4;
-  // v6.2.3: item em hold ganha a etiqueta amarela embaixo do nome.
-  if (i.hold) texto(l2, 'HOLD', Font.boldSystemFont(9), CORES.warn, 0.8);
-  l2.addSpacer();
-  texto(l2, 'RAP ' + a.fmtNum(i.rap), Font.mediumSystemFont(9), CORES.rap, 0.8);
-  if (vr != null) texto(l2, a.fmtPctSinal(vr), Font.semiboldSystemFont(9), corVar(vr), 0.8);
-}
-
 // Linha do widget grande: [img] Nome / detalhes · RAP 24h ...... value / RAP (empilhados).
 // Sem colunas de largura fixa: o nome usa toda a sobra.
 function linhaItem(pilha, i, img, op) {
-  if (op.empilhado) return linhaItemEmpilhada(pilha, i, img, op);
   const s = pilha.addStack();
   s.layoutHorizontally();
   s.centerAlignContent();
@@ -312,63 +352,282 @@ function grande(w, r, cfg) {
   w.addSpacer();
 }
 
-// ---------- Médio (retangular) ----------
-function medio(w, r) {
-  const c = r.comparacoes.dia;
-  const linha = w.addStack();
-  linha.layoutHorizontally();
+// ---------- v7.3: peças comuns do pequeno e do médio ----------
+const MAX_ITENS_NOVOS = 4;
 
-  // Cartão OLED com os totais.
-  const esq = cartao(linha, 11);
-  const te = tam(136, 0);
-  if (te) esq.size = te;
-  const topo = esq.addStack();
-  topo.layoutHorizontally();
-  topo.bottomAlignContent();
-  texto(topo, r.usuario.nome, Font.boldSystemFont(12), CORES.branco);
-  topo.addSpacer();
-  texto(topo, hora(r.agora), Font.systemFont(9), CORES.brancoSuave);
-  esq.addSpacer(6);
-  bloco(esq, 'Value', a.fmtNum(r.totais.value), c.var && c.var.value, 21, CORES.branco, CORES.brancoSuave);
-  esq.addSpacer(4);
-  bloco(esq, 'RAP', a.fmtNum(r.totais.rap), c.var && c.var.rap, 15, CORES.branco, CORES.brancoSuave);
-  esq.addSpacer(5);
-  texto(esq, rodapeContagem(r), Font.systemFont(10), r.riscos.length ? CORES.warn : CORES.brancoSuave);
-
-  linha.addSpacer(12);
-
-  const dir = linha.addStack();
-  dir.layoutVertically();
-  rotulo(dir, 'Maiores itens · RAP ' + rotuloPeriodo(c, r.agora));
-  dir.addSpacer(6);
-  r.itens.slice(0, 3).forEach((i, k) => {
-    if (k) {
-      dir.addSpacer(5);
-      divisoria(dir);
-      dir.addSpacer(5);
-    }
-    linhaItem(dir, i, r.imagens[String(i.assetId)], {
-      img: 24, fonte: 11, empilhado: true, base: c.base, limiteNome: 12,
-    });
-  });
-  dir.addSpacer();
+// SF Symbol do iPhone pintado na cor pedida (sem o símbolo, segue sem ele).
+function simbolo(pilha, nome, px, cor) {
+  if (typeof SFSymbol === 'undefined') return null;
+  try {
+    const s = SFSymbol.named(nome);
+    if (!s) return null;
+    s.applyFont(Font.boldSystemFont(px));
+    const im = pilha.addImage(s.image);
+    const t = tam(px, px);
+    if (t) im.imageSize = t;
+    im.tintColor = cor;
+    return im;
+  } catch (e) {
+    return null;
+  }
 }
 
-// ---------- Pequeno (o widget inteiro é o bloco dos totais, no preto) ----------
-function pequeno(w, r) {
+// Selo vermelho com o número de alertas (todo risco conta, como na v6.3). Sem alerta, nada.
+function seloAlerta(pilha, n, k) {
+  if (!n) return;
+  const s = pilha.addStack();
+  s.layoutHorizontally();
+  s.centerAlignContent();
+  s.backgroundColor = k.negFundo;
+  s.cornerRadius = 8;
+  s.setPadding(2, 6, 2, 6);
+  s.spacing = 3;
+  simbolo(s, 'exclamationmark.triangle.fill', 9, k.neg);
+  texto(s, String(n), Font.boldSystemFont(10), k.neg, 1);
+}
+
+// Foto do item em hold: apagada por um véu e com um cadeado no canto, tudo
+// desenhado numa imagem só (pilhas não ficam umas por cima das outras).
+function fotoApagada(img, k) {
+  if (!img || typeof DrawContext === 'undefined' || typeof Rect === 'undefined' || typeof Size === 'undefined') return img;
+  try {
+    const S = 96;
+    const ctx = new DrawContext();
+    ctx.size = new Size(S, S);
+    ctx.opaque = false;
+    ctx.respectScreenScale = true;
+    ctx.drawImageInRect(img, new Rect(0, 0, S, S));
+    ctx.setFillColor(k.veu);
+    ctx.fillRect(new Rect(0, 0, S, S));
+    const b = 36;
+    const x = S - b - 2;
+    const y = S - b - 2;
+    if (typeof Path !== 'undefined') {
+      const p = new Path();
+      p.addRoundedRect(new Rect(x, y, b, b), 10, 10);
+      ctx.addPath(p);
+      ctx.setFillColor(k.cadeado);
+      ctx.fillPath();
+    }
+    if (typeof SFSymbol !== 'undefined') {
+      const s = SFSymbol.named('lock.fill');
+      if (s) {
+        s.applyFont(Font.boldSystemFont(22));
+        ctx.drawImageInRect(s.image, new Rect(x + 9, y + 7, b - 18, b - 14));
+      }
+    }
+    return ctx.getImage();
+  } catch (e) {
+    return img;
+  }
+}
+
+// Foto que o widget mostra (a do hold sai apagada). Feita uma vez por atualização.
+function criarFotos(r, k) {
+  const cache = {};
+  return function (i) {
+    const id = String(i.assetId);
+    if (!(id in cache)) {
+      const img = r.imagens[id] || null;
+      cache[id] = i.hold ? fotoApagada(img, k) : img;
+    }
+    return cache[id];
+  };
+}
+
+function corVarK(p, k) {
+  return p > 0 ? k.pos : p < 0 ? k.neg : k.sub;
+}
+
+// Variação de ~24h do valor do item (value base: value; sem value = RAP).
+function varItem(i, base) {
+  const p = base && base.itens ? base.itens[i.uaid] : null;
+  if (!p || !p.valorEfetivo) return null;
+  return ((i.valorEfetivo - p.valorEfetivo) / p.valorEfetivo) * 100;
+}
+
+function somaHold(r) {
+  return r.itens.filter((i) => i.hold).reduce((s, i) => s + (i.valorEfetivo || 0), 0);
+}
+
+// Value total igual ao RAP total (ex.: nenhum item com value): mostra um número só.
+function valueIgualRap(r) {
+  return Math.round(r.totais.value) === Math.round(r.totais.rap);
+}
+
+// "▲ 0,9% em 24h"; com value diferente do RAP, "▲ 0,9% · RAP 5.465".
+function linha24h(pilha, r, c, k, fonte) {
+  const s = pilha.addStack();
+  s.layoutHorizontally();
+  s.centerAlignContent();
+  s.spacing = 5;
+  const igual = valueIgualRap(r);
+  const v = c.var && c.var.value && c.var.value.pct != null ? c.var.value.pct : null;
+  if (v != null) texto(s, textoVar(v) + (igual ? ' em ' + rotuloPeriodo(c, r.agora) : ''), Font.semiboldSystemFont(fonte), corVarK(v, k), 0.8);
+  if (!igual) texto(s, 'RAP ' + a.abreviar(r.totais.rap), Font.mediumSystemFont(fonte), k.sub, 0.8);
+  return s;
+}
+
+// Etiqueta pequena (motivo do alerta em vermelho ou HOLD em cinza).
+function etiqueta(pilha, txt, fundo, cor) {
+  const s = pilha.addStack();
+  s.backgroundColor = fundo;
+  s.cornerRadius = 4;
+  s.setPadding(1, 4, 1, 4);
+  texto(s, txt.toUpperCase(), Font.heavySystemFont(8), cor, 0.8);
+}
+
+// Alertas que não aparecem em outro lugar da ficha (v6.3: só os "pilula").
+// A demanda já está na 2ª linha e as quedas já estão na variação.
+function etiquetasAlerta(r) {
+  const m = {};
+  for (const x of r.riscos) {
+    const p = x.motivos.filter((mo) => mo.pilula)[0];
+    if (!p) continue;
+    m[x.item.uaid] = p.texto === 'projected' ? 'projected' : p.texto.indexOf('RAP') === 0 ? 'RAP ≠ value' : p.texto;
+  }
+  return m;
+}
+
+// ---------- Médio (v7.3: grade 2×2 com os 4 maiores itens) ----------
+function medio(w, r, k) {
   const c = r.comparacoes.dia;
+  const linhas = r.linhasWidget || {};
+  const foto = criarFotos(r, k);
+  const tags = etiquetasAlerta(r);
+
+  // Linha de cima: value total grande + 24h; à direita, hold, alertas e hora.
+  const cab = w.addStack();
+  cab.layoutHorizontally();
+  cab.bottomAlignContent();
+  texto(cab, a.fmtNum(r.totais.value), Font.heavySystemFont(30), k.fg, 0.6);
+  cab.addSpacer(7);
+  const v = cab.addStack();
+  v.setPadding(0, 0, 4, 0);
+  linha24h(v, r, c, k, 11);
+  cab.addSpacer();
+  const dir = cab.addStack();
+  dir.layoutHorizontally();
+  dir.centerAlignContent();
+  dir.spacing = 6;
+  dir.setPadding(0, 0, 4, 0);
+  const h = somaHold(r);
+  if (h > 0) {
+    const sh = dir.addStack();
+    sh.layoutHorizontally();
+    sh.centerAlignContent();
+    sh.spacing = 3;
+    simbolo(sh, 'lock.fill', 9, k.sub);
+    texto(sh, a.abreviar(h), Font.mediumSystemFont(10.5), k.sub, 0.8);
+  }
+  seloAlerta(dir, r.riscos.length, k);
+  texto(dir, hora(r.agora), Font.semiboldSystemFont(11), k.sub, 0.8);
+
+  w.addSpacer();
+  const lista = r.itens.slice(0, MAX_ITENS_NOVOS);
+  if (!lista.length) {
+    texto(w, 'Nenhum item no inventário', Font.systemFont(12), k.sub);
+    w.addSpacer();
+    return;
+  }
+  for (let n = 0; n < lista.length; n += 2) {
+    if (n) w.addSpacer(5);
+    const fila = w.addStack();
+    fila.layoutHorizontally();
+    fila.spacing = 5;
+    lista.slice(n, n + 2).forEach((i) => ficha(fila, i, { foto, tags, linhas, base: c.base, k }));
+  }
+}
+
+// Ficha do médio: [foto] valor 24h ...... etiqueta
+//                        Demanda · N/dia
+//                        Best N
+function ficha(pilha, i, o) {
+  const k = o.k;
+  const l = o.linhas[String(i.assetId)] || null;
+  const f = pilha.addStack();
+  f.layoutHorizontally();
+  f.centerAlignContent();
+  f.backgroundColor = k.ficha;
+  if (k.borda) {
+    f.borderColor = k.borda;
+    f.borderWidth = 1;
+  }
+  f.cornerRadius = 10;
+  f.setPadding(5, 7, 5, 7);
+  const img = o.foto(i);
+  if (img) {
+    const wi = f.addImage(img);
+    const t = tam(32, 32);
+    if (t) wi.imageSize = t;
+    wi.cornerRadius = 7;
+    f.addSpacer(7);
+  }
+  const col = f.addStack();
+  col.layoutVertically();
+  col.spacing = 1;
+
+  const l1 = col.addStack();
+  l1.layoutHorizontally();
+  l1.centerAlignContent();
+  l1.spacing = 4;
+  texto(l1, a.abreviar(i.valorEfetivo), Font.boldSystemFont(12.5), i.hold ? k.sub : k.fg, 0.8);
+  const vi = varItem(i, o.base);
+  if (vi != null) texto(l1, (vi > 0 ? '▲' : vi < 0 ? '▼' : '') + a.fmtPct(Math.abs(vi)), Font.semiboldSystemFont(9.5), i.hold ? k.sub : corVarK(vi, k), 0.8);
+  l1.addSpacer();
+  if (o.tags[i.uaid]) etiqueta(l1, o.tags[i.uaid], k.negFundo, k.neg);
+  else if (i.hold) etiqueta(l1, 'hold', k.sub, k.ficha);
+
+  // Demanda do Rolimon's; sem ela, a estimada pelas vendas/dia (como na tela do item).
+  let dem = i.demanda >= 0 ? a.demandaCurta(i.demanda) : null;
+  if (!dem && l && l.v != null) dem = a.demandaCurta(cartaoMod.demandaPorVendas(l.v));
+  const l2 = [dem, l && l.tv].filter(Boolean).join(' · ');
+  if (l2) texto(col, l2, Font.systemFont(9.5), k.sub, 0.85);
+  if (l && l.tb) texto(col, 'Best ' + l.tb, Font.systemFont(9.5), k.sub, 0.85);
+}
+
+// ---------- Pequeno (v7.3: value grande e as 4 fotos com o valor de cada uma) ----------
+function pequeno(w, r, k) {
+  const c = r.comparacoes.dia;
+  const foto = criarFotos(r, k);
+
   const topo = w.addStack();
   topo.layoutHorizontally();
-  topo.bottomAlignContent();
-  texto(topo, r.usuario.nome, Font.boldSystemFont(12), CORES.branco);
+  topo.centerAlignContent();
+  texto(topo, hora(r.agora), Font.semiboldSystemFont(11), k.sub);
   topo.addSpacer();
-  texto(topo, hora(r.agora), Font.systemFont(9), CORES.brancoSuave);
-  w.addSpacer(10);
-  bloco(w, 'Value', a.abreviar(r.totais.value), c.var && c.var.value, 26, CORES.branco, CORES.brancoSuave);
-  w.addSpacer(6);
-  bloco(w, 'RAP', a.abreviar(r.totais.rap), c.var && c.var.rap, 17, CORES.branco, CORES.brancoSuave);
+  seloAlerta(topo, r.riscos.length, k);
+
   w.addSpacer();
-  texto(w, rodapeContagem(r), Font.systemFont(10), r.riscos.length ? CORES.warn : CORES.brancoSuave);
+  texto(w, a.abreviar(r.totais.value), Font.heavySystemFont(34), k.fg, 0.6);
+  w.addSpacer(3);
+  linha24h(w, r, c, k, 11);
+  w.addSpacer();
+
+  const fila = w.addStack();
+  fila.layoutHorizontally();
+  r.itens.slice(0, MAX_ITENS_NOVOS).forEach((i, n) => {
+    if (n) fila.addSpacer();
+    const s = fila.addStack();
+    s.layoutVertically();
+    s.centerAlignContent();
+    const box = s.addStack();
+    box.backgroundColor = k.ficha;
+    box.cornerRadius = 8;
+    box.setPadding(2, 2, 2, 2);
+    const img = foto(i);
+    if (img) {
+      const wi = box.addImage(img);
+      const t = tam(24, 24);
+      if (t) wi.imageSize = t;
+      wi.cornerRadius = 6;
+    } else {
+      const t = tam(24, 24);
+      if (t) box.size = t;
+    }
+    s.addSpacer(2);
+    texto(s, a.abreviar(i.valorEfetivo), Font.boldSystemFont(9.5), i.hold ? k.sub : k.fg, 0.8);
+  });
 }
 
 // ---------- Tela bloqueada (o iOS deixa monocromático) ----------
@@ -399,14 +658,16 @@ function montar(r, cfg) {
     return w;
   }
 
-  if (familia === 'small') {
-    aplicarFundo(w);
-    w.setPadding(14, 14, 14, 14);
-    pequeno(w, r);
-  } else if (familia === 'medium') {
-    aplicarFundo(w);
-    w.setPadding(12, 12, 12, 14);
-    medio(w, r);
+  if (familia === 'small' || familia === 'medium') {
+    const k = coresTema(temaWidget());
+    aplicarFundoTema(w, k);
+    if (familia === 'small') {
+      w.setPadding(13, 13, 13, 13);
+      pequeno(w, r, k);
+    } else {
+      w.setPadding(10, 11, 10, 11);
+      medio(w, r, k);
+    }
   } else {
     aplicarFundo(w);
     w.setPadding(16, 16, 14, 16);
