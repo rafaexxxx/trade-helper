@@ -188,6 +188,8 @@ function parametros(cfg, meuId) {
 // v6.13 (Etapa 5, protótipo Q2): o topo virou três linhas curtas: a forma (com os
 // números), os chips "Item ▾" e "Ordem ▾" (abrem folhas) e o status miúdo com ↻.
 // O título "Anúncios N" saiu (o número já está na barra da forma).
+// v7.0 (protótipo B · Um por vez): o chip "Um item" saiu; "Meus itens" vale para
+// tudo (pedidos, sugestões e Plano). Embaixo: fila de anúncios + um aberto.
 function secao(cfg, erro) {
   if (erro) {
     return '<div id="aba-anuncios" class="aba oculto"><p class="aviso">A aba Anúncios não pôde ser montada: ' + esc(erro) + '</p></div>';
@@ -196,17 +198,16 @@ function secao(cfg, erro) {
     '<div id="aba-anuncios" class="aba oculto">' +
     '<div class="an-topo">' +
     // v6.8: forma da trade do SEU ponto de vista (o número é desenhado na página).
-    '<div class="seg peq" id="an-forma">' +
+    '<div class="seg" id="an-forma">' +
     '<button type="button" data-f="todos">Todos<small></small></button>' +
     '<button type="button" data-f="upgrade">Seu upgrade<small></small></button>' +
     '<button type="button" data-f="downgrade">Seu downgrade<small></small></button>' +
     '</div>' +
-    '<div class="an-sel"><button type="button" class="chip" id="an-filtro"></button>' +
-    '<button type="button" class="chip" id="an-ordem"></button>' +
-    // v6.20: quais itens seus entram nas sugestões (aqui e no Plano).
+    '<div class="an-sel"><button type="button" class="chip" id="an-ordem"></button>' +
+    // v6.20: quais itens seus entram (v7.0: nos pedidos, nas sugestões e no Plano).
     '<button type="button" class="chip" id="an-meus"></button></div>' +
     '<div class="an-status"><p class="meta" id="an-info">Os anúncios são buscados quando você abre esta aba.</p>' +
-    '<button type="button" class="mais" id="an-atualizar" aria-label="Atualizar anúncios">↻</button></div>' +
+    '<button type="button" class="an-atu" id="an-atualizar" aria-label="Atualizar anúncios">↻</button></div>' +
     '</div>' +
     '<p class="aviso oculto" id="an-erro"></p>' +
     '<p class="meta oculto" id="an-conta"></p>' +
@@ -231,20 +232,14 @@ function secaoPlano(erro) {
   );
 }
 
-// Folhas "Um item seu" (escolhe o item do filtro) e, v6.13, a da ordem.
+// Folhas "Meus itens" e, v6.13, a da ordem. (v7.0: a folha "Um item seu" saiu.)
 function folha() {
   return (
-    '<div id="an-fundo" class="fundo oculto"></div>' +
-    '<div id="an-folha" class="an-fl oculto">' +
-    '<div class="an-fl-topo"><b>Um item seu</b><button type="button" id="an-fechar">Fechar</button></div>' +
-    '<p class="an-fl-info">Mostra só os anúncios em que esse item entra no seu lado (Dou). Nos de upgrade e downgrade, a sugestão é refeita com ele.</p>' +
-    '<div class="an-fl-lista" id="an-fl-lista"></div>' +
-    '</div>' +
-    // v6.20: folha "Meus itens" (marca e desmarca os itens que entram nas sugestões).
+    // v6.20: folha "Meus itens" (marca e desmarca os itens que entram nos anúncios).
     '<div id="am-fundo" class="fundo oculto"></div>' +
     '<div id="am-folha" class="an-fl oculto">' +
-    '<div class="an-fl-topo"><b>Meus itens</b><button type="button" id="am-fechar">Fechar</button></div>' +
-    '<p class="an-fl-info">Só os itens marcados entram nas sugestões (inclusive como add), aqui e na aba Plano. Toque para marcar ou desmarcar.</p>' +
+    '<div class="an-fl-topo"><b>Meus itens</b><button type="button" id="am-fechar">Pronto</button></div>' +
+    '<p class="an-fl-info">Só os itens marcados entram nos anúncios (pedidos e sugestões, inclusive como add) e no Plano. Marque só um para ver só os anúncios dele.</p>' +
     '<div class="an-fl-lista" id="am-lista"></div>' +
     '</div>' +
     '<div id="ao-fundo" class="fundo oculto"></div>' +
@@ -261,27 +256,69 @@ function folha() {
 function css() {
   return `
 /* v6.13: topo em três linhas curtas (forma; chips Item e Ordem; status com ↻). */
-.an-topo{display:flex;flex-direction:column;gap:8px}
-#an-forma button{flex:auto;white-space:nowrap;font-size:13px;padding:7px 4px}
-#an-forma small{margin-left:4px;font-size:11px;font-weight:700;opacity:.7;font-variant-numeric:tabular-nums}
+.an-topo{display:flex;flex-direction:column;gap:10px}
+#an-forma button{flex:auto;white-space:nowrap;font-size:13.5px;font-weight:700;padding:10px 2px}
+#an-forma small{margin-left:4px;font-size:12px;font-weight:700;opacity:.75;font-variant-numeric:tabular-nums}
 #an-forma small:empty{display:none}
-.an-sel{display:flex;flex-wrap:wrap;gap:6px;align-items:center;min-width:0}
-#an-meus{flex:none}
-.an-sel .chip{display:inline-flex;align-items:center;gap:6px;min-width:0;padding:6px 12px;font-size:13px}
-#an-filtro{max-width:64%}
-#an-filtro.com-item{padding-left:6px}
-#an-ordem{flex:none}
-.an-sel .chip .thumb{flex:none;width:20px;height:20px;border-radius:6px}
+.an-sel{display:flex;flex-wrap:wrap;gap:8px;align-items:center;min-width:0}
+.an-sel .chip{flex:none;display:inline-flex;align-items:center;gap:6px;min-width:0;padding:9px 14px;font-size:14px;font-weight:600}
+.an-sel .chip small{font-size:12.5px;font-weight:600;color:var(--sub)}
+.an-sel .chip.on small{color:inherit}
 .an-sel .chip .t{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .an-sel .chip .v{flex:none;font-size:11px;opacity:.75}
-.an-sel .chip .x{flex:none;margin-left:2px;padding:0 2px;font-weight:700}
 .an-status{display:flex;align-items:center;gap:10px}
-.an-status .meta{flex:1;min-width:0;margin:0;font-size:12px}
-.an-status .mais{width:34px;height:34px;font-size:17px}
-.an-status .mais:disabled{opacity:.6}
-.an-status .mais.buscando{animation:anGira .9s linear infinite}
+.an-status .meta{flex:1;min-width:0;margin:0;font-size:12.5px}
+.an-atu{flex:none;width:40px;height:40px;padding:0;border:1px solid var(--card-borda);border-radius:50%;background:var(--card);box-shadow:var(--sombra);color:var(--fg);font-size:19px;line-height:1;-webkit-tap-highlight-color:transparent}
+.an-atu:active{background:var(--card2)}
+.an-atu:disabled{opacity:.6}
+.an-atu.buscando{animation:anGira .9s linear infinite}
 @keyframes anGira{to{transform:rotate(360deg)}}
-@media (prefers-reduced-motion: reduce){.an-status .mais.buscando{animation:none}}
+@media (prefers-reduced-motion: reduce){.an-atu.buscando{animation:none}}
+/* v7.0 (protótipo B · Um por vez): fila em cima e um anúncio aberto embaixo.
+   O anúncio aberto é um .an-grupo (os temas já pintam essa classe). */
+.an-um{display:flex;flex-direction:column;gap:12px}
+.an-fila{display:flex;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -16px;padding:2px 16px 4px;scrollbar-width:none}
+.an-fila::-webkit-scrollbar{display:none}
+.an-fila button{flex:none;width:104px;display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 6px;border-radius:var(--r-card,16px);background:var(--card);border:2px solid var(--card-borda);color:var(--fg);text-align:center;-webkit-tap-highlight-color:transparent}
+.an-fila button.on{border-color:var(--acc-t)}
+.an-fila .m{display:flex;justify-content:center;height:44px}
+.an-fila .m .thumb{width:42px;height:42px;margin:0 -4px;border-radius:10px;background:none;object-fit:contain}
+.an-fila b{font-size:17px;font-weight:800;color:var(--c);white-space:nowrap}
+.an-fila small{font-size:11.5px;color:var(--sub);line-height:1.25}
+.an-cab{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:11px 13px}
+.an-cab .j{display:flex;flex-direction:column;gap:2px;min-width:0}
+.an-cab .j b{font-size:15.5px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.an-cab .j span{font-size:12.5px;color:var(--sub)}
+.an-cab .selo{flex:none;padding:3px 9px;font-size:12px;font-weight:800;white-space:nowrap}
+.an-duelo{position:relative;display:grid;grid-template-columns:1fr 1fr}
+.an-cena{min-width:0;display:flex;flex-direction:column;padding:10px 11px 34px;background:var(--card2)}
+.an-cena.r{background:var(--heroi);color:var(--on-heroi)}
+.an-cena .q{font-size:12.5px;font-weight:600;opacity:.85}
+.an-cena .q b{display:block;font-size:28px;font-weight:800;letter-spacing:-.02em;line-height:1.1;opacity:1}
+.an-cena.r .q{text-align:right}
+.an-fts{display:flex;flex-wrap:wrap;justify-content:center;align-content:center;gap:4px;height:178px;margin-top:6px}
+.an-fts button{width:80%;max-width:150px;aspect-ratio:1;padding:0;border:0;background:none;-webkit-tap-highlight-color:transparent}
+.an-fts.n2 button{width:56%;max-width:104px;margin:-4px 0}
+.an-fts.n3 button{width:44%}
+.an-fts .thumb{width:100%;height:100%;border-radius:0;background:none;object-fit:contain;filter:drop-shadow(0 10px 10px rgba(0,0,0,.35))}
+.an-fts .so-rbx{align-self:center;font-size:20px;font-weight:800}
+.an-cena .rbx{margin-top:2px;font-size:12.5px;font-weight:700;text-align:center;opacity:.9}
+.an-vs{position:absolute;left:50%;bottom:-20px;transform:translateX(-50%);z-index:2;padding:6px 14px;border-radius:16px;background:var(--folha);border:2px solid var(--c);color:var(--c);font-size:27px;font-weight:800;letter-spacing:-.02em;line-height:1.05;white-space:nowrap}
+.an-corpo{display:flex;flex-direction:column;gap:12px;padding:28px 13px 14px}
+.an-tb{display:flex;flex-direction:column}
+.an-tb>div{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:baseline;padding:8px 0;border-bottom:1px solid var(--borda)}
+.an-tb>div:last-child{border-bottom:0}
+.an-tb>div>span{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--sub);text-align:center}
+.an-tb b{min-width:0;font-size:14.5px;font-weight:700;line-height:1.3;overflow-wrap:anywhere}
+.an-tb b:last-child{text-align:right}
+.an-dg{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.an-dg.um{grid-template-columns:1fr}
+.an-dg>*{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:0;padding:10px 12px;border-radius:var(--r-card,16px);background:var(--card2);border:2px solid transparent;color:var(--fg);text-align:left;font:inherit;-webkit-tap-highlight-color:transparent}
+.an-dg>button.on{border-color:var(--c)}
+.an-dg small{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--sub)}
+.an-dg b{font-size:22px;font-weight:800;color:var(--c)}
+.an-dg i{font-style:normal;font-size:12.5px;color:var(--sub)}
+.an-um .an-acoes .btn{padding:14px 8px;font-size:15px;font-weight:700}
 .an-ftodos{display:grid;place-items:center;color:var(--sub);font-size:15px}
 .folha .op.on{font-weight:700}
 .folha .op.on::after{content:"  ✓"}
@@ -881,7 +918,9 @@ function paginaAnuncios(D, P, PA) {
     lista: [], mostrados: [], diag: null, pedidos: {},
     // formas = as três listas (todos, upgrade, downgrade); lista = a do filtro.
     formas: { todos: [], upgrade: [], downgrade: [] },
-    item: lerSalvo('an-filtro-item', ''), ordem: lerSalvo('an-ordem', 'ganho'), aberto: null,
+    // v7.0: o filtro "Um item" saiu (item fica sempre vazio); quem escolhe os
+    // itens é o "Meus itens". degrau = o degrau mostrado no anúncio aberto.
+    item: '', ordem: lerSalvo('an-ordem', 'ganho'), aberto: null, degrau: 0,
     forma: lerSalvo('an-forma', 'todos'),
   };
   if (!ORDENS[estado.ordem]) estado.ordem = 'ganho';
@@ -947,8 +986,6 @@ function paginaAnuncios(D, P, PA) {
   }
   function montarMeus(inv) {
     AN.montarMeus(inv, estado.ocultos);
-    // O item salvo no filtro pode ter saído do inventário (ou entrado em hold).
-    if (estado.item && !AN.porAsset[estado.item]) estado.item = '';
   }
   montarMeus(D.inventario);
 
@@ -1330,17 +1367,8 @@ function paginaAnuncios(D, P, PA) {
     });
     return l;
   }
-  function seloGiro(r) {
-    var i = principal(primeiro(r).rec);
-    if (!i) return '';
-    var ln = LN[i.id];
-    if (ln && ln.v != null) {
-      var gira = nivelVendas(ln.v) >= 2;
-      return '<span class="giro ' + (gira ? 'pos' : 'neg') + '" title="' + esc(i.nome) + ': ' + esc(ln.tv) + '">' + (gira ? 'gira' : 'parado') + '</span>';
-    }
-    if (vendasAn.pendentes[i.id]) return '<span class="giro esp" aria-label="Buscando as vendas">…</span>';
-    return '';
-  }
+  // (v7.0: o selo "gira/parado" da linha fechada saiu; as vendas/dia do item
+  // principal ficam na comparação linha a linha do anúncio aberto.)
   // Pede as vendas que faltam: o item principal de cada anúncio mostrado e os
   // itens do cartão aberto. Uma vez por item em cada abertura do painel.
   function pedirVendasAn() {
@@ -1583,53 +1611,17 @@ function paginaAnuncios(D, P, PA) {
     }
     return n(d[0].pct) + ' a ' + n(d[1].pct) + '%';
   }
-  function linha(r, k) {
-    var ad = r.ad;
-    var aberto = estado.aberto === ad[0];
-    var sug = r.modo === 'tag';
-    var cor = corVeredito(r.v);
-    var g0 = primeiro(r);
-    return (
-      '<div class="an-it' + (aberto ? ' aberto' : '') + '">' +
-      '<button type="button" class="an-linha" data-k="' + k + '" aria-expanded="' + aberto + '">' +
-      '<span class="an-main"><span class="an-l1"><b>' + esc(ad[3] || 'Jogador ' + ad[2]) + '</b>' +
-      '<span class="an-etq' + (sug ? '' : ' seus') + '">' + esc(etiqueta(r)) + '</span>' +
-      '<span class="an-tempo">' + haQuanto(ad[1]) + '</span></span>' +
-      '<span class="an-l2">' + grupo(g0.rec, r.robux, 'rec') + seloGiro(r) + '<span class="an-tr">⇄</span>' +
-      grupo(g0.dou, 0, 'dou' + (sug ? ' sug' : '')) + '</span></span>' +
-      '<span class="an-pct" data-cor="' + cor + '"><b>' + pctLinha(r) + '</b><small>' + esc(r.v ? r.v.titulo : '') + '</small></span>' +
-      '<span class="an-chev">›</span></button>' +
-      (aberto ? detalhe(r) : '') + '</div>'
-    );
-  }
-  function nomeDoItem(id) {
-    var l = AN.porAsset[id];
-    return l && l[0] ? l[0].nome : '';
-  }
   function desenharFiltro() {
-    // v6.13: chips pequenos. Com item escolhido, o chip mostra o item e um ✕.
-    var b = $('an-filtro');
-    if (estado.item && AN.porAsset[estado.item]) {
-      var i = AN.porAsset[estado.item][0];
-      b.className = 'chip on com-item';
-      b.setAttribute('aria-label', 'Só anúncios com ' + i.nome);
-      b.innerHTML = miniatura(i.id) + '<span class="t">' + esc(i.nome) + '</span>' +
-        '<span class="x" data-limpar="1" role="button" aria-label="Tirar filtro">✕</span>';
-    } else {
-      b.className = 'chip';
-      b.setAttribute('aria-label', 'Escolher um item seu');
-      b.innerHTML = '<span class="t">Um item</span><span class="v" aria-hidden="true">▾</span>';
-    }
     // v6.20: chip "Meus itens". Com algum desmarcado, destaca e mostra "2 de 3 itens".
     var nTodos = distintos(AN.todosOrdenados).length;
     var nUsa = distintos(AN.meusOrdenados).length;
     var bm = $('an-meus');
     bm.className = nUsa < nTodos ? 'chip filtro on' : 'chip';
-    bm.setAttribute('aria-label', 'Escolher quais itens seus entram nas sugestões');
+    bm.setAttribute('aria-label', 'Escolher quais itens seus entram nos anúncios');
     bm.innerHTML = '<span class="t">' + (nUsa < nTodos ? nUsa + ' de ' + nTodos + ' itens' : 'Meus itens') +
       '</span><span class="v" aria-hidden="true">▾</span>';
-    $('an-ordem').innerHTML = '<span class="t">' + esc(NOMES_ORDEM[estado.ordem]) + '</span><span class="v" aria-hidden="true">▾</span>';
-    // v6.8: forma, com quantos anúncios cada uma tem (já com o filtro do item).
+    $('an-ordem').innerHTML = '<small>Ordem</small><span class="t">' + esc(NOMES_ORDEM[estado.ordem]) + '</span><span class="v" aria-hidden="true">▾</span>';
+    // v6.8: forma, com quantos anúncios cada uma tem.
     var fs = document.querySelectorAll('#an-forma button');
     for (var k = 0; k < fs.length; k++) {
       var f = fs[k].getAttribute('data-f');
@@ -1802,6 +1794,129 @@ function paginaAnuncios(D, P, PA) {
       '<p class="nota">Cada volta é 1 upgrade + 1 downgrade. A conta supõe que os values não mudam. No pessimista você cede até o limite nos dois lados: por isso vale abrir pela oferta de abertura.</p></div>';
     el.innerHTML = h;
   }
+  // ---------- v7.0 (protótipo B · Um por vez) ----------
+  // Fila de anúncios em cima (passa para o lado) e UM anúncio aberto embaixo:
+  // Dou | Recebo lado a lado com fotos grandes e a % no meio, a comparação
+  // linha a linha, os degraus (tocar troca a cena) e os botões.
+  function maiuscula(s) {
+    s = String(s || '');
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  }
+  // O degrau mostrado (o 1º por padrão). Sem degraus, a própria oferta.
+  function degrauAtual(r) {
+    var d = degrausDe(r);
+    return d[Math.max(0, Math.min(estado.degrau || 0, d.length - 1))];
+  }
+  function fotosLado(itens) {
+    if (!itens.length) return '<div class="an-fts"><span class="so-rbx">R$</span></div>';
+    return '<div class="an-fts n' + Math.min(3, itens.length) + '">' + itens.map(function (i) {
+      return '<button type="button" data-item="' + esc(i.id) + '" data-nome="' + esc(i.nome) + '" aria-label="' + esc(i.nome) + '">' + miniatura(i.id) + '</button>';
+    }).join('') + '</div>';
+  }
+  function duelo(g, robux, cor) {
+    var liquido = robux ? Math.floor(robux * (1 - P.taxaRobux)) : 0;
+    return '<div class="an-duelo">' +
+      '<div class="an-cena"><div class="q">Dou<b>' + fmtNum(g.td.value) + '</b></div>' + fotosLado(g.dou) + '</div>' +
+      '<div class="an-cena r"><div class="q">Recebo<b>' + fmtNum(g.tr.value) + '</b></div>' + fotosLado(g.rec) +
+      (liquido && g.rec.length ? '<span class="rbx">+ ' + fmtNum(liquido) + ' Robux (líq.)</span>' : '') + '</div>' +
+      '<div class="an-vs" data-cor="' + cor + '">' + pctTxt(g.pct) + '</div></div>';
+  }
+  function celVendas(i) {
+    if (!i) return '<span class="sub">—</span>';
+    var ln = LN[i.id];
+    if (ln && ln.tv) return '<span class="' + esc(ln.c) + '">' + esc(ln.tv) + '</span>';
+    return vendasAn.pendentes[i.id] ? '<span class="sub">…</span>' : '<span class="sub">—</span>';
+  }
+  function celDemanda(i) {
+    return i && i.dem >= 0 ? '<span class="' + corDem(i.dem) + '">' + esc(P.demandaCurta[i.dem]) + '</span>' : '<span class="sub">—</span>';
+  }
+  // Mesmo OP do cartão de antes (v6.13): Recebo = OP para dar; Dou = OP para pedir.
+  function celOp(i, lado) {
+    if (!i) return '<span class="sub">—</span>';
+    var ln = LN[i.id];
+    var dem = i.dem;
+    if (!(dem >= 0) && ln && ln.v != null) dem = nivelVendas(ln.v);
+    var base = valorEfetivo(i);
+    if (!(base > 0) || !P.opRegua || (!(dem >= 0) && vendasAn.pendentes[i.id])) return '<span class="sub">—</span>';
+    var op = opFaixas(base, dem, P.opRegua);
+    return lado === 'rec'
+      ? '<span class="warn">dar ' + faixaPctAn(op.dar.pct) + '</span>'
+      : '<span class="pos">pedir ' + faixaPctAn(op.pedir.pct) + '</span>';
+  }
+  function linhaTb(t, a, b) {
+    return '<div><b>' + a + '</b><span>' + t + '</span><b>' + b + '</b></div>';
+  }
+  // Comparação linha a linha (itens, RAP e o item principal de cada lado).
+  function tabela(g, robux) {
+    var pd = principal(g.dou);
+    var pr = principal(g.rec);
+    var nomes = function (l) { return l.map(function (i) { return esc(i.nome); }).join('<br>'); };
+    var rec = nomes(g.rec) + (robux ? (g.rec.length ? '<br>' : '') + '+ ' + fmtNum(robux) + ' Robux' : '');
+    return '<div class="an-tb">' +
+      linhaTb('Itens', nomes(g.dou) || '—', rec || '—') +
+      linhaTb('RAP', fmtNum(g.td.rap), fmtNum(g.tr.rap)) +
+      linhaTb('Vendas/dia', celVendas(pd), celVendas(pr)) +
+      linhaTb('Demanda', celDemanda(pd), celDemanda(pr)) +
+      linhaTb('OP', celOp(pd, 'dou'), celOp(pr, 'rec')) +
+      '</div>';
+  }
+  // Caixas dos degraus (v6.16 / v6.16.1): com dois degraus, cada caixa troca a
+  // cena; com uma combinação só, a oferta + o limite em número.
+  function caixasDegraus(r, n) {
+    var d = r.degraus || [];
+    var h;
+    if (d.length >= 2) {
+      var nomes = r.tipo === 'downgrade' ? ['Abertura', 'Mínimo'] : ['Abertura', 'Teto'];
+      h = '<div class="an-dg">' + d.map(function (g, k) {
+        var dl = g.tr.value - g.td.value;
+        return '<button type="button" data-dg="' + k + '" data-cor="' + corVeredito(g.v) + '"' + (k === n ? ' class="on"' : '') + '>' +
+          '<small>' + (k + 1) + ' · ' + nomes[k] + '</small><b>' + pctTxt(g.pct) + '</b><i>' + (dl > 0 ? '+' : '') + fmtNum(dl) + ' R$</i></button>';
+      }).join('') + '</div>';
+      return h + '<p class="dg-dica">' + (r.tipo === 'downgrade'
+        ? 'Mande a 1. Se ele recusar ou fizer contraproposta, desça até a 2 e não aceite menos.'
+        : 'Mande a 1. Se ele recusar ou fizer contraproposta, suba até a 2 e não passe dela.') + '</p>';
+    }
+    var lim = limite(r);
+    var dl0 = r.tr.value - r.td.value;
+    h = '<div class="an-dg' + (lim ? '' : ' um') + '"><div data-cor="' + corVeredito(r.v) + '"><small>' + (lim ? '1 · ' : '') + 'Oferta</small>' +
+      '<b>' + pctTxt(r.pct) + '</b><i>' + (dl0 > 0 ? '+' : '') + fmtNum(dl0) + ' R$</i></div>';
+    if (lim) h += '<div data-cor="justa"><small>2 · ' + lim.nome + '</small><b>' + pctTxt(lim.pct) + '</b><i>' + esc(lim.txt) + '</i></div>';
+    h += '</div>';
+    if (lim) h += '<p class="dg-dica">' + (r.tipo === 'downgrade'
+      ? 'Mande a 1. Se ele fizer contraproposta, aceite só a partir do mínimo da 2.'
+      : 'Mande a 1. Se ele fizer contraproposta, ceda só até o teto da 2.') + '</p>';
+    return h;
+  }
+  function anuncioAberto(r) {
+    var ad = r.ad;
+    var d = degrausDe(r);
+    var n = Math.max(0, Math.min(estado.degrau || 0, d.length - 1));
+    var g = d[n];
+    var robux = g === r ? r.robux : 0;
+    var cor = corVeredito(g.v);
+    var h = '<article class="an-grupo an-aberto">' +
+      '<div class="an-cab"><span class="j"><b>' + esc(jogador(r)) + '</b><span>' + esc(maiuscula(etiqueta(r))) +
+      (r.modo === 'itens' ? ' · pede seu item' : '') + ' · ' + haQuanto(ad[1]) + '</span></span>' +
+      '<span class="selo" data-cor="' + cor + '">' + esc(g.v ? tituloWFL(g.v) : '') + '</span></div>' +
+      duelo(g, robux, cor) +
+      '<div class="an-corpo">' + tabela(g, robux);
+    if (r.nota) h += '<p class="an-nota">' + esc(r.nota) + '</p>';
+    if (r.mesmo && r.mesmo.length) {
+      h += '<p class="an-aviso">Tem <b>' + esc(r.mesmo.join(', ')) + '</b> dos dois lados. Continua na lista porque o ganho não é negativo.</p>';
+    }
+    h += caixasDegraus(r, n);
+    h += '<div class="an-acoes">' +
+      '<a class="btn sec" href="https://www.rolimons.com/player/' + ad[2] + '">Ver jogador</a>' +
+      '<a class="btn" href="https://www.roblox.com/users/' + ad[2] + '/trade">Abrir trade</a></div>';
+    return h + '</div></article>';
+  }
+  function botaoFila(r, k, on) {
+    var g0 = primeiro(r);
+    var fotos = g0.rec.slice(0, 2).map(function (i) { return miniatura(i.id); }).join('') || '<span class="so-rbx">R$</span>';
+    return '<button type="button" data-sel="' + k + '" data-cor="' + corVeredito(g0.v || r.v) + '"' + (on ? ' class="on"' : '') + '>' +
+      '<span class="m">' + fotos + '</span><b>' + pctTxt(g0.pct) + '</b>' +
+      '<small>' + esc(maiuscula(etiqueta(r))) + '<br>' + haQuanto(r.ad[1]) + '</small></button>';
+  }
   function desenharLista() {
     var lista = estado.lista;
     estado.mostrados = [];
@@ -1810,24 +1925,29 @@ function paginaAnuncios(D, P, PA) {
       return;
     }
     if (!lista.length) {
-      var msg;
-      if (estado.forma !== 'todos') {
-        msg = 'Nenhum anúncio de ' + FORMAS[estado.forma].toLowerCase() +
-          (estado.item ? ' com ' + esc(nomeDoItem(estado.item)) : '') + ' agora.';
-      } else {
-        msg = estado.item
-          ? 'Nenhum anúncio serve para ' + esc(nomeDoItem(estado.item)) + ' agora.'
-          : 'Nenhum anúncio com vantagem para você agora.';
-      }
+      var msg = estado.forma !== 'todos'
+        ? 'Nenhum anúncio de ' + FORMAS[estado.forma].toLowerCase() + ' com esses itens agora.'
+        : 'Nenhum anúncio com vantagem para você agora.';
       $('an-lista').innerHTML = '<p class="vazio">' + msg + '</p>';
       return;
     }
     estado.mostrados = lista.slice(0, PA.maxLista);
-    // v6.13: antes de desenhar, pede as vendas que faltam (o selo já sai com "…").
+    // O aberto é o escolhido na fila; se ele saiu da lista, o primeiro.
+    var sel = 0;
+    for (var k = 0; k < estado.mostrados.length; k++) {
+      if (estado.mostrados[k].ad[0] === estado.aberto) { sel = k; break; }
+    }
+    if (estado.mostrados[sel].ad[0] !== estado.aberto) { estado.aberto = estado.mostrados[sel].ad[0]; estado.degrau = 0; }
+    // v6.13: antes de desenhar, pede as vendas que faltam (aparecem com "…").
     pedirVendasAn();
-    var h = '<div class="an-grupo">' + estado.mostrados.map(linha).join('') + '</div>';
+    var fila = $('an-lista').querySelector('.an-fila');
+    var x = fila ? fila.scrollLeft : 0;
+    var h = '<div class="an-um"><div class="an-fila">' + estado.mostrados.map(function (r, k) { return botaoFila(r, k, k === sel); }).join('') + '</div>' +
+      anuncioAberto(estado.mostrados[sel]);
     if (lista.length > estado.mostrados.length) h += '<p class="an-mais">Mostrando ' + estado.mostrados.length + ' de ' + lista.length + '.</p>';
-    $('an-lista').innerHTML = h;
+    $('an-lista').innerHTML = h + '</div>';
+    var f2 = $('an-lista').querySelector('.an-fila');
+    if (f2) f2.scrollLeft = x;
   }
   function desenharStatus() {
     var res = estado.res;
@@ -1873,7 +1993,7 @@ function paginaAnuncios(D, P, PA) {
       L.push('Análise: ' + estado.formas.todos.length + ' em Todos (' + dg.nItens + ' pedem seus itens, ' + dg.nTags + ' por tag)' +
         ' · seu upgrade ' + estado.formas.upgrade.length + ' · seu downgrade ' + estado.formas.downgrade.length +
         ' (' + dg.nRefeitos + ' refeitos na outra forma) · forma ' + estado.forma +
-        (estado.item ? ' · filtro ' + nomeDoItem(estado.item) + ' (' + dg.foraDoFiltro + ' não pedem o item)' : '') +
+        ' · Meus itens: ' + AN.meus.length + ' de ' + AN.todosOrdenados.length +
         ', em ' + dg.ms + ' ms · ordem ' + estado.ordem + ' · seus itens livres: ' + AN.meus.length);
       var ds = Object.keys(dg.descartes).sort(function (x, y) { return dg.descartes[y] - dg.descartes[x]; });
       if (ds.length) L.push('Fora da lista: ' + ds.map(function (d) { return d + ' ' + dg.descartes[d]; }).join(' · '));
@@ -1897,7 +2017,6 @@ function paginaAnuncios(D, P, PA) {
     estado.mostrados.forEach(function (r) {
       itensDe(r).forEach(function (i) { ids.push(i.id); });
     });
-    if (estado.item) ids.push(estado.item);
     pedirMiniaturas(ids);
   }
 
@@ -1948,9 +2067,9 @@ function paginaAnuncios(D, P, PA) {
     chaveConta = nova;
     estado.invConta = dados ? dados.inventario : null;
     AN.meuId = dados ? Number(dados.meuId) || 0 : PA.meuId;
-    estado.item = lerSalvo('an-filtro-item' + chaveConta, '');
     estado.ocultos = lerOcultos();
     estado.aberto = null;
+    estado.degrau = 0;
     // (montarMeus também limpa as combinações guardadas)
     montarMeus(invAtual());
     var el = $('an-conta');
@@ -1958,7 +2077,6 @@ function paginaAnuncios(D, P, PA) {
       el.textContent = dados ? 'Cruzados com os itens de ' + (dados.nome || 'conta 2') + '. O lado Dou mostra os itens dessa conta.' : '';
       el.classList.toggle('oculto', !dados);
     }
-    fecharFolha();
     fecharMeus();
     if (estado.carregou) processar();
     else desenhar();
@@ -1966,29 +2084,11 @@ function paginaAnuncios(D, P, PA) {
   window.thAoReceberMiniaturas = function () {
     if (estado.carregou) desenhar();
     else desenharFiltro();
-    if (!$('an-folha').classList.contains('oculto')) desenharFolha();
     if (!$('am-folha').classList.contains('oculto')) desenharMeus();
   };
 
-  // ---------- Filtro "Um item seu" ----------
-  function desenharFolha() {
-    var h = '<button type="button" class="an-fl-op' + (estado.item ? '' : ' on') + '" data-id="">' +
-      '<span class="thumb an-ftodos">☰</span><span class="an-fl-txt"><b>Todos os seus itens</b><span>Sem filtro</span></span></button>';
-    var vistos = {};
-    AN.meusOrdenados.forEach(function (i) {
-      if (vistos[i.id]) return;
-      vistos[i.id] = true;
-      var copias = AN.porAsset[i.id].length;
-      var ped = estado.pedidos[i.id] || 0;
-      var sub = fmtNum(i.vb) + ' ' + (i.value != null ? 'value' : 'RAP') +
-        (copias > 1 ? ' · ' + copias + ' cópias' : '') +
-        (ped ? ' · pedido em ' + ped + (ped === 1 ? ' anúncio' : ' anúncios') : '');
-      h += '<button type="button" class="an-fl-op' + (estado.item === i.id ? ' on' : '') + '" data-id="' + esc(i.id) + '">' +
-        miniatura(i.id) + '<span class="an-fl-txt"><b>' + esc(i.nome) + '</b><span>' + sub + '</span></span></button>';
-    });
-    $('an-fl-lista').innerHTML = h;
-  }
   // ---------- v6.20: folha "Meus itens" ----------
+  // v7.0: vale para tudo (pedidos, sugestões e Plano); o "Um item" saiu.
   // Uma linha por item (as cópias contam juntas), do maior value.
   function distintos(l) {
     var vistos = {};
@@ -2004,8 +2104,10 @@ function paginaAnuncios(D, P, PA) {
     todos.forEach(function (i) {
       var usa = !estado.ocultos[i.id];
       var copias = AN.todosOrdenados.filter(function (c) { return c.id === i.id; }).length;
+      var ped = estado.pedidos[i.id] || 0;
       var sub = fmtNum(i.vb) + ' ' + (i.value != null ? 'value' : 'RAP') +
-        (copias > 1 ? ' · ' + copias + ' cópias' : '') + (usa ? '' : ' · fora das sugestões');
+        (copias > 1 ? ' · ' + copias + ' cópias' : '') +
+        (usa ? (ped ? ' · pedido em ' + ped + (ped === 1 ? ' anúncio' : ' anúncios') : '') : ' · fora dos anúncios');
       h += '<button type="button" class="an-fl-op' + (usa ? ' on' : '') + '" data-id="' + esc(i.id) + '" aria-pressed="' + usa + '">' +
         miniatura(i.id) + '<span class="an-fl-txt"><b>' + esc(i.nome) + '</b><span>' + sub + '</span></span>' +
         '<span class="am-ck" aria-hidden="true">✓</span></button>';
@@ -2028,49 +2130,15 @@ function paginaAnuncios(D, P, PA) {
     else estado.ocultos[id] = 1;
     gravarOcultos();
     estado.aberto = null;
-    // (montarMeus refaz a lista, limpa as combinações e desfaz o "Um item" desmarcado)
+    estado.degrau = 0;
+    // (montarMeus refaz a lista e limpa as combinações guardadas)
     montarMeus(invAtual());
-    gravarSalvo('an-filtro-item' + chaveConta, estado.item);
     desenharMeus();
-    if (estado.carregou) processar();
-    else desenhar();
-  }
-  function abrirFolha() {
-    desenharFolha();
-    $('an-fundo').classList.remove('oculto');
-    $('an-folha').classList.remove('oculto');
-    var ids = [];
-    AN.meusOrdenados.forEach(function (i) { ids.push(i.id); });
-    pedirMiniaturas(ids);
-  }
-  function fecharFolha() {
-    $('an-fundo').classList.add('oculto');
-    $('an-folha').classList.add('oculto');
-  }
-  function escolherItem(id) {
-    estado.item = id && AN.porAsset[id] ? id : '';
-    gravarSalvo('an-filtro-item' + chaveConta, estado.item);
-    estado.aberto = null;
     if (estado.carregou) processar();
     else desenhar();
   }
 
   // ---------- Toques ----------
-  $('an-filtro').addEventListener('click', function (ev) {
-    if (ev.target.closest('[data-limpar]')) {
-      escolherItem('');
-      return;
-    }
-    abrirFolha();
-  });
-  $('an-fl-lista').addEventListener('click', function (ev) {
-    var b = ev.target.closest('.an-fl-op');
-    if (!b) return;
-    fecharFolha();
-    escolherItem(b.getAttribute('data-id'));
-  });
-  $('an-fundo').addEventListener('click', fecharFolha);
-  $('an-fechar').addEventListener('click', fecharFolha);
   // v6.20: chip e folha "Meus itens".
   $('an-meus').addEventListener('click', abrirMeus);
   $('am-lista').addEventListener('click', function (ev) {
@@ -2121,12 +2189,21 @@ function paginaAnuncios(D, P, PA) {
       return;
     }
     if (ev.target.closest('a')) return;
-    var l = ev.target.closest('.an-linha');
-    if (!l) return;
-    var r = estado.mostrados[Number(l.getAttribute('data-k'))];
-    if (!r) return;
-    estado.aberto = estado.aberto === r.ad[0] ? null : r.ad[0];
-    desenharLista();
+    // v7.0: toque na fila abre aquele anúncio; toque num degrau troca a cena.
+    var s = ev.target.closest('[data-sel]');
+    if (s) {
+      var r = estado.mostrados[Number(s.getAttribute('data-sel'))];
+      if (!r || r.ad[0] === estado.aberto) return;
+      estado.aberto = r.ad[0];
+      estado.degrau = 0;
+      desenharLista();
+      return;
+    }
+    var dg = ev.target.closest('[data-dg]');
+    if (dg) {
+      estado.degrau = Number(dg.getAttribute('data-dg')) || 0;
+      desenharLista();
+    }
   });
   $('an-atualizar').addEventListener('click', function () { pedir(true); });
   // v6.18: toques da aba Plano: item (tela do item), "Outro plano" e as trades
