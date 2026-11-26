@@ -652,6 +652,13 @@ function montar(r, cfg) {
   const familia = config.widgetFamily || 'large';
   const w = new ListWidget();
   w.refreshAfterDate = new Date(Date.now() + cfg.WIDGET_ATUALIZAR_MIN * 60000);
+  // v7.3.1: o Scriptable novo tirou o "When Interacting" (o toque só abria o
+  // app). O link roda o próprio script, como o toque na notificação.
+  try {
+    w.url = 'scriptable:///run/' + encodeURIComponent(Script.name());
+  } catch (e) {
+    // sem o link: o toque segue o padrão do Scriptable
+  }
 
   if (familia.indexOf('accessory') === 0) {
     bloqueio(w, r, familia);
