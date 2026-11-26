@@ -13,6 +13,11 @@
 // v6.13 (Etapa 5): o diário saiu do fim do Inventário e virou uma tela própria
 // (menu ⋯ > Diário de trades, só na conta principal); a pergunta segue no topo,
 // compacta. As vendas/dia que chegam pela fila também vão para os Anúncios.
+// v7.0 (redesign das telas, protótipos aprovados): barra de navegação presa
+// embaixo (Inventário · Avaliar · Anúncios · Plano · Mais); o menu ⋯ virou o
+// "Mais" em blocos, com o Diagnóstico dentro; o Inventário virou uma Vitrine de
+// 2 colunas com um botão "Ordem" (Value, RAP, Vendas). Saíram a busca, o filtro
+// "Com alerta" e os chips de ordem. Os 21 temas continuam iguais.
 const a = require('analise');
 const temas = require('temas');
 const avaliador = require('avaliador');
@@ -30,13 +35,6 @@ function corDemanda(d) {
   if (d === 0) return 'neg';
   if (d === 1) return 'warn';
   if (d >= 3) return 'pos';
-  return '';
-}
-
-function corTendencia(t) {
-  if (t === 0) return 'neg';
-  if (t === 3) return 'pos';
-  if (t === 1 || t === 4) return 'warn';
   return '';
 }
 
@@ -104,63 +102,59 @@ function seta(p, lim) {
   return '<small class="seta ' + (p > 0 ? 'pos' : 'neg') + '">' + (p > 0 ? '▲ ' : '▼ ') + a.fmtPct(Math.abs(p)) + '</small>';
 }
 
-// Linha pequena embaixo do nome: demanda · tendência · vendas/dia · detalhes.
-// "projected" não entra aqui: ele sempre vira a etiqueta vermelha da linha.
-// v6.11: devolve as partes de antes e de depois das vendas/dia (que chegam
-// depois, pela fila, num lugar fixo: o .ln-v).
-function detalhes(i) {
-  const antes = [];
-  const depois = [];
-  if (i.demanda >= 0) antes.push('<span class="' + corDemanda(i.demanda) + '">' + esc(a.demandaCurta(i.demanda)) + '</span>');
-  if (i.tendencia >= 0) antes.push('<span class="' + corTendencia(i.tendencia) + '">' + esc(a.tendenciaCurta(i.tendencia)) + '</span>');
-  if (i.serial) depois.push('#' + esc(i.serial));
-  if (i.hyped) depois.push('hyped');
-  if (i.rare) depois.push('rare');
-  if (i.hold) depois.push('<span class="warn">hold</span>');
+// v7.0 (Vitrine): extras do item que não têm outro lugar no cartão (o hold
+// fica na foto; "projected" e RAP longe do value viram etiqueta na foto).
+function extrasItem(i) {
+  const x = [];
+  if (i.serial) x.push('#' + i.serial);
+  if (i.hyped) x.push('hyped');
+  if (i.rare) x.push('rare');
   // v6.14.1: "sem value" saiu. O "—" no lugar do value já diz isso.
-  if (i.semRolimons) depois.push("fora do Rolimon's");
-  return { antes, depois };
+  if (i.semRolimons) x.push("fora do Rolimon's");
+  return x.join(' · ');
 }
 
-// v6.11: o pedaço das vendas/dia com os " · " certos em volta (a = tem algo
-// antes, d = tem algo depois). A página usa a mesma regra (textoVendas).
-function slotVendas(a1, d1, ln) {
-  if (!ln || !ln.tv) return a1 && d1 ? ' · ' : '';
-  return (a1 ? ' · ' : '') + '<span class="' + esc(ln.c) + '">' + esc(ln.tv) + '</span>' + (d1 ? ' · ' : '');
+// v7.0: linha pequena do cartão: "Demanda · N/dia · Best N · extras".
+// As vendas/dia e o Best chegam depois, pela fila; a página refaz a linha com
+// a mesma regra (montarDt, no script do Inventário).
+function textoDt(demT, demC, vt, vc, bt, ex) {
+  const p = [];
+  if (demT) p.push('<span class="' + esc(demC) + '">' + esc(demT) + '</span>');
+  if (vt) p.push('<span class="' + esc(vc) + '">' + esc(vt) + '</span>');
+  if (bt) p.push('Best ' + esc(bt));
+  if (ex) p.push(esc(ex));
+  return p.join(' · ');
 }
 
-// Uma linha da lista. "motivos" são os alertas do item; "vari" a variação em 24h;
+// Um cartão da Vitrine. "motivos" são os alertas do item; "vari" a variação em 24h;
 // "ln" (v6.11) as vendas/dia e o Best Price guardados (cartao.linha) ou null.
+// A classe .grupo faz cada tema pintar o cartão (moldura, borda, cantos).
 function linhaItem(i, miniatura, motivos, vari, lim, ln) {
-  const det = detalhes(i);
-  const a1 = det.antes.length > 0;
-  const d1 = det.depois.length > 0;
-  const temVendas = !!(ln && ln.tv);
-  const texto = det.antes.join(' · ') +
-    '<span class="ln-v" data-a="' + (a1 ? 1 : 0) + '" data-d="' + (d1 ? 1 : 0) + '">' + slotVendas(a1, d1, ln) + '</span>' +
-    det.depois.join(' · ');
+  const demT = i.demanda >= 0 ? a.demandaCurta(i.demanda) : '';
+  const demC = i.demanda >= 0 ? corDemanda(i.demanda) : '';
+  const vt = ln && ln.tv ? ln.tv : '';
+  const vc = ln && ln.tv ? ln.c || '' : '';
+  const bt = ln && ln.tb ? ln.tb : '';
+  const ex = extrasItem(i);
+  const dt = textoDt(demT, demC, vt, vc, bt, ex);
   const tag = etiqueta(motivos);
-  const temTexto = a1 || d1 || temVendas;
   const img = miniatura
     ? '<img class="thumb" src="' + esc(miniatura) + '" alt="">'
     : '<span class="thumb"></span>';
   const setaV = i.value != null ? seta(vari && vari.v, lim) : '';
   const setaR = seta(vari && vari.r, lim);
-  const temBest = !!(ln && ln.tb);
   return (
-    '<div class="item" data-uaid="' + esc(i.uaid) + '" data-asset="' + esc(i.assetId) + '" data-titulo="' + esc(i.nome) +
-    '" data-nome="' + esc((i.nome + ' ' + i.sigla).toLowerCase()) +
+    '<div class="item grupo vit' + (i.hold ? ' h' : '') + '" data-uaid="' + esc(i.uaid) + '" data-asset="' + esc(i.assetId) + '" data-titulo="' + esc(i.nome) +
     '" data-value="' + i.valorEfetivo + '" data-rap="' + i.rap +
-    '" data-dem="' + i.demanda + '" data-tend="' + i.tendencia +
     '" data-vendas="' + (ln && ln.v != null ? ln.v : -1) +
-    '" data-alerta="' + (motivos && motivos.length ? '1' : '0') + '">' +
-    img +
-    '<div class="item-txt"><span class="nome">' + esc(i.nome) + '</span>' +
-    '<span class="det' + (tag || temTexto ? '' : ' oculto') + '">' + tag +
-    '<span class="det-t' + (temTexto ? '' : ' oculto') + '">' + texto + '</span></span></div>' +
-    '<div class="item-num"><span class="v">' + (i.value != null ? setaV + a.fmtNum(i.value) : '<span class="sub">—</span>') + '</span>' +
-    '<span class="r">' + setaR + '<small>RAP</small>' + a.fmtNum(i.rap) + '</span>' +
-    '<span class="b' + (temBest ? '' : ' oculto') + '"><small>Best</small><span class="b-n">' + (temBest ? esc(ln.tb) : '') + '</span></span></div>' +
+    '" data-dt-dem="' + esc(demT) + '" data-dt-dc="' + esc(demC) + '" data-dt-ex="' + esc(ex) + '">' +
+    '<span class="vit-ft">' + img +
+    (i.hold || tag ? '<span class="vit-tags">' + (i.hold ? '<span class="tag warn">hold</span>' : '') + tag + '</span>' : '') +
+    '</span>' +
+    '<span class="vit-in"><span class="nome">' + esc(i.nome) + '</span>' +
+    '<span class="par"><span><small>Value</small><b>' + (i.value != null ? setaV + a.fmtNum(i.value) : '<span class="sub">—</span>') + '</b></span>' +
+    '<span class="r"><small>RAP</small><b>' + setaR + a.fmtNum(i.rap) + '</b></span></span>' +
+    '<span class="dt' + (dt ? '' : ' oculto') + '">' + dt + '</span></span>' +
     '</div>'
   );
 }
@@ -211,7 +205,7 @@ ${temas.css()}
 html{background:var(--bg);-webkit-text-size-adjust:100%}
 body{margin:0;min-height:100vh;color:var(--fg);font:16px/1.4 var(--f-ui);font-variant-numeric:tabular-nums;
   background:var(--body-fundo);
-  padding:max(14px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) 40px max(16px,env(safe-area-inset-left))}
+  padding:max(14px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) calc(96px + env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
 button{font:inherit;color:inherit}
 .app{display:flex;flex-direction:column;gap:22px}
 .aba{display:flex;flex-direction:column;gap:22px}
@@ -242,10 +236,11 @@ h1{margin:0;font-family:var(--f-titulo);font-style:var(--t-estilo);font-size:var
 .btn:disabled{opacity:.45}
 
 .faixa{padding:14px 16px 12px;border-radius:18px;background:var(--heroi);color:var(--on-heroi);border:1px solid var(--heroi-borda);box-shadow:var(--sombra);display:flex;flex-direction:column;gap:12px}
-.f-tot{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.f-tot{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 .f-col{display:flex;flex-direction:column;gap:3px;min-width:0}
+.f-col+.f-col{padding-left:14px;border-left:1px solid var(--heroi-linha)}
 .f-rot{font-size:12px;font-weight:600;opacity:.8;text-transform:uppercase;letter-spacing:.06em}
-.f-num{font-size:24px;font-weight:700;line-height:1.1;letter-spacing:-.01em}
+.f-num{font-size:30px;font-weight:800;line-height:1.1;letter-spacing:-.02em}
 .f-var{font-size:13px;font-weight:600;opacity:.92}
 .f-var.vazio{font-weight:500;opacity:.7}
 .f-pe{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding-top:10px;border-top:1px solid var(--heroi-linha)}
@@ -282,7 +277,6 @@ input[type=search]::placeholder{color:var(--sub)}
 
 .item{display:flex;align-items:center;gap:12px;padding:12px 16px;-webkit-tap-highlight-color:transparent}
 .item:active{background:var(--card2)}
-.inv-lista .item+.item{border-top:1px solid var(--borda)}
 .thumb{flex:none;width:46px;height:46px;border-radius:12px;background:var(--card2);object-fit:cover;display:block}
 .item-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
 .nome{font-size:16px;font-weight:600;line-height:1.25;overflow-wrap:anywhere}
@@ -302,9 +296,65 @@ input[type=search]::placeholder{color:var(--sub)}
 .item-num .b{font-size:14px;font-weight:600;line-height:1;color:var(--fg)}
 .item-num small{margin-right:5px;font-size:13px;font-weight:500;color:var(--sub)}
 .item-num .v small.tag{margin:0 0 0 5px}
-.total{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:14px 16px;border-top:1px solid var(--borda);background:var(--card2);font-weight:700}
-.total .item-num .v{font-size:20px}
-.total .item-num .r{font-size:17px}
+
+/* v7.0: Inventário em Vitrine (grade de 2 colunas). Cada cartão é um .grupo,
+   para os temas pintarem a moldura como pintam as listas. */
+.inv.aba{gap:14px}
+.inv-barra{display:flex;align-items:center;gap:10px}
+.inv-barra .inv-n{margin-left:auto;font-size:13px;color:var(--sub);text-align:right}
+.chip.inv-ordem{display:inline-flex;align-items:center;gap:7px;padding:9px 14px;font-weight:600}
+.chip.inv-ordem small{font-size:12.5px;font-weight:600;color:var(--sub)}
+.chip.inv-ordem:active small{color:inherit}
+.inv-barra .f-alerta{flex:none;width:26px;height:26px;padding:0;border:0;border-radius:50%;background:var(--warn-bg);color:var(--warn);font-size:13px;font-weight:800;line-height:26px;text-align:center}
+.inv-avisos{display:flex;flex-direction:column;gap:6px;padding:10px 12px;border-radius:12px;background:var(--warn-bg);color:var(--fg);font-size:13px;line-height:1.35}
+.inv-avisos p{margin:0}
+.inv-lista{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.inv-lista .item.vit{display:flex;flex-direction:column;align-items:stretch;gap:0;padding:0;text-align:left}
+.inv-lista .item.vit:active{background:var(--card)}
+.vit-ft{position:relative;display:block;aspect-ratio:1.05;padding:14px;background:radial-gradient(80% 70% at 50% 42%,rgba(255,255,255,.22),rgba(0,0,0,.18)),var(--card2)}
+.vit-ft .thumb{width:100%;height:100%;border-radius:0;background:none;object-fit:contain}
+.vit.h .vit-ft .thumb{opacity:.5;filter:saturate(.45)}
+.vit-tags{position:absolute;left:8px;top:8px;right:8px;display:flex;flex-wrap:wrap;gap:4px}
+.vit-tags .tags{display:contents}
+.vit-tags .tag{white-space:normal;border-radius:10px}
+.vit-in{display:flex;flex-direction:column;gap:7px;padding:10px 11px 12px;min-width:0}
+.vit .nome{font-size:14.5px;font-weight:700;line-height:1.2;min-height:2.4em}
+.par{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.par>span{display:flex;flex-direction:column;min-width:0}
+.par small{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--sub)}
+.par b{font-size:18px;font-weight:800;line-height:1.15;white-space:nowrap}
+.par .r b{color:var(--rap)}
+.par small.seta{display:block;font-size:11.5px;letter-spacing:0;text-transform:none}
+.par small.seta.pos{color:var(--pos)}
+.par small.seta.neg{color:var(--neg)}
+.vit .dt{font-size:12.5px;color:var(--sub);line-height:1.35}
+
+/* v7.0: barra de navegação presa embaixo. O .seg.abas de dentro é o mesmo de
+   antes, então cada tema continua pintando o botão da tela atual. */
+.barra{position:fixed;left:0;right:0;bottom:0;z-index:20;padding:6px max(8px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left));background:var(--folha);border-top:1px solid var(--borda);box-shadow:0 -4px 18px rgba(0,0,0,.12)}
+.barra .seg.abas{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:2px;padding:3px}
+.barra .seg.abas button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-width:0;padding:7px 2px 6px;font-size:11.5px;font-weight:700;line-height:1.1;letter-spacing:0;color:var(--sub);-webkit-tap-highlight-color:transparent}
+.barra .seg.abas button svg{display:block;width:24px;height:24px;fill:currentColor}
+.barra .seg.abas button.on{color:var(--on-acc)}
+.fundo{z-index:30}
+.folha,.an-fl,.folha-busca{z-index:31}
+
+/* v7.0: menu "Mais" em blocos grandes + Diagnóstico. */
+.blocos{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:12px}
+.folha .blocos button{display:flex;flex-direction:column;align-items:flex-start;gap:6px;width:auto;min-height:104px;padding:14px 13px;border:0;border-radius:var(--r-card,16px);background:var(--card2);color:var(--fg);text-align:left;font-size:15px;-webkit-tap-highlight-color:transparent}
+.folha .blocos button:active{background:var(--borda)}
+.blocos .ic{flex:none;width:38px;height:38px;border-radius:12px;display:grid;place-items:center;background:var(--acc-fundo);color:var(--on-acc);font-size:18px;font-weight:700;box-shadow:var(--btn-sombra,none)}
+.blocos b{font-size:16px;font-weight:800;line-height:1.2}
+.blocos small{font-size:12.5px;font-weight:500;color:var(--sub);line-height:1.25}
+.folha .blocos button.lg{grid-column:1/-1;flex-direction:row;align-items:center;gap:12px;min-height:0}
+.blocos .lg .ic{background:var(--card);color:var(--sub);box-shadow:none}
+.blocos .lg span:last-child{display:flex;flex-direction:column;gap:2px}
+.folha .op.o-op{display:flex;justify-content:space-between;align-items:center;padding:16px 18px;text-align:left;font-weight:600;color:var(--fg)}
+.folha .op.o-op.on{color:var(--acc-t)}
+.folha .op.o-op small{color:var(--acc-t);font-weight:800}
+.folha.dg{top:max(12px,env(safe-area-inset-top))}
+.dg-in{padding:12px 16px;font-size:13px;color:var(--sub);text-align:left}
+.folha .dg-in p{margin:0 0 8px;padding:0;border:0;text-align:left;font-size:13px;overflow-wrap:anywhere}
 
 details.bloco>summary{list-style:none;padding:2px 0;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
 details.bloco>summary::-webkit-details-marker{display:none}
@@ -312,8 +362,6 @@ details.bloco>summary::after{content:"\\203A";margin-left:auto;font-size:26px;fo
 details.bloco[open]>summary::after{transform:rotate(90deg)}
 details.bloco>.dentro{margin-top:10px;display:flex;flex-direction:column;gap:10px}
 
-details.diag{font-size:13px;color:var(--sub)}
-details.diag p{margin:8px 0 0}
 textarea{width:100%;height:240px;margin-top:8px;font:12px/1.4 ui-monospace,Menlo,monospace;background:var(--card);color:var(--fg);border:1px solid var(--borda);border-radius:12px;padding:10px}
 footer{color:var(--sub);font-size:13px;text-align:center}
 
@@ -329,10 +377,9 @@ footer{color:var(--sub);font-size:13px;text-align:center}
 
 /* v5.2: topo com o menu ⋯, alternador de conta e a cor da conta 2 (vinho).
    A conta 2 só troca os tokens de destaque: todo o resto segue igual. */
-.cab{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
-.mais{flex:none;width:38px;height:38px;padding:0;border:1px solid var(--card-borda);border-radius:50%;background:var(--card);box-shadow:var(--sombra);color:var(--sub);font-size:20px;font-weight:700;line-height:1;-webkit-tap-highlight-color:transparent}
-.mais:active{background:var(--card2)}
-.cab .meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.cab{display:flex;align-items:flex-end;justify-content:space-between;gap:10px}
+.cab h1{min-width:0}
+.cab .meta{margin:0;flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:5px;font-size:12.5px;text-align:right}
 .chip-conta{display:inline-flex;align-items:center;gap:6px;max-width:100%;padding:3px 10px 3px 3px;border:1px solid var(--borda);border-radius:999px;background:var(--card);color:var(--fg);font-size:13px;font-weight:600;-webkit-tap-highlight-color:transparent}
 .chip-conta:active{background:var(--card2)}
 .chip-conta .n{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -383,41 +430,30 @@ function inventario(r, cfg) {
 
   const lim = cfg.LIMITE_MUDANCA_PCT;
   const alertas = alertasPorUaid(r.riscos, per);
-  const comAlerta = Object.keys(alertas).length;
   const lns = r.linhas || {};
   const linhas = r.itens
     .map((i) => linhaItem(i, r.miniaturas[String(i.assetId)], alertas[i.uaid], variacaoItem(i, d.base), lim, lns[String(i.assetId)] || null))
     .join('');
 
+  // v7.0: totais Value | RAP lado a lado (24h embaixo de cada um); embaixo, o
+  // botão "Ordem" (folha com Value, RAP e Vendas) e a contagem. O "!" dos
+  // avisos gerais saiu da faixa e fica na mesma linha da Ordem.
   const html = `<div class="faixa">
   <div class="f-tot">
     <div class="f-col"><span class="f-rot">Value</span><span class="f-num">${a.fmtNum(t.value)}</span>${varTotal(d.var && d.var.value, per)}</div>
     <div class="f-col"><span class="f-rot">RAP</span><span class="f-num">${a.fmtNum(t.rap)}</span>${varTotal(d.var && d.var.rap, per)}</div>
   </div>
-  <div class="f-pe">
-    <span class="f-info">${per ? 'Variação ' + esc(per.curto) : 'Histórico de 24h em formação'}</span>
-    <span class="f-dir"><span class="f-info">${pe}</span>${temAvisos ? '<button class="f-alerta" aria-expanded="false" aria-label="Ver avisos">!</button>' : ''}</span>
-  </div>
-  ${temAvisos ? '<div class="f-aviso oculto">' + avisos + '</div>' : ''}
 </div>
 
-<div class="ferramentas">
-  <input class="inv-busca" type="search" placeholder="Buscar item" autocomplete="off" aria-label="Buscar item">
-  <div class="chips inv-ordem">
-    <button class="chip on" data-campo="value">Value</button>
-    <button class="chip" data-campo="rap">RAP</button>
-    <button class="chip" data-campo="dem">Demanda</button>
-    <button class="chip" data-campo="tend">Tendência</button>
-    <button class="chip" data-campo="vendas">Vendas</button>
-    <button class="chip" data-campo="nome">Nome</button>
-    ${comAlerta ? '<button class="chip filtro inv-so-alerta">Com alerta · ' + comAlerta + '</button>' : ''}
-  </div>
+<div class="inv-barra">
+  <button type="button" class="chip inv-ordem" aria-label="Escolher a ordem dos itens"><small>Ordem</small><span class="o-n">Value</span> ▾</button>
+  <span class="inv-n">${pe}</span>
+  ${temAvisos ? '<button type="button" class="f-alerta" aria-expanded="false" aria-label="Ver avisos">!</button>' : ''}
 </div>
+${temAvisos ? '<div class="inv-avisos f-aviso oculto">' + avisos + '</div>' : ''}
 
-<div class="grupo">
-  <div class="inv-lista">${linhas}</div>
-  <p class="vazio oculto inv-vazio">${r.itens.length ? 'Nada encontrado.' : 'Nenhum item.'}</p>
-</div>
+<div class="inv-lista">${linhas}</div>
+${r.itens.length ? '' : '<p class="vazio">Nenhum item.</p>'}
 ${ajuda.link('aj-armadilhas', 'O que significam as etiquetas?')}`;
   return { html, menu: dadosDoMenu(alertas, d), titulo: per ? per.longo : 'Mudanças' };
 }
@@ -425,14 +461,36 @@ ${ajuda.link('aj-armadilhas', 'O que significam as etiquetas?')}`;
 // Linha embaixo do título. v5.2.1: com conta 2, um chip pequeno com a conta
 // ATUAL e ⇄ (um toque troca) + a hora; sem conta 2, só "Atualizado HH:MM".
 // A conta 2 é adicionada pelo menu ⋯.
+// v7.0: fica à direita do título, em coluna (chip da conta em cima, hora embaixo).
 function linhaMeta(principal, c2, hora) {
   const ini = esc(String(principal || '?').charAt(0).toUpperCase());
   return (
     '<p class="meta">' +
     '<button type="button" class="chip-conta' + (c2 ? '' : ' oculto') + '" id="conta-chip" aria-label="Trocar de conta">' +
     '<span class="av" id="chip-ini">' + ini + '</span><span class="n" id="chip-nome">' + esc(principal) + '</span><span class="tr">⇄</span></button>' +
-    '<span id="meta-hora" data-hora="' + esc(hora) + '">' + (c2 ? '· ' : 'Atualizado ') + esc(hora) + '</span></p>'
+    '<span class="sub" id="meta-hora" data-hora="' + esc(hora) + '">Atualizado ' + esc(hora) + '</span></p>'
   );
+}
+
+// v7.0: ícones da barra de baixo (os mesmos dos protótipos).
+const ICONES = {
+  inv: 'M3 7l9-4 9 4v10l-9 4-9-4zM12 12.5L5.5 9.6v6L11 18zM18.5 9.6L12 12.5 13 18l5.5-2.4z',
+  avaliar: 'M11 3h2v2l7 1.5v2L23 14h-8l3-5.5-5-1V19h4v2H7v-2h4V7.5l-5 1L9 14H1l3-5.5v-2L11 5z',
+  anuncios: 'M4 9v6h4l9 5V4L8 9zM19 8.5a5 5 0 010 7z',
+  plano: 'M3 20V14h5v6zM10 20V9h5v11zM17 20V4h4v16z',
+  mais: 'M5 10a2 2 0 110 4 2 2 0 010-4zM12 10a2 2 0 110 4 2 2 0 010-4zM19 10a2 2 0 110 4 2 2 0 010-4z'
+};
+
+function botaoBarra(id, nome, aba) {
+  return '<button type="button"' + (aba ? ' data-aba="' + id + '"' : ' id="mais"') + (id === 'inv' ? ' class="on"' : '') + '>' +
+    '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="' + ICONES[id] + '"/></svg>' + nome + '</button>';
+}
+
+function barra() {
+  return '<div class="barra" id="barra"><nav class="seg abas" id="abas">' +
+    botaoBarra('inv', 'Inventário', true) + botaoBarra('avaliar', 'Avaliar', true) + botaoBarra('anuncios', 'Anúncios', true) +
+    botaoBarra('plano', 'Plano', true) + botaoBarra('mais', 'Mais', false) +
+    '</nav></div>';
 }
 
 function gerar(r, cfg) {
@@ -500,16 +558,8 @@ ${temas.ceu()}
 <div class="app">
 
 <div class="cab">
-  <div><h1 id="titulo">Inventário</h1>${linhaMeta(r.usuario.nome, r.conta2, hora)}</div>
-  <button type="button" class="mais" id="mais" aria-label="Mais opções">⋯</button>
+  <h1 id="titulo">Inventário</h1>${linhaMeta(r.usuario.nome, r.conta2, hora)}
 </div>
-
-<nav class="seg abas" id="abas">
-  <button data-aba="inv" class="on">Inventário</button>
-  <button data-aba="avaliar">Avaliar</button>
-  <button data-aba="anuncios">Anúncios</button>
-  <button data-aba="plano">Plano</button>
-</nav>
 
 <div class="faixa-conta oculto" id="faixa-conta"><span class="av c2" id="fc-ini"></span><span id="fc-txt"></span><button type="button" class="voltar" id="fc-voltar">Voltar</button></div>
 <div class="c2-estado oculto" id="c2-estado"></div>
@@ -526,8 +576,42 @@ ${avaliador.secao(cfg, av.base, av.erro)}
 ${anuncios.secao(cfg, av.erro ? 'os dados do avaliador não foram preparados (' + av.erro + ')' : null)}
 ${anuncios.secaoPlano(av.erro ? 'os dados do avaliador não foram preparados (' + av.erro + ')' : null)}
 
-<details class="diag">
-  <summary>Diagnóstico</summary>
+</div>
+
+${barra()}
+${dia ? diario.tela() : ''}
+${cartao.tela()}
+<div id="m-fundo" class="fundo oculto"></div>
+<div id="m-folha" class="folha oculto">
+  <p>Mais</p>
+  <div class="blocos">
+    ${dia ? '<button type="button" id="m-diario"><span class="ic">✎</span><b>Diário de trades</b><small id="m-dia-n">Lucro e trades</small></button>' : ''}
+    <button type="button" id="m-conta2"><span class="ic">⇄</span><b>Conta 2</b><small id="m-c2-sub">Adicionar outra conta</small></button>
+    <button type="button" id="m-temas"><span class="ic">◐</span><b>Temas</b><small id="m-tema-sub">Agora: seguindo o iPhone</small></button>
+    <button type="button" id="m-ajuda"><span class="ic">?</span><b>Ajuda</b><small>Guia e perguntas rápidas</small></button>
+    <button type="button" class="lg" id="m-diag"><span class="ic">i</span><span><b>Diagnóstico</b><small>v${esc(r.versao)} · somente leitura</small></span></button>
+  </div>
+  <button type="button" class="op cancelar" id="m-cancelar">Fechar</button>
+</div>
+<div id="c-fundo" class="fundo oculto"></div>
+<div id="c-folha" class="folha oculto">
+  <p>Conta 2</p>
+  <button type="button" class="op" id="m-trocar">Trocar conta 2</button>
+  <button type="button" class="op perigo" id="m-remover">Remover conta 2</button>
+  <button type="button" class="op cancelar" id="c-cancelar">Cancelar</button>
+</div>
+<div id="o-fundo" class="fundo oculto"></div>
+<div id="o-folha" class="folha oculto">
+  <p>Ordem dos itens</p>
+  <button type="button" class="op o-op" data-campo="value">Value<small></small></button>
+  <button type="button" class="op o-op" data-campo="rap">RAP<small></small></button>
+  <button type="button" class="op o-op" data-campo="vendas">Vendas por dia<small></small></button>
+  <button type="button" class="op cancelar" id="o-fechar">Fechar</button>
+</div>
+<div id="d-fundo" class="fundo oculto"></div>
+<div id="d-folha" class="folha dg oculto">
+  <p>Diagnóstico · v${esc(r.versao)} · ${esc(String(r.sha || '').slice(0, 7))} · dados: Rolimon's e Roblox · somente leitura</p>
+  <div class="dg-in">
   <p id="diag-ponte"></p>
   <p id="diag-anuncios"></p>
   <p id="diag-cartao">Tela do item: nenhum item aberto ainda</p>
@@ -535,22 +619,8 @@ ${anuncios.secaoPlano(av.erro ? 'os dados do avaliador não foram preparados (' 
   <p id="diag-conta2">Conta 2: ${r.conta2 ? 'salva, ainda não aberta nesta abertura' : 'nenhuma'}</p>
   <p id="diag-diario">Diário: ${esc(r.diario && r.diario.erro ? 'erro ao montar (' + r.diario.erro + ')' : (r.diag && r.diag.diario) || '')}</p>
   <textarea readonly>${esc(JSON.stringify(r.diag, null, 2))}</textarea>
-</details>
-
-<footer>v${esc(r.versao)} · ${esc(String(r.sha || '').slice(0, 7))} · dados: Rolimon's e Roblox · somente leitura</footer>
-</div>
-
-${dia ? diario.tela() : ''}
-${cartao.tela()}
-<div id="m-fundo" class="fundo oculto"></div>
-<div id="m-folha" class="folha oculto">
-  <p>Opções</p>
-  ${dia ? '<button type="button" class="op" id="m-diario">Diário de trades<small class="sub" id="m-dia-n"></small></button>' : ''}
-  <button type="button" class="op" id="m-trocar">Adicionar conta 2</button>
-  <button type="button" class="op perigo oculto" id="m-remover">Remover conta 2</button>
-  <button type="button" class="op" id="m-temas">Temas</button>
-  <button type="button" class="op" id="m-ajuda">Ajuda</button>
-  <button type="button" class="op cancelar" id="m-cancelar">Cancelar</button>
+  </div>
+  <button type="button" class="op cancelar" id="d-fechar">Fechar</button>
 </div>
 ${temas.folhaTemas()}
 <div id="f-fundo" class="fundo oculto"></div>
@@ -567,7 +637,7 @@ ${ajuda.secao(cfg)}
 <script>
 (function(){
   var PONTE = ${avaliador.serializar(avaliador.PONTE)};
-  var ROTULOS = { value: 'Value', rap: 'RAP', dem: 'Demanda', tend: 'Tendência', vendas: 'Vendas', nome: 'Nome' };
+  var ROTULOS = { value: 'Value', rap: 'RAP', vendas: 'Vendas' };
   function $(id){ return document.getElementById(id); }
   function textoSeguro(s){
     return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; });
@@ -594,12 +664,9 @@ ${ajuda.secao(cfg)}
     }
     $('c2-estado').classList.toggle('oculto', !esperando);
     $('titulo').textContent = TITULOS[x];
-    var bs = document.querySelectorAll('#abas button');
-    for (var k = 0; k < bs.length; k++) {
-      var b = bs[k].getAttribute('data-aba');
-      bs[k].classList.toggle('on', b === x);
-      bs[k].classList.toggle('oculto', conta === 2 && b === 'avaliar');
-    }
+    // v7.0: a página sabe a aba atual (o Avaliar prende a barra do veredito embaixo).
+    document.body.setAttribute('data-aba', x);
+    marcarBarra();
     try { localStorage.setItem('aba', x); } catch (e) {}
     // A aba Anúncios só busca os anúncios quando é aberta.
     if (x === 'anuncios' && !esperando && window.thAbrirAnuncios) window.thAbrirAnuncios();
@@ -608,7 +675,19 @@ ${ajuda.secao(cfg)}
     // v6.12: o Avaliar pede as vendas/dia dos itens da proposta quando é aberto.
     if (x === 'avaliar' && window.thAbrirAvaliar) { try { window.thAbrirAvaliar(); } catch (e) {} }
   }
-  var botoesAba = document.querySelectorAll('#abas button');
+  // v7.0: barra de baixo. A tela atual fica marcada; com o "Mais" aberto, só ele.
+  var menuAberto = false;
+  function marcarBarra(){
+    var bs = document.querySelectorAll('#abas button[data-aba]');
+    for (var k = 0; k < bs.length; k++) {
+      var b = bs[k].getAttribute('data-aba');
+      bs[k].classList.toggle('on', !menuAberto && b === abaAtual);
+      bs[k].classList.toggle('oculto', conta === 2 && b === 'avaliar');
+    }
+    var m = $('mais');
+    if (m) m.classList.toggle('on', menuAberto);
+  }
+  var botoesAba = document.querySelectorAll('#abas button[data-aba]');
   for (var k = 0; k < botoesAba.length; k++) {
     botoesAba[k].addEventListener('click', function(){ aba(this.getAttribute('data-aba')); window.scrollTo(0, 0); });
   }
@@ -639,66 +718,29 @@ ${ajuda.secao(cfg)}
 
   // Liga um bloco do Inventário (o seu ou o da conta 2).
   // INV = menu de cada item (por uaid): a = alertas, m = mudanças em 24h.
+  // v7.0: a ordem é escolhida numa folha (Value, RAP, Vendas), sempre do maior
+  // para o menor. Saíram a busca, o "Com alerta" e os outros chips.
   function ligarInventario(raiz, INV, TITULO_MUD){
     var lista = raiz.querySelector('.inv-lista');
-    var chips = raiz.querySelectorAll('.inv-ordem .chip[data-campo]');
-    var busca = raiz.querySelector('.inv-busca');
-    var vazio = raiz.querySelector('.inv-vazio');
-    var estado = { campo: 'value', dir: 'desc' };
-    var soAlerta = false;
-
-    // Ordenação pelos chips (toque de novo inverte)
-    function marcarChips(){
-      for (var k = 0; k < chips.length; k++) {
-        var c = chips[k].getAttribute('data-campo');
-        var on = c === estado.campo;
-        chips[k].classList.toggle('on', on);
-        chips[k].textContent = ROTULOS[c] + (on ? (estado.dir === 'desc' ? ' ↓' : ' ↑') : '');
-      }
-    }
-    function ordenar(campo){
-      if (estado.campo === campo) estado.dir = estado.dir === 'desc' ? 'asc' : 'desc';
-      else { estado.campo = campo; estado.dir = campo === 'nome' ? 'asc' : 'desc'; }
+    var botaoOrdem = raiz.querySelector('.inv-ordem');
+    raiz.thOrdem = 'value';
+    raiz.thOrdenar = function(campo){
+      if (!ROTULOS[campo]) campo = 'value';
+      raiz.thOrdem = campo;
       var linhas = Array.prototype.slice.call(lista.children);
       linhas.sort(function(x, y){
-        var p = x.getAttribute('data-' + campo), q = y.getAttribute('data-' + campo);
+        var p = Number(x.getAttribute('data-' + campo)), q = Number(y.getAttribute('data-' + campo));
         // v6.11: item ainda sem vendas/dia (-1) fica sempre no fim.
-        if (campo === 'vendas' && (Number(p) < 0 || Number(q) < 0)) return (Number(p) < 0 ? 1 : 0) - (Number(q) < 0 ? 1 : 0);
-        var c = campo === 'nome' ? p.localeCompare(q) : Number(p) - Number(q);
-        return estado.dir === 'asc' ? c : -c;
+        if (campo === 'vendas' && (p < 0 || q < 0)) return (p < 0 ? 1 : 0) - (q < 0 ? 1 : 0);
+        return q - p;
       });
       linhas.forEach(function(l){ lista.appendChild(l); });
-      marcarChips();
-      filtrar();
-    }
-    for (var k = 0; k < chips.length; k++) {
-      chips[k].addEventListener('click', function(){ ordenar(this.getAttribute('data-campo')); });
-    }
-    marcarChips();
+      var n = botaoOrdem && botaoOrdem.querySelector('.o-n');
+      if (n) n.textContent = ROTULOS[campo];
+    };
+    if (botaoOrdem) botaoOrdem.addEventListener('click', function(){ abrirOrdem(raiz); });
 
-    // Busca e filtro "Com alerta" (a divisória entre linhas segue a ordem das linhas visíveis)
-    function filtrar(){
-      var q = busca.value.trim().toLowerCase();
-      var visiveis = 0;
-      for (var k = 0; k < lista.children.length; k++) {
-        var l = lista.children[k];
-        var mostra = l.getAttribute('data-nome').indexOf(q) >= 0 && (!soAlerta || l.getAttribute('data-alerta') === '1');
-        l.style.display = mostra ? '' : 'none';
-        l.style.borderTop = mostra && visiveis ? '1px solid var(--borda)' : '0';
-        if (mostra) visiveis++;
-      }
-      vazio.classList.toggle('oculto', visiveis > 0);
-    }
-    busca.addEventListener('input', filtrar);
-    var chipAlerta = raiz.querySelector('.inv-so-alerta');
-    if (chipAlerta) chipAlerta.addEventListener('click', function(){
-      soAlerta = !soAlerta;
-      chipAlerta.classList.toggle('on', soAlerta);
-      filtrar();
-    });
-    filtrar();
-
-    // Avisos gerais: o "!" da faixa mostra ou esconde o texto.
+    // Avisos gerais: o "!" mostra ou esconde o texto.
     var botaoAviso = raiz.querySelector('.f-alerta');
     if (botaoAviso) botaoAviso.addEventListener('click', function(){
       var txt = raiz.querySelector('.f-aviso');
@@ -723,6 +765,31 @@ ${ajuda.secao(cfg)}
       });
     });
   }
+  // Folha da Ordem (uma só, para as duas contas: lembra qual Inventário a abriu).
+  var ordemDe = null;
+  function abrirOrdem(raiz){
+    ordemDe = raiz;
+    var ops = document.querySelectorAll('#o-folha .o-op');
+    for (var k = 0; k < ops.length; k++) {
+      var on = ops[k].getAttribute('data-campo') === raiz.thOrdem;
+      ops[k].classList.toggle('on', on);
+      ops[k].querySelector('small').textContent = on ? '✓' : '';
+    }
+    $('o-fundo').classList.remove('oculto');
+    $('o-folha').classList.remove('oculto');
+  }
+  function fecharOrdem(){
+    $('o-fundo').classList.add('oculto');
+    $('o-folha').classList.add('oculto');
+  }
+  $('o-fundo').addEventListener('click', fecharOrdem);
+  $('o-fechar').addEventListener('click', fecharOrdem);
+  $('o-folha').addEventListener('click', function(ev){
+    var b = ev.target.closest('.o-op');
+    if (!b || !ordemDe) return;
+    ordemDe.thOrdenar(b.getAttribute('data-campo'));
+    fecharOrdem();
+  });
   ligarInventario($('inv-1'), ${avaliador.serializar(menu)}, ${avaliador.serializar(tituloMud)});
 
   // ---------- v6.11: vendas/dia e Best Price na linha ----------
@@ -737,11 +804,18 @@ ${ajuda.secao(cfg)}
       setTimeout(function(){ if (f.parentNode) f.parentNode.removeChild(f); }, 5000);
     } catch (e) {}
   }
-  // Mesma regra do slotVendas (html.js): " · " só onde há algo antes/depois.
-  function textoVendas(el, ln){
-    var a = el.getAttribute('data-a') === '1', d = el.getAttribute('data-d') === '1';
-    if (!ln || !ln.tv) { el.textContent = a && d ? ' · ' : ''; return; }
-    el.innerHTML = (a ? ' · ' : '') + '<span class="' + textoSeguro(ln.c) + '">' + textoSeguro(ln.tv) + '</span>' + (d ? ' · ' : '');
+  // v7.0: mesma regra do textoDt (html.js): "Demanda · N/dia · Best N · extras".
+  function montarDt(it, ln){
+    var p = [];
+    var dem = it.getAttribute('data-dt-dem'), ex = it.getAttribute('data-dt-ex');
+    if (dem) p.push('<span class="' + textoSeguro(it.getAttribute('data-dt-dc')) + '">' + textoSeguro(dem) + '</span>');
+    if (ln.tv) p.push('<span class="' + textoSeguro(ln.c || '') + '">' + textoSeguro(ln.tv) + '</span>');
+    if (ln.tb) p.push('Best ' + textoSeguro(ln.tb));
+    if (ex) p.push(textoSeguro(ex));
+    var el = it.querySelector('.dt');
+    if (!el) return;
+    el.innerHTML = p.join(' · ');
+    el.classList.toggle('oculto', !p.length);
   }
   window.receberLinhas = function(mapa, diag){
     var dl = $('diag-linhas');
@@ -749,23 +823,18 @@ ${ajuda.secao(cfg)}
     for (var id in mapa || {}) {
       if (!/^\\d+$/.test(id)) continue;
       var ln = mapa[id];
+      if (!ln) continue;
       var its = document.querySelectorAll('.inv-lista .item[data-asset="' + id + '"]');
       for (var k = 0; k < its.length; k++) {
         var it = its[k];
-        it.setAttribute('data-vendas', ln && ln.v != null ? ln.v : -1);
-        var slot = it.querySelector('.ln-v');
-        if (slot && ln && ln.tv) {
-          textoVendas(slot, ln);
-          var dt = it.querySelector('.det-t'), de = it.querySelector('.det');
-          if (dt) dt.classList.remove('oculto');
-          if (de) de.classList.remove('oculto');
-        }
-        var b = it.querySelector('.item-num .b');
-        if (b && ln && ln.tb) {
-          b.querySelector('.b-n').textContent = ln.tb;
-          b.classList.remove('oculto');
-        }
+        it.setAttribute('data-vendas', ln.v != null ? ln.v : -1);
+        if (ln.tv || ln.tb) montarDt(it, ln);
       }
+    }
+    // Se a Vitrine está em "Vendas", reordena com o número que chegou.
+    var invs = [$('inv-1'), $('inv-2')];
+    for (var k = 0; k < invs.length; k++) {
+      if (invs[k] && invs[k].thOrdem === 'vendas' && invs[k].thOrdenar) invs[k].thOrdenar('vendas');
     }
     // v6.12: a linha dos itens da proposta (Avaliar) usa as mesmas respostas.
     if (window.thAoReceberLinhas) { try { window.thAoReceberLinhas(mapa || {}); } catch (e) {} }
@@ -784,9 +853,10 @@ ${ajuda.secao(cfg)}
     $('chip-nome').textContent = nomeAtual || '';
     $('chip-ini').textContent = inicial(nomeAtual);
     $('chip-ini').classList.toggle('c2', conta === 2);
-    $('meta-hora').textContent = (c2.nome ? '· ' : 'Atualizado ') + $('meta-hora').getAttribute('data-hora');
     $('m-trocar').textContent = c2.nome ? 'Trocar conta 2 (' + c2.nome + ')' : 'Adicionar conta 2';
     $('m-remover').classList.toggle('oculto', !c2.nome);
+    // v7.0: o bloco "Conta 2" do Mais diz o que o toque faz.
+    $('m-c2-sub').textContent = c2.nome ? 'Trocar ou remover' : 'Adicionar outra conta';
     // v6.13: o Diário é da conta principal; some do menu enquanto você vê a conta 2.
     if ($('m-diario')) $('m-diario').classList.toggle('oculto', conta === 2);
   }
@@ -892,22 +962,59 @@ ${ajuda.secao(cfg)}
     window.scrollTo(0, 0);
   });
 
-  // ---------- Menu ⋯ e formulário da conta 2 ----------
+  // ---------- Menu "Mais" (v7.0: blocos) e formulário da conta 2 ----------
   var removerArmado = null;
+  function subtituloTema(){
+    var t = document.documentElement.getAttribute('data-tema');
+    var el = $('m-tema-sub');
+    if (el) el.textContent = 'Agora: ' + (t && TH_TEMAS[t] && TH_TEMAS[t].n ? TH_TEMAS[t].n : 'seguindo o iPhone');
+  }
   function abrirMenu(){
     mostrarBotoesConta();
+    subtituloTema();
+    menuAberto = true;
+    marcarBarra();
     $('m-fundo').classList.remove('oculto');
     $('m-folha').classList.remove('oculto');
   }
   function fecharMenu(){
     $('m-fundo').classList.add('oculto');
     $('m-folha').classList.add('oculto');
+    menuAberto = false;
+    marcarBarra();
+  }
+  // Folha da conta 2 (Trocar / Remover), aberta pelo bloco "Conta 2".
+  function fecharC2(){
+    $('c-fundo').classList.add('oculto');
+    $('c-folha').classList.add('oculto');
     clearTimeout(removerArmado);
     removerArmado = null;
     $('m-remover').textContent = 'Remover conta 2';
   }
+  $('m-conta2').addEventListener('click', function(){
+    fecharMenu();
+    if (!c2.nome) { abrirForm(); return; }
+    mostrarBotoesConta();
+    $('c-fundo').classList.remove('oculto');
+    $('c-folha').classList.remove('oculto');
+  });
+  $('c-fundo').addEventListener('click', fecharC2);
+  $('c-cancelar').addEventListener('click', fecharC2);
+  // Diagnóstico (v7.0: saiu do fim da página e fica no Mais).
+  function fecharDiag(){
+    $('d-fundo').classList.add('oculto');
+    $('d-folha').classList.add('oculto');
+  }
+  $('m-diag').addEventListener('click', function(){
+    fecharMenu();
+    $('d-fundo').classList.remove('oculto');
+    $('d-folha').classList.remove('oculto');
+  });
+  $('d-fundo').addEventListener('click', fecharDiag);
+  $('d-fechar').addEventListener('click', fecharDiag);
   function abrirForm(erro, tentado){
     fecharMenu();
+    fecharC2();
     $('c2-campo').value = tentado || c2.nome || '';
     $('c2-erro').textContent = erro || '';
     $('c2-erro').classList.toggle('oculto', !erro);
@@ -931,7 +1038,7 @@ ${ajuda.secao(cfg)}
       removerArmado = setTimeout(function(){ removerArmado = null; b.textContent = 'Remover conta 2'; }, 3000);
       return;
     }
-    fecharMenu();
+    fecharC2();
     mostrarConta(1);
     pedirConta2('conta2/remover');
   });
@@ -958,10 +1065,10 @@ ${ajuda.secao(cfg)}
     $('t-folha').classList.remove('oculto');
   });
   // ---------- Diário (v6.13: tela própria pelo menu ⋯) ----------
-  // O número de perguntas aparece ao lado ("· 1 pergunta"); diario.js avisa quando muda.
+  // O número de perguntas aparece no bloco ("1 pergunta esperando"); diario.js avisa quando muda.
   window.thAoMudarDiario = function(n){
     var el = $('m-dia-n');
-    if (el) el.textContent = n ? ' · ' + n + (n === 1 ? ' pergunta' : ' perguntas') : '';
+    if (el) el.textContent = n ? n + (n === 1 ? ' pergunta esperando' : ' perguntas esperando') : 'Lucro e trades';
   };
   if ($('m-diario')) $('m-diario').addEventListener('click', function(){
     fecharMenu();

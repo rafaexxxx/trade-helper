@@ -1407,10 +1407,11 @@ function css() {
   return CSS_TEMAS + CSS_TEMATICOS + CSS_TODOS + CSS_NOVOS;
 }
 
-// v5.3: { id: { e: 'light'|'dark', f: fonte? } } para o script do <head>.
+// v5.3: { id: { e: 'light'|'dark', f: fonte?, n: nome } } para o script do <head>.
+// v7.0: o nome entra para o bloco "Temas · Agora: <nome>" do menu Mais.
 function mapaTemas() {
   const m = {};
-  for (const t of TEMAS) m[t.id] = t.f ? { e: t.e, f: t.f } : { e: t.e };
+  for (const t of TEMAS) m[t.id] = t.f ? { e: t.e, f: t.f, n: t.nome } : { e: t.e, n: t.nome };
   return m;
 }
 
