@@ -226,6 +226,8 @@ async function carregar(assetId, rolimons, pag) {
     em: Date.now(),
     op: null,
     semValue: value == null,
+    // v7.0: o value vai para a linha embaixo do nome ("Value N · RAP N").
+    value,
     rap,
     vendasN: -1,
     demandaN: -1,
@@ -381,10 +383,12 @@ function linhas(g, itens) {
 function tela() {
   return (
     '<div id="tela-item" class="ti oculto" role="dialog" aria-modal="true" aria-labelledby="ti-nome">' +
-    // v6.10.1: em cima só o item; o Voltar foi para uma barra fixa embaixo
-    // (no topo ele ficava colado no "Close" do Scriptable).
-    '<div class="ti-barra"><div class="ti-titulo"><img class="thumb oculto" id="ti-thumb" alt=""><b id="ti-nome"></b></div></div>' +
+    // v6.10.1: o Voltar fica numa barra fixa embaixo (no topo ele ficava colado
+    // no "Close" do Scriptable). v7.0 (protótipo C · Gráfico primeiro): foto
+    // pequena + nome no título do tema; o gráfico logo em cima; os números numa
+    // lista grande, um por linha.
     '<div class="ti-corpo">' +
+    '<div class="ti-topo"><img class="thumb oculto" id="ti-thumb" alt=""><span class="t"><b id="ti-nome"></b><span id="ti-sub"></span></span></div>' +
     '<div id="ti-card"></div>' +
     '<div id="ti-alertas" class="ti-bloco oculto"></div>' +
     '<div id="ti-mud" class="ti-bloco oculto"></div>' +
@@ -407,7 +411,22 @@ html.ti-aberta,html.ti-aberta body{overflow:hidden}
 .ti-voltar:active{opacity:.7}
 .ti-titulo .thumb{flex:none;width:34px;height:34px;border-radius:9px}
 .ti-titulo b{min-width:0;font-size:16px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.ti-corpo{display:flex;flex-direction:column;gap:12px;max-width:640px;margin:0 auto;padding:14px 16px calc(96px + env(safe-area-inset-bottom))}
+.ti-corpo{display:flex;flex-direction:column;gap:12px;max-width:640px;margin:0 auto;padding:max(16px,env(safe-area-inset-top)) 16px calc(96px + env(safe-area-inset-bottom))}
+/* v7.0: topo (foto 64px + nome no título do tema) e a lista grande de números. */
+.ti-topo{display:flex;align-items:center;gap:12px}
+.ti-topo .thumb{flex:none;width:64px;height:64px;padding:5px;border-radius:var(--r-thumb,12px);background:var(--card2);object-fit:contain}
+.ti-topo .t{display:flex;flex-direction:column;gap:2px;min-width:0}
+.ti-topo b{font-family:var(--f-titulo);font-style:var(--t-estilo);font-weight:var(--t-peso);font-size:23px;line-height:1.1;overflow-wrap:anywhere}
+.ti-topo .t>span{font-size:13px;color:var(--sub)}
+.ti-topo .t>span:empty{display:none}
+.ti-lst{display:flex;flex-direction:column;border-radius:var(--r-card,16px);background:var(--card);border:1px solid var(--card-borda);box-shadow:var(--sombra);overflow:hidden}
+.ti-lst>div{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:12px 14px;border-top:1px solid var(--borda);font-size:15px}
+.ti-lst>div:first-child{border-top:0}
+.ti-lst>div>span{color:var(--sub);font-weight:600}
+.ti-lst>div>b{font-size:19px;font-weight:800;text-align:right;font-variant-numeric:tabular-nums}
+.ti-lst>div>b small{display:block;font-size:11.5px;font-weight:600;color:var(--sub)}
+.ti-lst .pos{color:var(--pos)}.ti-lst .warn{color:var(--warn)}.ti-lst .neg{color:var(--neg)}.ti-lst .rap{color:var(--rap)}
+.ti-lst .sem{font-size:15px;font-weight:600;color:var(--sub)}
 #ti-card{display:flex;flex-direction:column;gap:10px}
 .ti-graf{display:flex;flex-direction:column;gap:6px;padding:12px 12px 8px;border-radius:16px;background:var(--card);border:1px solid var(--card-borda)}
 .ti-graf small{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--sub)}
@@ -529,29 +548,34 @@ function paginaItem(PONTE) {
         'A página do item no Rolimon\'s não respondeu (' + esc(res.erroPagina || '') + ').') + '</div>';
     }
     var op = res.op;
-    h += '<div class="ti-grade">';
+    // v7.0: lista grande, um número por linha (com a linha pequena embaixo).
     // v6.10.1: cada cor tem um sentido. Laranja = o que você paga; verde = o
     // que você ganha (ou o que sobe); vermelho = o que desce ou não gira.
-    if (op) {
-      h += caixa('OP para dar', '<b class="warn">' + faixa(op.dar.pct, pct) + '%</b>', '<i class="warn">' + faixa(op.dar.robux, num) + '</i>', 'você paga a mais para pegar este item');
-      h += caixa('OP para pedir', '<b class="pos">' + faixa(op.pedir.pct, pct) + '%</b>', '<i class="pos">' + faixa(op.pedir.robux, num) + '</i>', 'você pede a mais quando dá este item');
-    } else {
-      h += caixa('OP para dar', SEM) + caixa('OP para pedir', SEM);
+    function li(rot, valor, sub) {
+      return '<div><span>' + rot + '</span><b>' + valor + (sub ? '<small>' + sub + '</small>' : '') + '</b></div>';
     }
-    h += caixa('Best Price', res.best ? '<b class="rap">' + num(res.best) + '</b>' : SEM, null,
+    var S = '<span class="sem">sem dado</span>';
+    h += '<div class="ti-lst">';
+    h += li('Best Price', res.best ? '<span class="rap">' + num(res.best) + '</span>' : S,
       res.best ? 'menor preço à venda' + (res.bestFonte === 'Roblox' ? ' (Roblox)' : '') : '');
     if (res.depois != null && res.rap != null) {
       var dif = res.depois - res.rap;
       var cd = dif > 0 ? 'pos' : dif < 0 ? 'neg' : '';
-      h += caixa('Depois da venda', '<b class="' + cd + '">' + num(res.depois) + '</b>',
-        '<i class="' + cd + '">' + (dif > 0 ? '▲ +' + num(dif) : dif < 0 ? '▼ −' + num(-dif) : '=') + ' no RAP</i>', 'RAP se vender pelo Best Price');
+      h += li('Depois da venda', '<span class="' + cd + '">' + num(res.depois) + '</span>',
+        (dif > 0 ? '▲ +' + num(dif) : dif < 0 ? '▼ −' + num(-dif) : '=') + ' no RAP');
     } else {
-      h += caixa('Depois da venda', SEM);
+      h += li('Depois da venda', S);
     }
-    h += caixa('Vendas por dia', res.vendasDia != null ? '<b class="' + corDemanda(res.vendasN) + '">' + res.vendasDia.toLocaleString('pt-BR') + '</b>' : SEM, null,
+    h += li('Vendas por dia', res.vendasDia != null ? '<span class="' + corDemanda(res.vendasN) + '">' + res.vendasDia.toLocaleString('pt-BR') + '</span>' : S,
       res.vendasDia != null ? 'média de 30 dias' : '');
-    h += caixa('Demanda', res.demanda ? '<b class="' + corDemanda(res.demandaN) + '">' + esc(res.demanda) + '</b>' : SEM, null,
+    h += li('Demanda', res.demanda ? '<span class="' + corDemanda(res.demandaN) + '">' + esc(res.demanda) + '</span>' : S,
       res.demanda ? (res.demandaEstimada ? 'estimada pelas vendas' : "do Rolimon's") : '');
+    if (op) {
+      h += li('OP para dar', '<span class="warn">' + faixa(op.dar.pct, pct) + '%</span>', faixa(op.dar.robux, num) + ' · você paga a mais');
+      h += li('OP para pedir', '<span class="pos">' + faixa(op.pedir.pct, pct) + '%</span>', faixa(op.pedir.robux, num) + ' · você pede a mais');
+    } else {
+      h += li('OP para dar', S) + li('OP para pedir', S);
+    }
     h += '</div>';
     if (op) {
       var aj = Math.round((op.mult - 1) * 100);
@@ -585,6 +609,7 @@ function paginaItem(PONTE) {
     clearTimeout(timer);
     atual = { id: id, remover: typeof o.remover === 'function' ? o.remover : null };
     $('ti-nome').textContent = o.nome || 'Item ' + id;
+    $('ti-sub').textContent = '';
     var th = $('ti-thumb');
     if (o.thumb) { th.src = o.thumb; th.classList.remove('oculto'); }
     else { th.removeAttribute('src'); th.classList.add('oculto'); }
@@ -620,6 +645,14 @@ function paginaItem(PONTE) {
     if (d && res) d.textContent = 'Tela do item ' + res.id + ': ' + (res.erro || (res.diag || []).join(' · '));
     if (!res || !atual || String(res.id) !== atual.id) return;
     clearTimeout(timer);
+    // v7.0: embaixo do nome, "Value N · RAP N" (ou "RAP N · sem value").
+    var sub = [];
+    if (!res.erro) {
+      if (res.value != null) sub.push('Value ' + num(res.value));
+      if (res.rap != null) sub.push('RAP ' + num(res.rap));
+      if (res.semValue && res.rap != null) sub.push('sem value');
+    }
+    $('ti-sub').textContent = sub.join(' · ');
     $('ti-card').innerHTML = desenhar(res);
   };
   window.thItem = { abrir: abrir, fechar: fechar };
