@@ -456,6 +456,38 @@ button.an-i:active{background:var(--card2)}
 .ez-pe div{display:flex;flex-direction:column;gap:2px;font-size:11px;color:var(--sub)}
 .ez-pe b{font-size:13px}
 .pz-corpo .nota{margin:0;font-size:12px;line-height:1.45;color:var(--sub)}
+/* v7.0 (protótipo B · Um passo por vez): resumo herói, barra dos passos, cenas
+   com "?" no Recebo, faixa de value, alvos em carrossel e escadinha em 3 colunas. */
+.pz-corpo{gap:14px}
+.pz-res b{font-size:30px;font-weight:800}
+.pz-mi{flex:none;display:flex}
+.pz-mi .thumb{width:48px;height:48px;margin-left:-10px;border-radius:0;background:none;object-fit:contain;filter:drop-shadow(0 4px 5px rgba(0,0,0,.3))}
+.seg.pz-passos button{flex:1;padding:10px 2px;font-size:14px;font-weight:700;white-space:nowrap}
+.pz-cab b{font-size:17px;font-weight:800}
+.pz-duelo .an-cena{padding-bottom:14px}
+.pz-qq{width:56%;max-width:104px;aspect-ratio:1;display:grid;place-items:center;border-radius:50%;border:2.5px dashed currentColor;opacity:.75;font-size:34px;font-weight:800}
+.an-fts.n1 .pz-qq{width:74%;max-width:140px}
+.pz-fx{display:flex;flex-direction:column;align-items:center;gap:1px;padding:10px 13px;border-top:1px solid var(--borda);text-align:center}
+.pz-fx small{font-size:12.5px;color:var(--sub)}
+.pz-fx b{font-size:22px;font-weight:800;color:var(--acc-t)}
+.pz-ad{background:var(--pos-bg)}
+.pz-ad .p{font-size:20px;font-weight:800}
+.pz-car{display:flex;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding:2px 14px 8px;scrollbar-width:none}
+.pz-car::-webkit-scrollbar{display:none}
+.pz-al{flex:none;width:118px;display:flex;flex-direction:column;gap:4px;margin:0;padding:8px;border:0;border-radius:calc(var(--r-card,16px) * .7);background:var(--card2);color:inherit;font:inherit;text-align:left;-webkit-tap-highlight-color:transparent}
+.pz-al .thumb{width:100%;height:78px;border-radius:0;background:none;object-fit:contain}
+.pz-al .nm{font-size:12.5px;font-weight:700;line-height:1.2;min-height:2.4em;overflow-wrap:anywhere}
+.pz-al b{font-size:17px;font-weight:800}
+.pz-al small{font-size:11.5px;color:var(--sub)}
+.ez3{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.ez3 .c{display:flex;flex-direction:column;gap:6px;min-width:0;padding:10px 8px;border-radius:var(--r-card,16px);background:var(--card);border:1px solid var(--card-borda);box-shadow:var(--sombra)}
+.ez3 .c.m{background:var(--heroi);color:var(--on-heroi);border-color:var(--heroi-borda)}
+.ez3 .c>small{font-size:11px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;opacity:.8;text-align:center}
+.ez3 .v{display:flex;justify-content:space-between;gap:4px;font-size:12px;opacity:.85}
+.ez3 .v b{font-size:14.5px;font-weight:800;opacity:1;font-variant-numeric:tabular-nums}
+.ez3 .pv{text-align:center;font-size:16px;font-weight:800;padding-top:6px;border-top:1px solid var(--borda)}
+.ez3 .c.m .pv{border-color:var(--heroi-linha)}
+.ez3 .pv small{display:block;font-size:11px;font-weight:600;opacity:.8}
 .pz .pl-tr,.pl-tr{border-top:1px solid var(--borda)}
 .pl-linha{display:flex;align-items:center;gap:10px;width:100%;padding:11px 14px;border:0;background:none;text-align:left;-webkit-tap-highlight-color:transparent}
 button.pl-linha:active,.pl-tr.aberto>.pl-linha{background:var(--card2)}
@@ -1070,7 +1102,8 @@ function paginaAnuncios(D, P, PA) {
   // números, o anúncio que serve agora e alvos do catálogo) e a escadinha.
   // Só calcula depois que a aba é aberta (plano.ativo), em partes (setTimeout).
   var plano = {
-    ativo: false, lista: [], idx: 0, aberto: null, timer: null, chave: undefined, meus: null,
+    // v7.0: passo = o passo mostrado ('comb', 'subir', 'descer' ou 'esc').
+    ativo: false, lista: [], idx: 0, aberto: null, timer: null, chave: undefined, meus: null, passo: '',
     pronto: false, subir: null, descer: null, alvosSubir: [], alvosDescer: [],
   };
   function nivelDe(r) {
@@ -1646,7 +1679,7 @@ function paginaAnuncios(D, P, PA) {
       '<span class="an-tempo">com ' + esc(jogador(r)) + '</span></span>' +
       '<span class="an-l2">' + grupo(g0.dou, 0, 'dou' + (r.modo === 'tag' ? ' sug' : '')) + '<span class="an-tr">⇄</span>' + grupo(g0.rec, r.robux, 'rec') + '</span></span>' +
       '<span class="an-pct" data-cor="' + corVeredito(r.v) + '"><b>' + pctLinha(r) + '</b><small>' + esc(r.v ? r.v.titulo : '') + '</small></span>' +
-      '<span class="an-chev">›</span></button>' + (ab ? detalhe(r) : '') + '</div>'
+      '<span class="an-chev">›</span></button>' + (ab ? anuncioAberto(r) : '') + '</div>'
     );
   }
   // Uma trade sem anúncio: a meta em números.
@@ -1685,25 +1718,25 @@ function paginaAnuncios(D, P, PA) {
       '<button type="button" class="pz-ad" data-pz="' + key + '" aria-expanded="' + ab + '"><span class="t"><b>Serve agora: ' + esc(nomes) + '</b>' +
       'com ' + esc(jogador(r)) + ' · ' + haQuanto(r.ad[1]) + '</span>' +
       '<span class="p" data-cor="' + corVeredito(r.v) + '">' + pctLinha(r) + '<small>' + esc(r.v ? r.v.titulo : '') + '</small></span>' +
-      '<span class="an-chev">›</span></button>' + (ab ? detalhe(r) : '')
+      '<span class="an-chev">›</span></button>' + (ab ? anuncioAberto(r) : '')
     );
   }
+  // v7.0: alvo do catálogo = cartão do carrossel (foto, nome, value, demanda · N/dia).
   function linhaAlvo(i) {
     var d = [];
     if (i.dem >= 0) d.push('<span class="' + corDem(i.dem) + '">' + esc(P.demandaCurta[i.dem]) + '</span>');
-    if (i.tend >= 0) d.push(esc(P.tendenciaCurta[i.tend]));
     var ln = LN[i.id];
     if (ln && ln.tv) d.push('<span class="' + esc(ln.c) + '">' + esc(ln.tv) + '</span>');
     return (
-      '<button type="button" class="pz-alvo" data-item="' + esc(i.id) + '" data-nome="' + esc(i.nome) + '">' + miniatura(i.id) +
-      '<span class="txt"><span class="nome">' + esc(i.nome) + '</span><span class="det">' + d.join(' · ') + '</span></span>' +
-      '<span class="v">' + fmtNum(valorEfetivo(i)) + '<small>value</small></span><span class="pz-seta" aria-hidden="true">›</span></button>'
+      '<button type="button" class="pz-al" data-item="' + esc(i.id) + '" data-nome="' + esc(i.nome) + '">' + miniatura(i.id) +
+      '<span class="nm">' + esc(i.nome) + '</span><b>' + fmtNum(valorEfetivo(i)) + '</b>' +
+      (d.length ? '<small>' + d.join(' · ') + '</small>' : '') + '</button>'
     );
   }
   function blocoAlvos(titulo, l) {
     return (
       '<div class="pz-alvos"><p>' + titulo + '</p>' +
-      (l.length ? l.map(linhaAlvo).join('') : '<span class="pz-sem">Nenhum item do catálogo nessa faixa com demanda Normal ou melhor.</span>') +
+      (l.length ? '<div class="pz-car">' + l.map(linhaAlvo).join('') + '</div>' : '<span class="pz-sem">Nenhum item do catálogo nessa faixa com demanda Normal ou melhor.</span>') +
       '</div>'
     );
   }
@@ -1723,15 +1756,26 @@ function paginaAnuncios(D, P, PA) {
     if (n > 1) h += '<div class="pl-pe"><span class="meta">Plano ' + (plano.idx + 1) + ' de ' + n + '</span><button type="button" class="pl-outro" id="pl-outro">Outro plano ›</button></div>';
     return h + '</div>';
   }
+  // v7.0 (protótipo B · Um passo por vez): cada passo em tela cheia, com as
+  // cenas Dou | Recebo ("?" no Recebo), a faixa de value, o "Serve agora" e os
+  // alvos do catálogo num carrossel.
+  function cenaPasso(dou, nQ) {
+    var q = '';
+    for (var k = 0; k < nQ; k++) q += '<span class="pz-qq">?</span>';
+    return '<div class="an-duelo pz-duelo">' +
+      '<div class="an-cena"><div class="q">Dou<b>' + n0(somaVb(dou)) + '</b></div>' + fotosLado(dou) + '</div>' +
+      '<div class="an-cena r"><div class="q">Recebo<b>?</b></div><div class="an-fts n' + nQ + '">' + q + '</div></div></div>';
+  }
+  function faixaPasso(rot, de, ate) {
+    return '<div class="pz-fx"><small>' + rot + '</small><b>' + n0(de) + ' a ' + n0(ate) + '</b><small>de value</small></div>';
+  }
   function cartaoSubir(dou, rec) {
     var m = metaSubir(dou);
     return (
       '<div class="pz"><div class="pz-cab">' + etiquetas(rec, 'upgrade') +
       '<b>Subir: junte ' + (dou.length === 2 ? 'os 2 itens' : dou.length + ' itens') + ' em 1</b>' +
       '<span class="sub">Você paga de ' + PA.upAbertura + '% a ' + PA.upTeto + '% a mais (abertura → teto).</span></div>' +
-      '<div class="pz-troca"><span class="pz-lado"><small>Dou</small>' + grupo(dou, 0, 'dou') + '<b>' + n0(m.soma) + '</b></span>' +
-      '<span class="an-tr">⇄</span><span class="pz-lado"><small>Recebo</small><span class="an-grp rec sug"><span class="thumb pl-q">?</span></span></span>' +
-      '<span class="pz-faixa"><span>1 item de</span><b>' + n0(m.de) + ' a ' + n0(m.ate) + '</b><span>de value</span></span></div>' +
+      cenaPasso(dou, 1) + faixaPasso('1 item de', m.de, m.ate) +
       serveAgora('s', plano.subir) + blocoAlvos('Alvos no catálogo · demanda Normal+', plano.alvosSubir) + '</div>'
     );
   }
@@ -1741,14 +1785,13 @@ function paginaAnuncios(D, P, PA) {
       '<div class="pz"><div class="pz-cab">' + etiquetas(rec, 'downgrade') +
       '<b>Descer: ' + esc(X.nome) + ' em 2 ou 3 médios</b>' +
       '<span class="sub">Você pede de +' + PA.downMin + '% a +' + PA.downAbertura + '% a mais (mínimo → abertura).</span></div>' +
-      '<div class="pz-troca"><span class="pz-lado"><small>Dou</small>' + grupo([X], 0, 'dou') + '<b>' + n0(X.vb) + '</b></span>' +
-      '<span class="an-tr">⇄</span><span class="pz-lado"><small>Recebo</small><span class="an-grp rec sug"><span class="thumb pl-q">?</span><span class="thumb pl-q">?</span></span></span>' +
-      '<span class="pz-faixa"><span>2–3 médios somando</span><b>' + n0(m.de) + ' a ' + n0(m.ate) + '</b><span>de value</span></span></div>' +
+      cenaPasso([X], 2) + faixaPasso('2–3 médios somando', m.de, m.ate) +
       serveAgora('d', plano.descer) +
       blocoAlvos('Médios bons para pedir · ~' + n0(Math.max(PA.addMax, m.de / 3)) + ' a ' + n0(m.ate / 2) + ' cada', plano.alvosDescer) + '</div>'
     );
   }
   // Escadinha: cada volta = 1 upgrade + 1 downgrade, nos três cenários dos degraus.
+  // v7.0: 3 colunas lado a lado (o Provável em destaque), Hoje até a 4ª volta.
   function escadinhaPlano(inicio) {
     var C = [
       ['o', 'Otimista', PA.upAbertura, PA.downAbertura],
@@ -1757,17 +1800,24 @@ function paginaAnuncios(D, P, PA) {
     ];
     function f(c) { return (1 - c[2] / 100) * (1 + c[3] / 100); }
     function pc(x) { return String(Math.round(x * 10) / 10).replace('.', ','); }
-    var h = '<div class="ez"><table><tr><th>Volta</th>' + C.map(function (c) { return '<th>' + c[1] + '</th>'; }).join('') + '</tr>';
-    for (var v = 0; v <= 4; v++) {
-      h += '<tr><td>' + (v ? v + 'ª' : 'Hoje') + '</td>' + C.map(function (c) {
-        return '<td class="' + (v ? c[0] : '') + '">' + n0(inicio * Math.pow(f(c), v)) + '</td>';
-      }).join('') + '</tr>';
-    }
-    h += '</table><div class="ez-pe">' + C.map(function (c) {
+    var h = '<div class="ez3">' + C.map(function (c) {
+      var s = '<div class="c' + (c[0] === 'p' ? ' m' : '') + '"><small>' + c[1] + '</small>';
+      for (var v = 0; v <= 4; v++) s += '<span class="v">' + (v ? v + 'ª' : 'Hoje') + '<b>' + n0(inicio * Math.pow(f(c), v)) + '</b></span>';
       var pv = (f(c) - 1) * 100;
-      return '<div><b class="' + (pv >= 0 ? 'pos' : 'neg') + '">' + (pv >= 0 ? '+' : '') + pc(pv) + '% por volta</b>paga ' + pc(c[2]) + '% · pede ' + pc(c[3]) + '%</div>';
-    }).join('') + '</div></div>';
-    return h;
+      return s + '<span class="pv ' + (pv >= 0 ? 'pos' : 'neg') + '">' + (pv >= 0 ? '+' : '') + pc(pv) + '%<small>por volta</small></span></div>';
+    }).join('') + '</div>';
+    return h + '<p class="nota">Cada volta é 1 upgrade + 1 downgrade. ' + C.map(function (c) {
+      return c[1] + ': paga ' + pc(c[2]) + '% e pede ' + pc(c[3]) + '%.';
+    }).join(' ') + ' A conta supõe que os values não mudam. No pessimista você cede até o limite nos dois lados: por isso vale abrir pela oferta de abertura.</p>';
+  }
+  // Os passos que existem para esta quantidade de itens livres, o recomendado
+  // primeiro na escolha inicial: 1 item = Descer; 2 = Subir; 3 ou mais = Combinado.
+  function passosPlano(n) {
+    var l = [];
+    if (n >= 3) l.push(['comb', 'Combinado']);
+    if (n >= 2) l.push(['subir', 'Subir']);
+    l.push(['descer', 'Descer'], ['esc', 'Escadinha']);
+    return l;
   }
   function desenharPlano() {
     var el = $('pz-corpo');
@@ -1781,17 +1831,19 @@ function paginaAnuncios(D, P, PA) {
       return;
     }
     var total = somaVb(meus);
+    var ps = passosPlano(meus.length);
+    var ids = ps.map(function (p) { return p[0]; });
+    if (ids.indexOf(plano.passo) < 0) plano.passo = ids[0];
     var h = '<div class="pz-res"><span class="num"><small>' + meus.length + (meus.length === 1 ? ' item' : ' itens') + ' fora de hold' +
       (nHold ? ' · ' + nHold + ' em hold' : '') + '</small><b>' + n0(total) + '</b><small>value somado (RAP nos itens sem value)</small></span>' +
-      grupo(meus.slice(0, 6), 0, '') + '</div>';
-    // O recomendado vem primeiro: 1 item = Descer; 2 = Subir; 3 ou mais = o combinado.
-    h += '<div class="pz-sec"><div class="sec-t"><h2>Próximo degrau</h2></div>';
-    if (meus.length >= 3) h += cartaoCombinado(meus, true);
-    if (meus.length >= 2) h += cartaoSubir(meus.slice(0, P.maxItens), meus.length === 2);
-    h += cartaoDescer(meus[0], meus.length === 1);
-    h += '</div>';
-    h += '<div class="pz-sec"><div class="sec-t"><h2>Escadinha</h2><span>começando em ' + n0(total) + '</span></div>' + escadinhaPlano(total) +
-      '<p class="nota">Cada volta é 1 upgrade + 1 downgrade. A conta supõe que os values não mudam. No pessimista você cede até o limite nos dois lados: por isso vale abrir pela oferta de abertura.</p></div>';
+      '<span class="pz-mi">' + meus.slice(0, 4).map(function (i) { return miniatura(i.id); }).join('') + '</span></div>';
+    h += '<div class="seg pz-passos">' + ps.map(function (p) {
+      return '<button type="button" data-passo="' + p[0] + '"' + (plano.passo === p[0] ? ' class="on"' : '') + '>' + p[1] + '</button>';
+    }).join('') + '</div>';
+    if (plano.passo === 'comb') h += cartaoCombinado(meus, true);
+    else if (plano.passo === 'subir') h += cartaoSubir(meus.slice(0, P.maxItens), meus.length === 2);
+    else if (plano.passo === 'descer') h += cartaoDescer(meus[0], meus.length === 1);
+    else h += '<div class="pz-sec"><div class="sec-t"><h2>Escadinha</h2><span>começando em ' + n0(total) + '</span></div>' + escadinhaPlano(total) + '</div>';
     el.innerHTML = h;
   }
   // ---------- v7.0 (protótipo B · Um por vez) ----------
@@ -2222,10 +2274,27 @@ function paginaAnuncios(D, P, PA) {
         desenharPlano();
         return;
       }
+      // v7.0: barra dos passos (Combinado, Subir, Descer, Escadinha).
+      var bp = ev.target.closest('[data-passo]');
+      if (bp) {
+        plano.passo = bp.getAttribute('data-passo');
+        plano.aberto = null;
+        desenharPlano();
+        window.scrollTo(0, 0);
+        return;
+      }
+      // Degrau do anúncio aberto dentro do passo (mesmo desenho dos Anúncios).
+      var dg = ev.target.closest('[data-dg]');
+      if (dg) {
+        estado.degrau = Number(dg.getAttribute('data-dg')) || 0;
+        desenharPlano();
+        return;
+      }
       var b = ev.target.closest('[data-pz]');
       if (b) {
         var key = b.getAttribute('data-pz');
         plano.aberto = plano.aberto === key ? null : key;
+        estado.degrau = 0;
         desenharPlano();
         if (plano.aberto) pedirVendasAn();
       }
