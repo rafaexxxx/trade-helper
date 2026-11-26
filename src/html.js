@@ -314,14 +314,18 @@ input[type=search]::placeholder{color:var(--sub)}
 .inv-lista{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .inv-lista .item.vit{display:flex;flex-direction:column;align-items:stretch;gap:0;padding:0;text-align:left}
 .inv-lista .item.vit:active{background:var(--card)}
-.vit-ft{position:relative;display:block;aspect-ratio:1.05;padding:14px;background:radial-gradient(80% 70% at 50% 42%,rgba(255,255,255,.22),rgba(0,0,0,.18)),var(--card2)}
-.vit-ft .thumb{width:100%;height:100%;border-radius:0;background:none;object-fit:contain}
+/* v7.2 (protótipo compacto, opção 2): quadro da foto bem mais baixo; a foto do
+   Roblox é ampliada para a sobra em volta sumir (o item fica do mesmo tamanho);
+   texto mais junto, com o nome numa linha só. */
+.vit-ft{position:relative;display:block;aspect-ratio:1.6;padding:0;overflow:hidden;background:radial-gradient(75% 70% at 50% 45%,rgba(255,255,255,.16),transparent 72%),var(--card2)}
+.vit-ft .thumb{width:100%;height:100%;border-radius:0;background:none;object-fit:contain;transform:scale(1.42)}
 .vit.h .vit-ft .thumb{opacity:.5;filter:saturate(.45)}
-.vit-tags{position:absolute;left:8px;top:8px;right:8px;display:flex;flex-wrap:wrap;gap:4px}
+.vit-tags{position:absolute;left:8px;top:8px;right:8px;z-index:1;display:flex;flex-wrap:wrap;gap:4px}
 .vit-tags .tags{display:contents}
 .vit-tags .tag{white-space:normal;border-radius:10px}
-.vit-in{display:flex;flex-direction:column;gap:7px;padding:10px 11px 12px;min-width:0}
-.vit .nome{font-size:14.5px;font-weight:700;line-height:1.2;min-height:2.4em}
+.vit-in{display:flex;flex-direction:column;gap:4px;padding:8px 10px 10px;min-width:0}
+.vit .nome{font-size:14.5px;font-weight:700;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vit .par b{font-size:17px}
 .par{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 .par>span{display:flex;flex-direction:column;min-width:0}
 .par small{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--sub)}
@@ -683,6 +687,7 @@ ${ajuda.secao(cfg)}
     // v7.0: a página sabe a aba atual (o Avaliar prende a barra do veredito embaixo).
     document.body.setAttribute('data-aba', x);
     marcarBarra();
+    metaHora();
     try { localStorage.setItem('aba', x); } catch (e) {}
     // A aba Anúncios só busca os anúncios quando é aberta.
     if (x === 'anuncios' && !esperando && window.thAbrirAnuncios) window.thAbrirAnuncios();
@@ -691,6 +696,16 @@ ${ajuda.secao(cfg)}
     // v6.12: o Avaliar pede as vendas/dia dos itens da proposta quando é aberto.
     if (x === 'avaliar' && window.thAbrirAvaliar) { try { window.thAbrirAvaliar(); } catch (e) {} }
   }
+  // v7.2: embaixo do título, nos Anúncios, a hora da busca dos anúncios
+  // ("busca 14:05", que anuncios.js põe em window.thHoraAnuncios); nas outras
+  // abas, "Atualizado HH:MM".
+  function metaHora(){
+    var el = $('meta-hora');
+    if (!el) return;
+    var h = abaAtual === 'anuncios' && window.thHoraAnuncios;
+    el.textContent = h ? h : 'Atualizado ' + el.getAttribute('data-hora');
+  }
+  window.thMetaHora = metaHora;
   // v7.0: barra de baixo. A tela atual fica marcada; com o "Mais" aberto, só ele.
   var menuAberto = false;
   function marcarBarra(){

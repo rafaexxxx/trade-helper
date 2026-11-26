@@ -199,12 +199,15 @@ function secao(cfg, erro) {
     '<div class="an-topo">' +
     // v6.8: forma da trade do SEU ponto de vista. v7.1: virou o botão "Filtro ▾"
     // (folha com Todos, Upgrade e Downgrade e quantos anúncios cada um tem).
-    '<div class="an-sel"><button type="button" class="chip" id="an-filtro"></button>' +
+    // v7.2 (protótipo compacto, opção A): os chips numa linha só, que passa para
+    // o lado, e o ↻ preso na direita. O texto "N anúncios analisados" foi para o
+    // Diagnóstico; a hora da busca fica embaixo do título (window.thHoraAnuncios).
+    '<div class="an-linha-t"><div class="an-sel"><button type="button" class="chip" id="an-filtro"></button>' +
     '<button type="button" class="chip" id="an-ordem"></button>' +
     // v6.20: quais itens seus entram (v7.0: nos pedidos, nas sugestões e no Plano).
     '<button type="button" class="chip" id="an-meus"></button></div>' +
-    '<div class="an-status"><p class="meta" id="an-info">Os anúncios são buscados quando você abre esta aba.</p>' +
     '<button type="button" class="an-atu" id="an-atualizar" aria-label="Atualizar anúncios">↻</button></div>' +
+    '<p class="meta oculto" id="an-info"></p>' +
     '</div>' +
     '<p class="aviso oculto" id="an-erro"></p>' +
     '<p class="meta oculto" id="an-conta"></p>' +
@@ -264,15 +267,17 @@ function css() {
 /* v6.13: topo em três linhas curtas (forma; chips Item e Ordem; status com ↻). */
 .an-topo{display:flex;flex-direction:column;gap:10px}
 .folha .af-op small{margin-left:6px;font-size:14px;font-weight:600;color:var(--sub)}
-.an-sel{display:flex;flex-wrap:wrap;gap:8px;align-items:center;min-width:0}
-.an-sel .chip{flex:none;display:inline-flex;align-items:center;gap:6px;min-width:0;padding:9px 14px;font-size:14px;font-weight:600}
+.an-linha-t{display:flex;align-items:center;gap:8px}
+.an-sel{flex:1;min-width:0;display:flex;gap:6px;align-items:center;overflow-x:auto;-webkit-overflow-scrolling:touch;margin-left:-16px;padding:2px 0 2px 16px;scrollbar-width:none;-webkit-mask-image:linear-gradient(90deg,#000 88%,transparent);mask-image:linear-gradient(90deg,#000 88%,transparent)}
+.an-sel::-webkit-scrollbar{display:none}
+.an-sel .chip{flex:none;display:inline-flex;align-items:center;gap:6px;min-width:0;padding:7px 11px;font-size:13px;font-weight:600;white-space:nowrap}
 .an-sel .chip small{font-size:12.5px;font-weight:600;color:var(--sub)}
 .an-sel .chip.on small{color:inherit}
 .an-sel .chip .t{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .an-sel .chip .v{flex:none;font-size:11px;opacity:.75}
 .an-status{display:flex;align-items:center;gap:10px}
 .an-status .meta{flex:1;min-width:0;margin:0;font-size:12.5px}
-.an-atu{flex:none;width:40px;height:40px;padding:0;border:1px solid var(--card-borda);border-radius:50%;background:var(--card);box-shadow:var(--sombra);color:var(--fg);font-size:19px;line-height:1;-webkit-tap-highlight-color:transparent}
+.an-atu{flex:none;width:38px;height:38px;padding:0;border:1px solid var(--card-borda);border-radius:50%;background:var(--card);box-shadow:var(--sombra);color:var(--fg);font-size:19px;line-height:1;-webkit-tap-highlight-color:transparent}
 .an-atu:active{background:var(--card2)}
 .an-atu:disabled{opacity:.6}
 .an-atu.buscando{animation:anGira .9s linear infinite}
@@ -280,21 +285,21 @@ function css() {
 @media (prefers-reduced-motion: reduce){.an-atu.buscando{animation:none}}
 /* v7.0 (protótipo B · Um por vez): fila em cima e um anúncio aberto embaixo.
    O anúncio aberto é um .an-grupo (os temas já pintam essa classe). */
-.an-um{display:flex;flex-direction:column;gap:12px}
+.an-um{display:flex;flex-direction:column;gap:10px}
+#aba-anuncios{gap:12px}
 .an-fila{display:flex;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -16px;padding:2px 16px 4px;scrollbar-width:none}
 .an-fila::-webkit-scrollbar{display:none}
-.an-fila button{flex:none;width:156px;display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 8px;border-radius:var(--r-card,16px);background:var(--card);border:2px solid var(--card-borda);color:var(--fg);text-align:center;-webkit-tap-highlight-color:transparent}
+/* v7.2 (opção A): fila baixa, tudo numa linha: Dou → Recebo, a % e a forma. */
+.an-fila button{flex:none;display:flex;flex-direction:row;align-items:center;gap:8px;padding:6px 10px;border-radius:var(--r-card,16px);background:var(--card);border:2px solid var(--card-borda);color:var(--fg);text-align:left;-webkit-tap-highlight-color:transparent}
 .an-fila button.on{border-color:var(--acc-t)}
-/* v7.1: Dou → Recebo, miniaturas sem sobreposição (até 2 por linha em cada lado). */
-.an-fila .m{display:flex;align-items:center;justify-content:center;gap:4px;min-height:64px}
-.an-fila .m .g{display:grid;grid-template-columns:repeat(2,auto);gap:2px;justify-items:center}
-.an-fila .m .g:has(> :only-child){grid-template-columns:auto}
-.an-fila .m .thumb{width:30px;height:30px}
-.an-fila .m .g:has(> :only-child) .thumb{width:44px;height:44px}
-.an-fila .m i{font-style:normal;font-size:14px;font-weight:800;color:var(--sub)}
-.an-fila .m .so-rbx{font-size:13px;font-weight:800;color:var(--pos)}
-.an-fila b{font-size:20px;font-weight:800;color:var(--c);white-space:nowrap}
-.an-fila small{font-size:12px;color:var(--sub);line-height:1.25}
+.an-fila .m{display:flex;align-items:center;gap:3px}
+.an-fila .m .g{display:flex;align-items:center;gap:1px}
+.an-fila .m .thumb{width:28px;height:28px}
+.an-fila .m i{font-style:normal;font-size:12px;font-weight:800;color:var(--sub)}
+.an-fila .m .so-rbx{font-size:12px;font-weight:800;color:var(--pos)}
+.an-fila .tx{display:flex;flex-direction:column;align-items:flex-start;line-height:1.15}
+.an-fila b{font-size:16px;font-weight:800;color:var(--c);white-space:nowrap}
+.an-fila small{font-size:11px;color:var(--sub);white-space:nowrap}
 .an-fila small .f-up,.an-fila small .f-down,.an-cab .j span .f-up,.an-cab .j span .f-down{font-weight:700}
 .an-cab{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:11px 13px}
 .an-cab .j{display:flex;flex-direction:column;gap:2px;min-width:0}
@@ -2029,9 +2034,10 @@ function paginaAnuncios(D, P, PA) {
     var mini = function (l) {
       return '<span class="g">' + (l.map(function (i) { return miniatura(i.id); }).join('') || '<span class="so-rbx">R$</span>') + '</span>';
     };
+    // v7.2: fila baixa, tudo numa linha (fotos, a % e "forma · tempo").
     return '<button type="button" data-sel="' + k + '" data-cor="' + corVeredito(g0.v || r.v) + '"' + (on ? ' class="on"' : '') + '>' +
-      '<span class="m">' + mini(g0.dou) + '<i>→</i>' + mini(g0.rec) + '</span><b>' + pctTxt(g0.pct) + '</b>' +
-      '<small>' + etiquetaHtml(r) + '<br>' + haQuanto(r.ad[1]) + '</small></button>';
+      '<span class="m">' + mini(g0.dou) + '<i>→</i>' + mini(g0.rec) + '</span>' +
+      '<span class="tx"><b>' + pctTxt(g0.pct) + '</b><small>' + etiquetaHtml(r) + ' · ' + haQuanto(r.ad[1]).replace('há ', '') + '</small></span></button>';
   }
   function desenharLista() {
     var lista = estado.lista;
@@ -2076,6 +2082,15 @@ function paginaAnuncios(D, P, PA) {
       if (estado.manual && res.origem === 'guardados' && res.liberaEm) info += ' · nova busca às ' + hora(res.liberaEm);
     }
     $('an-info').textContent = info;
+    // v7.2: embaixo do título só a hora da busca (o resto fica no Diagnóstico).
+    var curta;
+    if (estado.carregando) curta = 'buscando...';
+    else if (res && res.buscadoEm) {
+      curta = 'busca ' + hora(res.buscadoEm);
+      if (estado.manual && res.origem === 'guardados' && res.liberaEm) curta += ' · próxima ' + hora(res.liberaEm);
+    } else curta = '';
+    window.thHoraAnuncios = curta;
+    if (window.thMetaHora) { try { window.thMetaHora(); } catch (e) {} }
     $('an-atualizar').disabled = estado.carregando;
     $('an-atualizar').classList.toggle('buscando', estado.carregando);
     var erro = res && res.erro;
@@ -2094,6 +2109,8 @@ function paginaAnuncios(D, P, PA) {
       return;
     }
     var L = [];
+    // v7.2: o texto que ficava no topo da aba ("N anúncios analisados · últimas 2h").
+    L.push($('an-info').textContent);
     L.push('Anúncios: origem ' + res.origem + ' · guardados ' + (res.lista || []).length +
       (res.buscadoEm ? ' · busca ' + hora(res.buscadoEm) : '') + (res.erro ? ' · erro: ' + res.erro : ''));
     var lt = res.leitura;
