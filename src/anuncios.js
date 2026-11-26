@@ -197,13 +197,10 @@ function secao(cfg, erro) {
   return (
     '<div id="aba-anuncios" class="aba oculto">' +
     '<div class="an-topo">' +
-    // v6.8: forma da trade do SEU ponto de vista (o número é desenhado na página).
-    '<div class="seg" id="an-forma">' +
-    '<button type="button" data-f="todos">Todos<small></small></button>' +
-    '<button type="button" data-f="upgrade">Seu upgrade<small></small></button>' +
-    '<button type="button" data-f="downgrade">Seu downgrade<small></small></button>' +
-    '</div>' +
-    '<div class="an-sel"><button type="button" class="chip" id="an-ordem"></button>' +
+    // v6.8: forma da trade do SEU ponto de vista. v7.1: virou o botão "Filtro ▾"
+    // (folha com Todos, Upgrade e Downgrade e quantos anúncios cada um tem).
+    '<div class="an-sel"><button type="button" class="chip" id="an-filtro"></button>' +
+    '<button type="button" class="chip" id="an-ordem"></button>' +
     // v6.20: quais itens seus entram (v7.0: nos pedidos, nas sugestões e no Plano).
     '<button type="button" class="chip" id="an-meus"></button></div>' +
     '<div class="an-status"><p class="meta" id="an-info">Os anúncios são buscados quando você abre esta aba.</p>' +
@@ -242,6 +239,15 @@ function folha() {
     '<p class="an-fl-info">Só os itens marcados entram nos anúncios (pedidos e sugestões, inclusive como add) e no Plano. Marque só um para ver só os anúncios dele.</p>' +
     '<div class="an-fl-lista" id="am-lista"></div>' +
     '</div>' +
+    // v7.1: folha do Filtro (forma da trade do seu lado).
+    '<div id="af-fundo" class="fundo oculto"></div>' +
+    '<div id="af-folha" class="folha oculto">' +
+    '<p>Filtro dos anúncios</p>' +
+    '<button type="button" class="op af-op" data-f="todos">Todos<small></small></button>' +
+    '<button type="button" class="op af-op" data-f="upgrade"><span class="f-up">Upgrade</span><small></small></button>' +
+    '<button type="button" class="op af-op" data-f="downgrade"><span class="f-down">Downgrade</span><small></small></button>' +
+    '<button type="button" class="op cancelar" id="af-cancelar">Cancelar</button>' +
+    '</div>' +
     '<div id="ao-fundo" class="fundo oculto"></div>' +
     '<div id="ao-folha" class="folha oculto">' +
     '<p>Ordem dos anúncios</p>' +
@@ -257,9 +263,7 @@ function css() {
   return `
 /* v6.13: topo em três linhas curtas (forma; chips Item e Ordem; status com ↻). */
 .an-topo{display:flex;flex-direction:column;gap:10px}
-#an-forma button{flex:auto;white-space:nowrap;font-size:13.5px;font-weight:700;padding:10px 2px}
-#an-forma small{margin-left:4px;font-size:12px;font-weight:700;opacity:.75;font-variant-numeric:tabular-nums}
-#an-forma small:empty{display:none}
+.folha .af-op small{margin-left:6px;font-size:14px;font-weight:600;color:var(--sub)}
 .an-sel{display:flex;flex-wrap:wrap;gap:8px;align-items:center;min-width:0}
 .an-sel .chip{flex:none;display:inline-flex;align-items:center;gap:6px;min-width:0;padding:9px 14px;font-size:14px;font-weight:600}
 .an-sel .chip small{font-size:12.5px;font-weight:600;color:var(--sub)}
@@ -279,32 +283,57 @@ function css() {
 .an-um{display:flex;flex-direction:column;gap:12px}
 .an-fila{display:flex;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -16px;padding:2px 16px 4px;scrollbar-width:none}
 .an-fila::-webkit-scrollbar{display:none}
-.an-fila button{flex:none;width:104px;display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 6px;border-radius:var(--r-card,16px);background:var(--card);border:2px solid var(--card-borda);color:var(--fg);text-align:center;-webkit-tap-highlight-color:transparent}
+.an-fila button{flex:none;width:156px;display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 8px;border-radius:var(--r-card,16px);background:var(--card);border:2px solid var(--card-borda);color:var(--fg);text-align:center;-webkit-tap-highlight-color:transparent}
 .an-fila button.on{border-color:var(--acc-t)}
-.an-fila .m{display:flex;justify-content:center;height:44px}
-.an-fila .m .thumb{width:42px;height:42px;margin:0 -4px;border-radius:10px;background:none;object-fit:contain}
-.an-fila b{font-size:17px;font-weight:800;color:var(--c);white-space:nowrap}
-.an-fila small{font-size:11.5px;color:var(--sub);line-height:1.25}
+/* v7.1: Dou → Recebo, miniaturas sem sobreposição (até 2 por linha em cada lado). */
+.an-fila .m{display:flex;align-items:center;justify-content:center;gap:4px;min-height:64px}
+.an-fila .m .g{display:grid;grid-template-columns:repeat(2,auto);gap:2px;justify-items:center}
+.an-fila .m .g:has(> :only-child){grid-template-columns:auto}
+.an-fila .m .thumb{width:30px;height:30px}
+.an-fila .m .g:has(> :only-child) .thumb{width:44px;height:44px}
+.an-fila .m i{font-style:normal;font-size:14px;font-weight:800;color:var(--sub)}
+.an-fila .m .so-rbx{font-size:13px;font-weight:800;color:var(--pos)}
+.an-fila b{font-size:20px;font-weight:800;color:var(--c);white-space:nowrap}
+.an-fila small{font-size:12px;color:var(--sub);line-height:1.25}
+.an-fila small .f-up,.an-fila small .f-down,.an-cab .j span .f-up,.an-cab .j span .f-down{font-weight:700}
 .an-cab{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:11px 13px}
 .an-cab .j{display:flex;flex-direction:column;gap:2px;min-width:0}
 .an-cab .j b{font-size:15.5px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .an-cab .j span{font-size:12.5px;color:var(--sub)}
 .an-cab .selo{flex:none;padding:3px 9px;font-size:12px;font-weight:800;white-space:nowrap}
 .an-duelo{position:relative;display:grid;grid-template-columns:1fr 1fr}
-.an-cena{min-width:0;display:flex;flex-direction:column;padding:10px 11px 34px;background:var(--card2)}
+/* v7.1 (opção C): o lado com mais itens ganha mais largura. */
+.an-duelo.mais-r{grid-template-columns:1fr 1.7fr}
+.an-duelo.mais-d{grid-template-columns:1.7fr 1fr}
+.an-duelo>.an-cena+.an-cena{border-left:1px solid var(--borda)}
+.an-cena{min-width:0;display:flex;flex-direction:column;padding:10px 8px 40px;background:var(--card2)}
 .an-cena.r{background:var(--heroi);color:var(--on-heroi)}
 .an-cena .q{font-size:12.5px;font-weight:600;opacity:.85}
 .an-cena .q b{display:block;font-size:28px;font-weight:800;letter-spacing:-.02em;line-height:1.1;opacity:1}
 .an-cena.r .q{text-align:right}
-.an-fts{display:flex;flex-wrap:wrap;justify-content:center;align-content:center;gap:4px;height:178px;margin-top:6px}
-.an-fts button{width:80%;max-width:150px;aspect-ratio:1;padding:0;border:0;background:none;-webkit-tap-highlight-color:transparent}
-.an-fts.n2 button{width:56%;max-width:104px;margin:-4px 0}
-.an-fts.n3 button{width:44%}
-.an-fts .thumb{width:100%;height:100%;border-radius:0;background:none;object-fit:contain;filter:drop-shadow(0 10px 10px rgba(0,0,0,.35))}
+/* v7.1: fotos grandes, sem sobreposição: 1 item ocupa o lado; 2 ou mais ficam
+   em grade de 2 com linhas finas entre eles. Selinhos (value e vendas/dia) por
+   cima da parte de cima da foto; o nome curto embaixo. */
+.an-fts{display:flex;flex-wrap:wrap;justify-content:center;align-content:center;min-height:178px;margin-top:6px}
+.an-fts:is(.n2,.n3,.n4){display:grid;grid-template-columns:1fr 1fr;align-content:start}
+.an-it{position:relative;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0;margin:0;padding:6px 5px 8px;border:0;background:none;color:inherit;font:inherit;-webkit-tap-highlight-color:transparent}
+.an-fts.n1 .an-it{width:92%;max-width:180px}
+.an-fts:is(.n2,.n3,.n4) .an-it:nth-child(odd){border-right:1px solid var(--heroi-linha,var(--borda))}
+.an-fts:is(.n3,.n4) .an-it:nth-child(-n+2){border-bottom:1px solid var(--heroi-linha,var(--borda))}
+.an-it .an-foto{display:block;width:100%;aspect-ratio:1}
+.an-it .thumb{width:100%;height:100%}
+.an-it>small{max-width:100%;font-size:12px;font-weight:700;line-height:1.2;opacity:.92;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.an-sl{position:absolute;top:4px;left:3px;right:3px;z-index:2;display:flex;flex-wrap:wrap;justify-content:space-between;gap:2px;pointer-events:none}
+.an-sl span{padding:2px 6px;border-radius:999px;font-size:11px;font-weight:800;line-height:1.3;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.25)}
+.an-sl .vv{background:var(--folha);color:var(--acc-t);border:1px solid var(--card-borda)}
+.an-sl .vd.pos{background:var(--pos-bg);color:var(--pos)}
+.an-sl .vd.neg{background:var(--neg-bg);color:var(--neg)}
+.an-sl .vd.esp{background:var(--card2);color:var(--sub)}
 .an-fts .so-rbx{align-self:center;font-size:20px;font-weight:800}
 .an-cena .rbx{margin-top:2px;font-size:12.5px;font-weight:700;text-align:center;opacity:.9}
-.an-vs{position:absolute;left:50%;bottom:-20px;transform:translateX(-50%);z-index:2;padding:6px 14px;border-radius:16px;background:var(--folha);border:2px solid var(--c);color:var(--c);font-size:27px;font-weight:800;letter-spacing:-.02em;line-height:1.05;white-space:nowrap}
-.an-corpo{display:flex;flex-direction:column;gap:12px;padding:28px 13px 14px}
+.an-vs{position:absolute;left:50%;bottom:-28px;transform:translateX(-50%);z-index:2;display:flex;flex-direction:column;align-items:center;padding:6px 14px;border-radius:16px;background:var(--folha);border:2px solid var(--c);color:var(--c);font-size:27px;font-weight:800;letter-spacing:-.02em;line-height:1.05;white-space:nowrap}
+.an-vs small{margin-top:2px;font-size:14px;font-weight:800;letter-spacing:0}
+.an-corpo{display:flex;flex-direction:column;gap:12px;padding:40px 13px 14px}
 .an-tb{display:flex;flex-direction:column}
 .an-tb>div{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:baseline;padding:8px 0;border-bottom:1px solid var(--borda)}
 .an-tb>div:last-child{border-bottom:0}
@@ -460,11 +489,12 @@ button.an-i:active{background:var(--card2)}
    com "?" no Recebo, faixa de value, alvos em carrossel e escadinha em 3 colunas. */
 .pz-corpo{gap:14px}
 .pz-res b{font-size:30px;font-weight:800}
-.pz-mi{flex:none;display:flex}
-.pz-mi .thumb{width:48px;height:48px;margin-left:-10px;border-radius:0;background:none;object-fit:contain;filter:drop-shadow(0 4px 5px rgba(0,0,0,.3))}
+.pz-mi{flex:none;display:grid;grid-template-columns:repeat(2,auto);gap:4px}
+.pz-mi .thumb{width:44px;height:44px}
 .seg.pz-passos button{flex:1;padding:10px 2px;font-size:14px;font-weight:700;white-space:nowrap}
 .pz-cab b{font-size:17px;font-weight:800}
 .pz-duelo .an-cena{padding-bottom:14px}
+.pz-duelo .an-fts.n1:has(.pz-qq),.pz-duelo .an-fts.n2:has(.pz-qq){display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px}
 .pz-qq{width:56%;max-width:104px;aspect-ratio:1;display:grid;place-items:center;border-radius:50%;border:2.5px dashed currentColor;opacity:.75;font-size:34px;font-weight:800}
 .an-fts.n1 .pz-qq{width:74%;max-width:140px}
 .pz-fx{display:flex;flex-direction:column;align-items:center;gap:1px;padding:10px 13px;border-top:1px solid var(--borda);text-align:center}
@@ -931,7 +961,8 @@ function paginaAnuncios(D, P, PA) {
   var ORDENS = { ganho: 1, recentes: 1, value: 1 };
   var NOMES_ORDEM = { ganho: 'Maior ganho', recentes: 'Recentes', value: 'Maior value' };
   // v6.8: filtro de forma, do SEU ponto de vista (mesmo texto da etiqueta da linha).
-  var FORMAS = { todos: 'Todos', upgrade: 'Seu upgrade', downgrade: 'Seu downgrade' };
+  // v7.1: "Upgrade"/"Downgrade" (sempre do seu lado), sem o "Seu" na frente.
+  var FORMAS = { todos: 'Todos', upgrade: 'Upgrade', downgrade: 'Downgrade' };
 
   function lerSalvo(k, padrao) {
     try {
@@ -1625,11 +1656,16 @@ function paginaAnuncios(D, P, PA) {
   }
   // Etiqueta da linha: a forma da trade do SEU ponto de vista (a tag do dono fica
   // na nota do cartão). Azul = pede seus itens; cinza = combinação sugerida.
+  // v7.1: "Upgrade" (roxo) e "Downgrade" (laranja), sem o "seu" (é sempre do seu lado).
   function etiqueta(r) {
     if (!r.rec.length) return 'por Robux';
-    if (r.tipo === 'upgrade') return 'seu upgrade';
-    if (r.tipo === 'downgrade') return 'seu downgrade';
-    return 'sidegrade';
+    if (r.tipo === 'upgrade') return 'Upgrade';
+    if (r.tipo === 'downgrade') return 'Downgrade';
+    return 'Sidegrade';
+  }
+  function etiquetaHtml(r) {
+    var c = r.tipo === 'upgrade' ? 'f-up' : r.tipo === 'downgrade' ? 'f-down' : '';
+    return '<span class="' + c + '">' + esc(etiqueta(r)) + '</span>';
   }
   // Linha curta: jogador, etiqueta do tipo, tempo, miniaturas dos dois lados e a %.
   // O toque abre/fecha o cartão completo logo abaixo.
@@ -1654,8 +1690,11 @@ function paginaAnuncios(D, P, PA) {
     bm.innerHTML = '<span class="t">' + (nUsa < nTodos ? nUsa + ' de ' + nTodos + ' itens' : 'Meus itens') +
       '</span><span class="v" aria-hidden="true">▾</span>';
     $('an-ordem').innerHTML = '<small>Ordem</small><span class="t">' + esc(NOMES_ORDEM[estado.ordem]) + '</span><span class="v" aria-hidden="true">▾</span>';
-    // v6.8: forma, com quantos anúncios cada uma tem.
-    var fs = document.querySelectorAll('#an-forma button');
+    // v7.1: botão "Filtro ▾" (forma do seu lado), com quantos anúncios a escolhida tem.
+    var nf = estado.carregou ? ' · ' + estado.formas[estado.forma].length : '';
+    var cf = estado.forma === 'upgrade' ? 'f-up' : estado.forma === 'downgrade' ? 'f-down' : '';
+    $('an-filtro').innerHTML = '<small>Filtro</small><span class="t ' + cf + '">' + esc(FORMAS[estado.forma]) + nf + '</span><span class="v" aria-hidden="true">▾</span>';
+    var fs = document.querySelectorAll('#af-folha .af-op');
     for (var k = 0; k < fs.length; k++) {
       var f = fs[k].getAttribute('data-f');
       fs[k].classList.toggle('on', f === estado.forma);
@@ -1762,7 +1801,7 @@ function paginaAnuncios(D, P, PA) {
   function cenaPasso(dou, nQ) {
     var q = '';
     for (var k = 0; k < nQ; k++) q += '<span class="pz-qq">?</span>';
-    return '<div class="an-duelo pz-duelo">' +
+    return '<div class="an-duelo pz-duelo' + classeDuelo(dou.length, nQ) + '">' +
       '<div class="an-cena"><div class="q">Dou<b>' + n0(somaVb(dou)) + '</b></div>' + fotosLado(dou) + '</div>' +
       '<div class="an-cena r"><div class="q">Recebo<b>?</b></div><div class="an-fts n' + nQ + '">' + q + '</div></div></div>';
   }
@@ -1859,19 +1898,45 @@ function paginaAnuncios(D, P, PA) {
     var d = degrausDe(r);
     return d[Math.max(0, Math.min(estado.degrau || 0, d.length - 1))];
   }
+  // v7.1: nome curto embaixo da foto. Nome grande vira a sigla do Rolimon's ou a
+  // primeira palavra com "…" (o nome inteiro fica na tela do item).
+  function nomeCurto(i) {
+    var n = String(i.nome || '');
+    if (n.length <= 14) return n;
+    if (i.sigla) return String(i.sigla);
+    return n.split(' ')[0] + '…';
+  }
+  // v7.1: selinhos em cima da foto: o value e as vendas por dia ("23/d"; verde a
+  // partir de 1 por dia, vermelho abaixo disso; "…/d" enquanto não chegam).
+  function selos(i) {
+    var h = '<span class="vv">' + fmtNum(valorEfetivo(i)) + '</span>';
+    var ln = LN[i.id];
+    if (ln && ln.v != null && ln.tv) {
+      h += '<span class="vd ' + (nivelVendas(ln.v) >= 2 ? 'pos' : 'neg') + '">' + esc(String(ln.tv).replace('/dia', '/d')) + '</span>';
+    } else if (vendasAn.pendentes[i.id]) {
+      h += '<span class="vd esp">…/d</span>';
+    }
+    return '<span class="an-sl">' + h + '</span>';
+  }
   function fotosLado(itens) {
     if (!itens.length) return '<div class="an-fts"><span class="so-rbx">R$</span></div>';
-    return '<div class="an-fts n' + Math.min(3, itens.length) + '">' + itens.map(function (i) {
-      return '<button type="button" data-item="' + esc(i.id) + '" data-nome="' + esc(i.nome) + '" aria-label="' + esc(i.nome) + '">' + miniatura(i.id) + '</button>';
+    return '<div class="an-fts n' + Math.min(4, itens.length) + '">' + itens.map(function (i) {
+      return '<button type="button" class="an-it" data-item="' + esc(i.id) + '" data-nome="' + esc(i.nome) + '" aria-label="' + esc(i.nome) + '">' +
+        selos(i) + '<span class="an-foto">' + miniatura(i.id) + '</span><small>' + esc(nomeCurto(i)) + '</small></button>';
     }).join('') + '</div>';
+  }
+  // v7.1 (opção C): o lado com mais itens ganha mais largura.
+  function classeDuelo(nd, nr) {
+    return nd > nr ? ' mais-d' : nr > nd ? ' mais-r' : '';
   }
   function duelo(g, robux, cor) {
     var liquido = robux ? Math.floor(robux * (1 - P.taxaRobux)) : 0;
-    return '<div class="an-duelo">' +
+    var dif = g.tr.value - g.td.value;
+    return '<div class="an-duelo' + classeDuelo(g.dou.length, g.rec.length) + '">' +
       '<div class="an-cena"><div class="q">Dou<b>' + fmtNum(g.td.value) + '</b></div>' + fotosLado(g.dou) + '</div>' +
       '<div class="an-cena r"><div class="q">Recebo<b>' + fmtNum(g.tr.value) + '</b></div>' + fotosLado(g.rec) +
       (liquido && g.rec.length ? '<span class="rbx">+ ' + fmtNum(liquido) + ' Robux (líq.)</span>' : '') + '</div>' +
-      '<div class="an-vs" data-cor="' + cor + '">' + pctTxt(g.pct) + '</div></div>';
+      '<div class="an-vs" data-cor="' + cor + '">' + pctTxt(g.pct) + '<small>' + (dif > 0 ? '+' : '') + fmtNum(dif) + '</small></div></div>';
   }
   function celVendas(i) {
     if (!i) return '<span class="sub">—</span>';
@@ -1898,17 +1963,13 @@ function paginaAnuncios(D, P, PA) {
   function linhaTb(t, a, b) {
     return '<div><b>' + a + '</b><span>' + t + '</span><b>' + b + '</b></div>';
   }
-  // Comparação linha a linha (itens, RAP e o item principal de cada lado).
-  function tabela(g, robux) {
+  // Comparação linha a linha. v7.1: só o RAP e o OP do item principal de cada
+  // lado (os nomes, o value e as vendas/dia já estão em cada foto; a demanda saiu).
+  function tabela(g) {
     var pd = principal(g.dou);
     var pr = principal(g.rec);
-    var nomes = function (l) { return l.map(function (i) { return esc(i.nome); }).join('<br>'); };
-    var rec = nomes(g.rec) + (robux ? (g.rec.length ? '<br>' : '') + '+ ' + fmtNum(robux) + ' Robux' : '');
     return '<div class="an-tb">' +
-      linhaTb('Itens', nomes(g.dou) || '—', rec || '—') +
       linhaTb('RAP', fmtNum(g.td.rap), fmtNum(g.tr.rap)) +
-      linhaTb('Vendas/dia', celVendas(pd), celVendas(pr)) +
-      linhaTb('Demanda', celDemanda(pd), celDemanda(pr)) +
       linhaTb('OP', celOp(pd, 'dou'), celOp(pr, 'rec')) +
       '</div>';
   }
@@ -1947,11 +2008,11 @@ function paginaAnuncios(D, P, PA) {
     var robux = g === r ? r.robux : 0;
     var cor = corVeredito(g.v);
     var h = '<article class="an-grupo an-aberto">' +
-      '<div class="an-cab"><span class="j"><b>' + esc(jogador(r)) + '</b><span>' + esc(maiuscula(etiqueta(r))) +
+      '<div class="an-cab"><span class="j"><b>' + esc(jogador(r)) + '</b><span>' + etiquetaHtml(r) +
       (r.modo === 'itens' ? ' · pede seu item' : '') + ' · ' + haQuanto(ad[1]) + '</span></span>' +
       '<span class="selo" data-cor="' + cor + '">' + esc(g.v ? tituloWFL(g.v) : '') + '</span></div>' +
       duelo(g, robux, cor) +
-      '<div class="an-corpo">' + tabela(g, robux);
+      '<div class="an-corpo">' + tabela(g);
     if (r.nota) h += '<p class="an-nota">' + esc(r.nota) + '</p>';
     if (r.mesmo && r.mesmo.length) {
       h += '<p class="an-aviso">Tem <b>' + esc(r.mesmo.join(', ')) + '</b> dos dois lados. Continua na lista porque o ganho não é negativo.</p>';
@@ -1962,12 +2023,15 @@ function paginaAnuncios(D, P, PA) {
       '<a class="btn" href="https://www.roblox.com/users/' + ad[2] + '/trade">Abrir trade</a></div>';
     return h + '</div></article>';
   }
+  // v7.1: o quadradinho da fila mostra o que você dá → o que você recebe.
   function botaoFila(r, k, on) {
     var g0 = primeiro(r);
-    var fotos = g0.rec.slice(0, 2).map(function (i) { return miniatura(i.id); }).join('') || '<span class="so-rbx">R$</span>';
+    var mini = function (l) {
+      return '<span class="g">' + (l.map(function (i) { return miniatura(i.id); }).join('') || '<span class="so-rbx">R$</span>') + '</span>';
+    };
     return '<button type="button" data-sel="' + k + '" data-cor="' + corVeredito(g0.v || r.v) + '"' + (on ? ' class="on"' : '') + '>' +
-      '<span class="m">' + fotos + '</span><b>' + pctTxt(g0.pct) + '</b>' +
-      '<small>' + esc(maiuscula(etiqueta(r))) + '<br>' + haQuanto(r.ad[1]) + '</small></button>';
+      '<span class="m">' + mini(g0.dou) + '<i>→</i>' + mini(g0.rec) + '</span><b>' + pctTxt(g0.pct) + '</b>' +
+      '<small>' + etiquetaHtml(r) + '<br>' + haQuanto(r.ad[1]) + '</small></button>';
   }
   function desenharLista() {
     var lista = estado.lista;
@@ -2222,15 +2286,28 @@ function paginaAnuncios(D, P, PA) {
     }
     if (b || ev.target.closest('#ao-cancelar')) fecharOrdem();
   });
-  // v6.8: filtro Todos / Seu upgrade / Seu downgrade (as três listas já estão prontas).
-  $('an-forma').addEventListener('click', function (ev) {
+  // v6.8: filtro Todos / Upgrade / Downgrade (as três listas já estão prontas).
+  // v7.1: escolhido numa folha, pelo botão "Filtro ▾".
+  function fecharFiltro() {
+    $('af-fundo').classList.add('oculto');
+    $('af-folha').classList.add('oculto');
+  }
+  $('an-filtro').addEventListener('click', function () {
+    desenharFiltro();
+    $('af-fundo').classList.remove('oculto');
+    $('af-folha').classList.remove('oculto');
+  });
+  $('af-fundo').addEventListener('click', fecharFiltro);
+  $('af-folha').addEventListener('click', function (ev) {
     var b = ev.target.closest('button[data-f]');
-    if (!b || !FORMAS[b.getAttribute('data-f')]) return;
-    estado.forma = b.getAttribute('data-f');
-    gravarSalvo('an-forma', estado.forma);
-    estado.lista = estado.formas[estado.forma];
-    estado.aberto = null;
-    desenhar();
+    if (b && FORMAS[b.getAttribute('data-f')]) {
+      estado.forma = b.getAttribute('data-f');
+      gravarSalvo('an-forma', estado.forma);
+      estado.lista = estado.formas[estado.forma];
+      estado.aberto = null;
+      desenhar();
+    }
+    if (b || ev.target.closest('#af-cancelar')) fecharFiltro();
   });
   // Links (jogador, trade) seguem sozinhos: o painel.js abre no Safari.
   // O toque no item abre a tela do item; o toque na linha abre e fecha o cartão.
