@@ -326,58 +326,44 @@ function serializar(dados) {
 
 // ---------- HTML ----------
 // Um lado da proposta: itens, botões e o Total (value base) em destaque.
+// v7.0 (protótipo B · Duas colunas): Dou | Recebo lado a lado. Cada coluna tem
+// o total em cima, um bloco por item, "+ Adicionar" e o campo de Robux no fim.
 function bloco(lado, titulo) {
   return (
-    '<div class="av-lado av-' + lado + '">' +
-    '<div class="av-lado-topo"><h3>' + titulo + '</h3><span class="cont" id="n-' + lado + '"></span></div>' +
+    '<div class="av-col av-' + lado + (lado === 'recebo' ? ' r' : '') + '">' +
+    '<h3>' + titulo + '<b id="tot-' + lado + '">0</b></h3>' +
+    '<small class="av-col-sub" id="tot-' + lado + '-sub"></small>' +
     '<div class="av-itens" id="av-' + lado + '"></div>' +
-    '<div class="av-acoes">' +
-    '<button class="btn sec" id="add-' + lado + '">+ Adicionar item</button>' +
-    '<label class="av-robux">Robux <input id="rb-' + lado + '" type="number" inputmode="numeric" min="0" step="1" placeholder="0"></label>' +
-    '</div>' +
-    '<div class="av-total"><span class="av-total-rot">Total<small id="tot-' + lado + '-sub">value base</small></span>' +
-    '<span class="av-total-v" id="tot-' + lado + '">0</span></div>' +
+    '<button type="button" class="av-add" id="add-' + lado + '">+ Adicionar</button>' +
+    '<input class="av-rbx" id="rb-' + lado + '" type="number" inputmode="numeric" min="0" step="1" placeholder="Robux">' +
     '</div>'
   );
 }
 
 // Seção da aba. A data base das 24h fica só no Diagnóstico.
+// v7.0: saíram o "Resumo" e os "Alertas" recolhíveis e a nota do value base
+// (vai para a Ajuda). Embaixo das colunas: os motivos do veredito, os alertas
+// (sempre abertos, logo abaixo dos motivos) e a comparação linha a linha. A
+// barra do veredito fica presa embaixo, acima da navegação.
 function secao(cfg, baseData, erro) {
   if (erro) {
     return '<div id="aba-avaliar" class="aba oculto"><p class="aviso">O avaliador não pôde ser montado: ' + esc(erro) + '</p></div>';
   }
   return (
     '<div id="aba-avaliar" class="aba oculto">' +
-    // Dou e Recebo juntos num cartão só, separados pelo divisor de troca.
-    '<div class="av-proposta">' +
-    bloco('dou', 'Dou') +
-    '<div class="troca"><span>⇅</span></div>' +
-    bloco('recebo', 'Recebo') +
+    '<div class="av-cols">' + bloco('dou', 'Dou') + bloco('recebo', 'Recebo') + '</div>' +
+    '<div class="av-proposta av-corpo">' +
+    '<p class="av-vazio" id="av-vazio">Adicione itens (ou Robux) nos dois lados para ver o veredito.</p>' +
+    '<ul class="av-mot oculto" id="av-ver-motivos"></ul>' +
+    '<ul class="av-alertas oculto" id="av-alertas"></ul>' +
+    '<div class="an-tb oculto" id="av-tb"></div>' +
     '</div>' +
-    '<p class="nota">Value base: o value do Rolimon\'s; item sem value entra pelo RAP (marcado com "RAP" ao lado do número). ' +
-    'Os totais incluem Robux, e quem recebe Robux fica com ' + Math.round((1 - cfg.TAXA_ROBUX) * 100) + '%.</p>' +
     // v5.4: atalho para a régua do veredito na tela de Ajuda.
     ajuda.link('aj-regua', 'Como o veredito funciona?') +
-    '<div id="av-veredito" class="veredito oculto">' +
-    '<span class="selo" id="av-ver-titulo"></span>' +
-    '<div class="ver-pct" id="av-ver-pct"></div>' +
-    '<div class="ver-sub" id="av-ver-sub"></div>' +
-    '<ul class="motivos" id="av-ver-motivos"></ul>' +
-    '<p class="nota">Segunda opinião automática pelo value (item sem value entra pelo RAP). A decisão é sua.</p>' +
-    '</div>' +
-    '<details class="bloco" data-chave="av-resumo"><summary>Resumo</summary><div class="dentro">' +
-    '<p class="vazio" id="av-vazio">Monte a proposta acima para ver a comparação.</p>' +
-    '<div id="av-resumo-bloco" class="oculto">' +
-    '<table id="av-resumo" class="av-resumo">' +
-    '<thead><tr><th></th><th>Dou</th><th>Recebo</th><th>Diferença</th></tr></thead>' +
-    '<tbody></tbody></table>' +
-    '<p class="nota av-nota">O RAP é só informativo. O veredito usa a régua da forma da trade: upgrade, downgrade ou sidegrade (mesmo número de itens, faixa justa ±' + cfg.FAIXA_JUSTA_PCT + '%).</p>' +
-    '</div>' +
-    '</div></details>' +
-    '<details class="bloco" data-chave="av-alertas"><summary>Alertas<span class="cont" id="n-alertas"></span></summary><div class="dentro">' +
-    '<ul class="grupo" id="av-alertas"></ul>' +
-    '</div></details>' +
     '<button class="btn sec av-limpar" id="av-limpar">Limpar proposta</button>' +
+    '<div class="av-barra" id="av-veredito" data-cor="vazio">' +
+    '<b id="av-ver-pct">—</b><span class="s"><span class="selo oculto" id="av-ver-titulo"></span>' +
+    '<small id="av-ver-sub">Monte os dois lados</small></span></div>' +
     '</div>'
   );
 }
@@ -402,29 +388,47 @@ function css() {
   return `
 .av-proposta{display:flex;flex-direction:column;border-radius:20px;background:var(--card);border:1px solid var(--card-borda);box-shadow:var(--sombra);overflow:hidden}
 .av-proposta,.veredito,.av-resumo{-webkit-backdrop-filter:var(--vidro);backdrop-filter:var(--vidro)}
-.av-lado{display:flex;flex-direction:column;gap:12px;padding:16px}
-.av-dou{background:var(--dou-bg)}
-.av-recebo{background:var(--rec-bg)}
-.av-lado-topo{display:flex;align-items:center;justify-content:space-between;gap:8px}
-.av-lado-topo h3{margin:0;font-size:19px;font-weight:700;line-height:1}
-.av-dou h3{color:var(--acc-t)}
-.av-recebo h3{color:var(--pos)}
-.av-itens{border-radius:14px;background:var(--card);overflow:hidden}
-.av-itens>.item+.item{border-top:1px solid var(--borda)}
-.av-itens .item{padding:11px 14px}
-.av-vazia{margin:0;padding:14px;color:var(--sub);font-size:14px}
-.av-acoes{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
-.av-robux{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;color:var(--sub)}
-.av-robux input{width:108px;font:inherit;font-size:16px;font-weight:600;text-align:right;padding:10px 12px;border:1px solid var(--borda);border-radius:10px;background:var(--card);color:var(--fg);-webkit-appearance:none}
-.av-total{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;padding-top:4px}
-.av-total-rot{font-size:14px;font-weight:600;color:var(--sub)}
-.av-total-rot small{display:block;font-size:13px;font-weight:400}
-.av-total-v{font-size:30px;font-weight:700;line-height:1;letter-spacing:-.01em}
-.av-dou .av-total-v{color:var(--acc-t)}
-.av-recebo .av-total-v{color:var(--pos)}
-.troca{position:relative;height:1px;background:var(--borda)}
-.troca span{position:absolute;left:50%;top:50%;width:34px;height:34px;margin:-17px 0 0 -17px;border-radius:50%;display:grid;place-items:center;background:var(--card);border:1px solid var(--borda);color:var(--sub);font-size:17px}
+/* v7.0: duas colunas (Dou no cartão, Recebo no bloco herói do tema). */
+.av-cols{display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:start}
+.av-col{display:flex;flex-direction:column;gap:7px;min-width:0;padding:10px;border-radius:var(--r-card,16px);background:var(--card);border:1px solid var(--card-borda);box-shadow:var(--sombra);-webkit-backdrop-filter:var(--vidro);backdrop-filter:var(--vidro)}
+.av-col.r{background:var(--heroi);border-color:var(--heroi-borda);color:var(--on-heroi)}
+.av-col h3{margin:0;display:flex;justify-content:space-between;align-items:baseline;gap:6px;font-size:13px;font-weight:700;opacity:.9}
+.av-col h3 b{font-size:22px;font-weight:800;letter-spacing:-.02em;opacity:1;white-space:nowrap}
+.av-col-sub{margin-top:-5px;font-size:11.5px;text-align:right;opacity:.8}
+.av-col-sub:empty{display:none}
+.av-itens{display:flex;flex-direction:column;gap:7px}
+.av-tile{display:flex;align-items:center;gap:8px;width:100%;margin:0;padding:6px;border:0;border-radius:calc(var(--r-card,16px) * .6);background:var(--card2);color:inherit;font:inherit;text-align:left;-webkit-tap-highlight-color:transparent}
+.av-col.r .av-tile{background:rgba(0,0,0,.18)}
+.av-tile:active{opacity:.75}
+.av-tile .thumb{flex:none;width:52px;height:52px;border-radius:10px;background:none;object-fit:contain}
+.av-tile .t{display:flex;flex-direction:column;min-width:0;font-size:12.5px;font-weight:700;line-height:1.2}
+.av-tile .nm{overflow-wrap:anywhere}
+.av-tile .t b{font-size:16px;font-weight:800;white-space:nowrap}
+.av-tile .t b small{margin-left:4px;font-size:10.5px;font-weight:700;opacity:.75}
+.av-tile .t>small{font-size:11.5px;font-weight:600;opacity:.8}
+.av-add{padding:12px 4px;border-radius:calc(var(--r-card,16px) * .6);border:1.5px dashed var(--borda);background:none;color:var(--acc-t);font:inherit;font-size:13.5px;font-weight:800;text-align:center;-webkit-tap-highlight-color:transparent}
+.av-col.r .av-add{border-color:rgba(255,255,255,.45);color:var(--on-heroi)}
+.av-add:disabled{display:none}
+.av-rbx{width:100%;font:inherit;font-size:15px;font-weight:700;padding:9px 10px;border-radius:calc(var(--r-card,16px) * .6);border:1px solid var(--borda);background:var(--card2);color:var(--fg);-webkit-appearance:none}
+.av-col.r .av-rbx{background:rgba(0,0,0,.18);border-color:rgba(255,255,255,.3);color:var(--on-heroi)}
+.av-col.r .av-rbx::placeholder{color:var(--on-heroi);opacity:.7}
+.av-corpo{gap:12px;padding:13px}
+.av-vazio{margin:0;font-size:14px;color:var(--sub)}
+.av-mot,.av-alertas{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px;font-size:14px;line-height:1.35}
+.av-mot li,.av-alertas li{display:flex;gap:8px}
+.av-mot li:before{content:"•";color:var(--c)}
+.av-alertas{padding-top:10px;border-top:1px solid var(--borda)}
+.av-alertas .marca{width:20px;height:20px;font-size:11px}
 .av-limpar{width:100%;color:var(--neg)}
+/* Barra do veredito presa embaixo, acima da navegação (some com o teclado aberto). */
+.av-barra{position:fixed;left:0;right:0;bottom:calc(68px + max(8px,env(safe-area-inset-bottom)));z-index:19;display:flex;align-items:center;gap:10px;padding:10px max(16px,env(safe-area-inset-right)) 10px max(16px,env(safe-area-inset-left));background:var(--folha);border-top:2px solid var(--c)}
+.av-barra>b{flex:none;font-size:28px;font-weight:800;color:var(--c);letter-spacing:-.02em;white-space:nowrap}
+.av-barra .s{display:flex;flex-direction:column;align-items:flex-start;gap:3px;min-width:0}
+.av-barra .selo{padding:3px 9px;font-size:12px;font-weight:800;white-space:nowrap}
+.av-barra small{font-size:12px;color:var(--sub)}
+[data-cor=vazio]{--c:var(--sub)}
+body[data-aba=avaliar]{padding-bottom:calc(160px + env(safe-area-inset-bottom))}
+body.digitando .barra,body.digitando .av-barra{display:none}
 
 [data-cor]{--c:var(--sub);--sf:var(--card2);--cf:var(--fg)}
 [data-cor=muito]{--c:var(--pos);--sf:var(--pos);--cf:var(--on-status)}
@@ -628,9 +632,10 @@ function paginaAvaliador(D, P) {
     }
     return d;
   }
+  // v7.0: as vendas/dia também entram na comparação linha a linha, então a
+  // resposta da fila redesenha a aba toda (é barato: no máximo 8 itens).
   function redesenharItens() {
-    desenharLado('dou', proposta.dou.map(resolver));
-    desenharLado('recebo', proposta.recebo.map(resolver));
+    atualizar();
   }
   function pedirVendas() {
     var ids = [];
@@ -682,30 +687,77 @@ function paginaAvaliador(D, P) {
     }
   };
 
-  // Linha do item: o número grande é o value base ("RAP" ao lado quando o item
-  // não tem value); embaixo, o RAP como informação.
-  function linha(i, lado, k) {
-    var det = detalhes(i, lado);
+  // v7.0: bloco do item na coluna: foto, nome, value base grande ("RAP" ao lado
+  // quando o item não tem value) e as vendas/dia. Hold e simulação ficam aqui;
+  // demanda e OP do item principal vão para a comparação linha a linha.
+  function blocoItem(i, lado, k) {
+    var s = [];
+    var ln = LINHAS[i.id];
+    if (ln && ln.tv) s.push(esc(ln.tv));
+    else if (vendas.pendentes[i.id]) s.push('…/dia');
+    if (i.hold) s.push('hold');
+    if (lado === 'dou' && !i.doInventario) s.push('simulação');
     return (
-      '<div class="item" data-lado="' + lado + '" data-k="' + k + '">' + miniatura(i.id) +
-      '<div class="item-txt"><span class="nome">' + esc(i.nome) + '</span>' +
-      (det ? '<span class="det">' + det + '</span>' : '') + '</div>' +
-      '<div class="item-num"><span class="v">' + fmtNum(valorEfetivo(i)) +
-      (i.value == null ? '<small class="tag">RAP</small>' : '') + '</span>' +
-      '<span class="r"><small>RAP</small>' + fmtNum(i.rap) + '</span></div></div>'
+      '<button type="button" class="av-tile" data-k="' + k + '">' + miniatura(i.id) +
+      '<span class="t"><span class="nm">' + esc(i.nome) + '</span>' +
+      '<b>' + fmtNum(valorEfetivo(i)) + (i.value == null ? '<small>RAP</small>' : '') + '</b>' +
+      (s.length ? '<small>' + s.join(' · ') + '</small>' : '') + '</span></button>'
     );
   }
   function desenharLado(lado, itens) {
-    $('av-' + lado).innerHTML = itens.length
-      ? itens.map(function (i, k) { return linha(i, lado, k); }).join('')
-      : '<p class="av-vazia">Nenhum item. Toque em "Adicionar item".</p>';
-    $('n-' + lado).textContent = itens.length + '/' + P.maxItens;
+    $('av-' + lado).innerHTML = itens.map(function (i, k) { return blocoItem(i, lado, k); }).join('');
     $('add-' + lado).disabled = itens.length >= P.maxItens;
   }
   // Total do lado em value base (Robux incluídos; quem recebe já está com a taxa).
   function desenharTotal(lado, t) {
     $('tot-' + lado).textContent = fmtNum(t.value);
-    $('tot-' + lado + '-sub').textContent = t.robux ? 'value base · inclui ' + fmtNum(t.robux) + ' Robux' : 'value base';
+    $('tot-' + lado + '-sub').textContent = t.robux ? 'inclui ' + fmtNum(t.robux) + ' Robux' : '';
+  }
+  // ---------- v7.0: comparação linha a linha (item principal de cada lado) ----------
+  function principal(itens) {
+    var m = null;
+    itens.forEach(function (i) { if (!m || valorEfetivo(i) > valorEfetivo(m)) m = i; });
+    return m;
+  }
+  function celVendas(i) {
+    if (!i) return '<span class="sub">—</span>';
+    var ln = LINHAS[i.id];
+    if (ln && ln.tv) return '<span class="' + esc(ln.c) + '">' + esc(ln.tv) + '</span>';
+    return '<span class="sub">' + (vendas.pendentes[i.id] ? '…' : '—') + '</span>';
+  }
+  function celDemanda(i) {
+    return i && i.dem >= 0 ? '<span class="' + corDem(i.dem) + '">' + esc(P.demandaCurta[i.dem]) + '</span>' : '<span class="sub">—</span>';
+  }
+  // Mesma regra do OP da linha de antes (vendasEOp): Recebo = dar; Dou = pedir.
+  function celOp(i, lado) {
+    if (!i || i.foraRolimons) return '<span class="sub">—</span>';
+    var ln = LINHAS[i.id];
+    var dem = i.dem;
+    if (!(dem >= 0)) {
+      if (ln && ln.v != null) dem = demandaPorVendasP(ln.v);
+      else if (vendas.pendentes[i.id]) return '<span class="sub">…</span>';
+    }
+    var base = valorEfetivo(i);
+    if (!(base > 0)) return '<span class="sub">—</span>';
+    var op = opFaixas(base, dem, P.opRegua);
+    return lado === 'recebo'
+      ? '<span class="warn">dar ' + faixaPct(op.dar.pct) + '</span>'
+      : '<span class="pos">pedir ' + faixaPct(op.pedir.pct) + '</span>';
+  }
+  function linhaTb(t, a, b) {
+    return '<div><b>' + a + '</b><span>' + t + '</span><b>' + b + '</b></div>';
+  }
+  function desenharTabela(dou, rec, td, tr) {
+    var el = $('av-tb');
+    var mostra = dou.length > 0 && rec.length > 0;
+    el.classList.toggle('oculto', !mostra);
+    if (!mostra) return;
+    var pd = principal(dou);
+    var pr = principal(rec);
+    el.innerHTML = linhaTb('RAP', fmtNum(td.rap), fmtNum(tr.rap)) +
+      linhaTb('Vendas/dia', celVendas(pd), celVendas(pr)) +
+      linhaTb('Demanda', celDemanda(pd), celDemanda(pr)) +
+      linhaTb('OP', celOp(pd, 'dou'), celOp(pr, 'recebo'));
   }
 
   function somar(itens, robuxBruto, recebe) {
@@ -724,27 +776,6 @@ function paginaAvaliador(D, P) {
   function tipoTroca(td, tr) {
     return tipoTrocaLados(td, tr);
   }
-  function desenharResumo(td, tr, tipo) {
-    var vazio = !td.qtd && !tr.qtd && !td.robux && !tr.robux;
-    $('av-resumo-bloco').classList.toggle('oculto', vazio);
-    $('av-vazio').classList.toggle('oculto', !vazio);
-    if (vazio) return;
-    var linhas = [
-      ['Value', td.value, tr.value, 'forte'],
-      ['RAP', td.rap, tr.rap, ''],
-    ];
-    var h = linhas.map(function (l) {
-      return '<tr class="' + l[3] + '"><td>' + l[0] + '</td><td class="num">' + fmtNum(l[1]) + '</td><td class="num">' +
-        fmtNum(l[2]) + '</td>' + celDif(l[2] - l[1], l[1]) + '</tr>';
-    }).join('');
-    h += '<tr><td>Robux</td><td class="num">' + fmtNum(td.robux) + '</td><td class="num">' + fmtNum(tr.robux) +
-      (proposta.robuxRecebo ? '<span class="det">de ' + fmtNum(proposta.robuxRecebo) + '</span>' : '') + '</td>' +
-      celDif(tr.robux - td.robux, 0) + '</tr>';
-    h += '<tr><td>Itens</td><td class="num">' + td.qtd + '</td><td class="num">' + tr.qtd + '</td><td class="num sub">' +
-      (tipo || (td.qtd && tr.qtd ? 'sidegrade' : '—')) + '</td></tr>';
-    $('av-resumo').tBodies[0].innerHTML = h;
-  }
-
   function montarAlertas(dou, rec, tipo) {
     var L = [];
     var porChave = {};
@@ -778,32 +809,19 @@ function paginaAvaliador(D, P) {
       if (i.dem >= 3 && i.tend === 3) add(i, 'você está dando um item com demanda alta e em alta', 'warn');
       if (i.val24) add(i, 'value mudou ' + fmtPctSinal(i.val24) + ' em 24h', 'sub');
     });
-    if (tipo === 'upgrade') {
-      add(null, 'Upgrade (você dá mais itens e recebe menos, porém maiores): pagar até ' + Math.abs(P.reguaUp[3]) +
-        '% a mais é ótimo; acima de ' + Math.abs(P.reguaUp[1]) + '% não vale.', 'sub');
-    }
-    if (tipo === 'downgrade') {
-      add(null, 'Downgrade (você recebe mais itens, porém menores): o normal é receber a mais; abaixo de +' + P.reguaDown[1] +
-        '% não compensa, de +' + P.reguaDown[2] + '% vale a pena.', 'sub');
-    }
-    if (proposta.robuxRecebo) add(null, 'Os Robux recebidos já estão com o desconto de ' + Math.round(P.taxaRobux * 100) + '% do Roblox.', 'sub');
+    // v7.0: as explicações da régua (upgrade/downgrade) e da taxa do Robux
+    // foram para a Ajuda; aqui ficam só os alertas.
     return L;
   }
+  // v7.0: só os alertas vermelhos e laranja, sempre abertos, logo abaixo dos motivos.
   function desenharAlertas(L) {
-    var pior = 'sub';
-    L.forEach(function (x) {
-      if (x.cor === 'neg') pior = 'neg';
-      else if (x.cor === 'warn' && pior !== 'neg') pior = 'warn';
-    });
-    $('n-alertas').className = 'cont ' + pior;
-    $('n-alertas').textContent = L.length;
-    $('av-alertas').innerHTML = L.length
-      ? L.map(function (x) {
-          return '<li><span class="marca ' + x.cor + '">!</span><span class="txt">' +
-            (x.nome ? '<b>' + esc(x.nome) + '</b>' + (x.n > 1 ? ' (' + x.n + ' cópias)' : '') + ': ' : '') +
-            '<span class="' + x.cor + '">' + esc(x.txt) + '</span></span></li>';
-        }).join('')
-      : '<li class="sub">Nenhum alerta.</li>';
+    var fortes = L.filter(function (x) { return x.cor === 'neg' || x.cor === 'warn'; });
+    $('av-alertas').classList.toggle('oculto', !fortes.length);
+    $('av-alertas').innerHTML = fortes.map(function (x) {
+      return '<li><span class="marca ' + x.cor + '">!</span><span class="txt">' +
+        (x.nome ? '<b>' + esc(x.nome) + '</b>' + (x.n > 1 ? ' (' + x.n + ' cópias)' : '') + ': ' : '') +
+        '<span class="' + x.cor + '">' + esc(x.txt) + '</span></span></li>';
+    }).join('');
   }
 
   // ---------- Veredito (mensagem "vale ou não a pena") ----------
@@ -811,24 +829,37 @@ function paginaAvaliador(D, P) {
   function veredito(dou, rec, td, tr, tipo) {
     return calcularVeredito(dou, rec, td, tr, tipo, proposta.robuxRecebo, P);
   }
-  // Cartão do veredito: pílula com o nome, a % grande (value base) e os motivos.
+  // v7.0: barra presa embaixo (a % grande na cor do veredito + o selo · W/F/L +
+  // a forma) e, no cartão de baixo, os motivos.
   function desenharVeredito(v, td, tr) {
     var el = $('av-veredito');
-    el.classList.toggle('oculto', !v);
-    if (!v) return;
-    el.setAttribute('data-cor', corVeredito(v));
+    var mot = $('av-ver-motivos');
+    $('av-vazio').classList.toggle('oculto', !!v);
+    mot.classList.toggle('oculto', !v);
+    $('av-ver-titulo').classList.toggle('oculto', !v);
+    if (!v) {
+      el.setAttribute('data-cor', 'vazio');
+      $('av-ver-pct').textContent = '—';
+      $('av-ver-sub').textContent = 'Monte os dois lados';
+      mot.innerHTML = '';
+      return;
+    }
+    var cor = corVeredito(v);
+    el.setAttribute('data-cor', cor);
+    mot.setAttribute('data-cor', cor);
+    $('av-ver-titulo').setAttribute('data-cor', cor);
     $('av-ver-titulo').textContent = tituloWFL(v);
-    var pct = '';
-    var sub = '';
+    var pct = '—';
+    var sub = v.forma || '';
     if (v.nivel != null) {
       var dif = tr.value - td.value;
       var difTxt = (dif > 0 ? '+' : '') + fmtNum(dif);
       pct = td.value > 0 ? fmtPctSinal((dif / td.value) * 100) : difTxt;
-      sub = 'em value · ' + difTxt + (v.forma ? ' · ' + v.forma : '');
+      sub = (v.forma ? v.forma + ' · ' : '') + difTxt + ' em value';
     }
     $('av-ver-pct').textContent = pct;
     $('av-ver-sub').textContent = sub;
-    $('av-ver-motivos').innerHTML = v.motivos.map(function (m) { return '<li>' + esc(m) + '</li>'; }).join('');
+    mot.innerHTML = v.motivos.map(function (m) { return '<li>' + esc(m) + '</li>'; }).join('');
   }
 
   function atualizar() {
@@ -842,8 +873,8 @@ function paginaAvaliador(D, P) {
     desenharTotal('dou', td);
     desenharTotal('recebo', tr);
     desenharVeredito(veredito(dou, rec, td, tr, tipo), td, tr);
-    desenharResumo(td, tr, tipo);
     desenharAlertas(montarAlertas(dou, rec, tipo));
+    desenharTabela(dou, rec, td, tr);
     salvar();
     atualizarDiagPonte();
     pedirMiniaturas(dou.concat(rec).map(function (i) { return i.id; }));
@@ -1029,6 +1060,9 @@ function paginaAvaliador(D, P) {
       proposta[chave] = inteiro(inp.value);
       atualizar();
     });
+    // v7.0: com o teclado aberto, a barra de baixo e a do veredito somem.
+    inp.addEventListener('focus', function () { document.body.classList.add('digitando'); });
+    inp.addEventListener('blur', function () { document.body.classList.remove('digitando'); });
   });
 
   var fbSeg = document.querySelectorAll('#fb-seg button');
