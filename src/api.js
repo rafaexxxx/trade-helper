@@ -162,20 +162,24 @@ async function buscarItensRolimons() {
 
 // Endereços das miniaturas (API pública de thumbnails do Roblox), com cache.
 // São opcionais: se falhar, o painel segue sem imagens.
+// v7.0: as fotos ficam grandes nas telas novas (Vitrine, Anúncios), então o
+// tamanho passou de 110x110 para 250x250. As guardadas no tamanho antigo (sem
+// "t: 250") são buscadas de novo na próxima vez; até lá, servem as antigas.
+const MINIATURA_TAM = 250;
 async function buscarMiniaturas(store, assetIds) {
   const cache = store.ler('miniaturas') || {};
   const validade = cfg.MINIATURAS_CACHE_HORAS * 3600000;
   const agora = Date.now();
-  const faltando = assetIds.filter((id) => !cache[id] || agora - cache[id].em > validade);
+  const faltando = assetIds.filter((id) => !cache[id] || cache[id].t !== MINIATURA_TAM || agora - cache[id].em > validade);
   for (let i = 0; i < faltando.length; i += 100) {
     const lote = faltando.slice(i, i + 100);
     try {
       const j = await requisitar(
         'https://thumbnails.roblox.com/v1/assets?assetIds=' + lote.join(',') +
-          '&returnPolicy=PlaceHolder&size=110x110&format=Png&isCircular=false'
+          '&returnPolicy=PlaceHolder&size=' + MINIATURA_TAM + 'x' + MINIATURA_TAM + '&format=Png&isCircular=false'
       );
       for (const d of j.data || []) {
-        if (d.imageUrl && d.state === 'Completed') cache[String(d.targetId)] = { url: d.imageUrl, em: agora };
+        if (d.imageUrl && d.state === 'Completed') cache[String(d.targetId)] = { url: d.imageUrl, em: agora, t: MINIATURA_TAM };
       }
     } catch (e) {
       // sem miniaturas desta vez
