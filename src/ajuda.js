@@ -281,7 +281,7 @@ function capitulo2(cfg) {
     <div class="aj-meio">→</div>
     <div class="aj-bx"><small>Para você é</small><b class="pos">seu downgrade</b><span>Você recebe a mais</span></div>
   </div>
-  <p>Por isso a etiqueta dos anúncios no app já vem traduzida para o seu lado: <b>Upgrade</b> (em roxo), <b>Downgrade</b> (em laranja) ou Sidegrade. Quando o anúncio só pede uma tag, o app monta uma sugestão (o lado Dou fica tracejado) no formato que costuma ser aceito, e pode pedir <b>só uma parte</b> do que ele oferece:</p>
+  <p>Por isso a etiqueta das linhas na aba Anúncios já vem traduzida: "seu upgrade", "seu downgrade" ou "sidegrade". Quando o anúncio só pede uma tag, o app monta uma sugestão (o lado Dou fica tracejado) no formato que costuma ser aceito, e pode pedir <b>só uma parte</b> do que ele oferece:</p>
   <ul class="aj-lista">
     <li><b>Seu downgrade</b> (tag upgrade): você dá <b>1 item só</b> e pede pelo menos ${minMedios} itens médios dele.</li>
     <li><b>Seu upgrade</b> (tag downgrade): você dá vários itens (de 2 a ${max}) por <b>1 item só</b> dele.</li>
@@ -296,7 +296,7 @@ function capitulo2(cfg) {
     <div class="an-it aberto">
       <div class="an-linha">
         <span class="an-main">
-          <span class="an-l1"><b>jogador_exemplo</b><span class="an-etq f-up">Upgrade</span><span class="an-tempo">há 12 min</span></span>
+          <span class="an-l1"><b>jogador_exemplo</b><span class="an-etq">seu upgrade</span><span class="an-tempo">há 12 min</span></span>
           <span class="an-l2"><span class="an-grp rec">${mini('vh')}</span><span class="an-tr">⇄</span><span class="an-grp dou sug">${mini('sf')}${mini('ch')}${mini('bh')}</span></span>
         </span>
         <span class="an-pct" data-cor="${vUp[1]}"><b>${pctS(pUp)}</b><small>${vUp[0]}</small></span>
@@ -466,14 +466,13 @@ function capitulo4(cfg) {
   <ul class="aj-lista">
     <li><b>O que aparece:</b> anúncios recentes do Rolimon's com vantagem para você. Os que pedem itens seus entram a partir de "Vale a pena". Os que só pedem uma tag ganham uma sugestão montada com os seus itens.</li>
     <li><b>O que fica de fora:</b> ofertas com item projected, com demanda terrível ou com o RAP subindo mais de ${pct(cfg.ALERTA_RAP_24H_PCT)} em 24h. Seus itens em hold não entram. Trade com o mesmo item dos dois lados só aparece se você não perder value.</li>
-    <li><b>Topo:</b> numa linha só, que passa para o lado, os botões <b>Filtro ▾</b>, <b>Ordem ▾</b> e <b>Meus itens ▾</b>, que abrem uma folha. O botão <b>↻</b>, preso na direita, busca de novo. Embaixo do título fica a hora da busca ("busca 14:05"); quantos anúncios foram vistos fica no Diagnóstico.</li>
-    <li><b>Meus itens:</b> só os itens marcados entram nos anúncios: nos que pedem seus itens, nas sugestões (inclusive como add) e no Plano. Desmarque o que não quer trocar (um ovo de 200 Robux, por exemplo); marque só um para ver só os anúncios dele. A folha mostra em quantos anúncios cada item é pedido. A escolha fica salva no iPhone e vale também para as notificações da conta principal. O chip mostra <b>"2 de 3 itens"</b> enquanto houver algum desmarcado.</li>
-    <li><b>Um por vez:</b> a fila em cima passa para o lado; cada anúncio dela mostra, numa linha só, o que você dá → o que você recebe, a %, a forma e há quanto tempo. Toque num para abrir. Embaixo fica UM anúncio aberto: Dou e Recebo lado a lado, com as fotos grandes (o lado com mais itens ganha mais espaço). No meio ficam a % e quanto de value você ganha ou perde (ex.: +464).</li>
-    <li><b>Em cada foto:</b> em cima, o value do item e as vendas por dia ("23/d": verde a partir de 1 venda por dia, vermelho abaixo disso; "…/d" enquanto não chegam). Embaixo, o nome; nome grande vira a sigla do Rolimon's ou a primeira palavra com "…". A comparação de baixo mostra o RAP de cada lado e o OP do item principal.</li>
-    <li><b>Degraus:</b> quando a sugestão tem duas ofertas (abertura e teto, ou abertura e mínimo), toque numa caixa para ver a cena daquela oferta. Com uma oferta só, a segunda caixa é o limite em número.</li>
-    <li><b>Filtro (Todos, Upgrade, Downgrade):</b> a forma da trade do seu lado. Upgrade (roxo): você dá vários itens e recebe 1. Downgrade (laranja): você dá 1 e recebe 2 ou 3. Vale para anúncios que pedem seus itens e para as sugestões; sidegrade e "por Robux" só aparecem em Todos. Se o anúncio aceita as duas formas, cada filtro monta a sugestão daquela forma, e por isso os números podem somar mais que Todos.</li>
+    <li><b>Topo:</b> na primeira linha, a forma da trade (com quantos anúncios cada uma tem). Na segunda, os chips <b>Um item ▾</b> (só os anúncios com aquele item seu), <b>Ordem ▾</b> e <b>Meus itens ▾</b>, que abrem uma folha. Em <b>Meus itens</b> você desmarca o que não quer ver nas sugestões (um ovo de 200 Robux, por exemplo): o item some de todas, inclusive como add, e também da aba Plano. A escolha fica salva no iPhone e vale também para as notificações da conta principal. O chip mostra <b>"2 de 3 itens"</b> enquanto houver algum desmarcado. Na terceira, quantos anúncios foram vistos e o botão <b>↻</b>, que busca de novo.</li>
+    <li><b>Filtro de um item seu:</b> mostra só os anúncios em que esse item vai no seu lado. Com um item escolhido, o chip mostra o item; o ✕ tira o filtro.</li>
+    <li><b>Selo "gira" ou "parado":</b> fica na linha fechada, ao lado do que você recebe. Usa as vendas por dia do item de maior value desse lado: "gira" a partir de 1 venda por dia, "parado" abaixo disso. As vendas são buscadas por trás, um item por vez (enquanto isso aparece "…"), e ficam guardadas por ${cfg.CARTAO_LINHA_PAGINA_H} h. Ao abrir o cartão, o selo some e cada item mostra a própria linha.</li>
+    <li><b>Linha de cada item do cartão aberto (ex.: Alta · 15/dia · OP dar 0–6%):</b> a mesma do Avaliar. Em Recebo, o OP dar (laranja); em Dou, o OP pedir (verde).</li>
+    <li><b>Todos, Seu upgrade, Seu downgrade:</b> a forma da trade do seu lado. Seu upgrade: você dá vários itens e recebe 1. Seu downgrade: você dá 1 e recebe 2 ou 3. Vale para anúncios que pedem seus itens e para as sugestões; sidegrade e "por Robux" só aparecem em Todos. Se o anúncio aceita as duas formas, cada filtro monta a sugestão daquela forma, e por isso os números podem somar mais que Todos.</li>
     <li><b>Ordem:</b> maior ganho, mais recentes ou maior value recebido.</li>
-    <li><b>Toque na foto de um item:</b> abre a tela do item, com as mudanças de RAP e value em 24h no fim. O "Ver no Rolimon's" fica embaixo dela. ${ir('aj-cartao', 'Ver a tela do item')}</li>
+    <li><b>Toque num item do cartão aberto:</b> abre a tela do item, com as mudanças de RAP e value em 24h no fim. O "Ver no Rolimon's" fica embaixo dela. ${ir('aj-cartao', 'Ver a tela do item')}</li>
     <li><b>↻ (atualizar):</b> os anúncios são buscados ao abrir a aba, no máximo a cada ${cfg.ANUNCIOS_CACHE_MIN} min. Os vistos ficam guardados por ${cfg.ANUNCIOS_GUARDAR_HORAS} h e podem já ter sido fechados.</li>
   </ul>
 
@@ -610,7 +609,7 @@ function perguntas(cfg) {
     ['Como eu evoluo o meu inventário?', 'Alternando upgrade com pouco OP e downgrade pedindo mais OP, com calma e só com itens de boa demanda.', 'aj-escada', 'Ver a escadinha'],
     ['A trade parece ótima. Aceito logo?', "Antes, confira a demanda e quantas vendas o item tem no Rolimon's.", 'aj-calma', 'Ver o que conferir'],
     ['Paguei 4% a mais num upgrade. Fiz besteira?', 'Não: num upgrade, pagar até ' + pct(ru[3]) + ' a mais é ótimo, desde que o item que você recebeu tenha boa demanda.', 'aj-regua', 'Ver as réguas'],
-    ['O anúncio diz "downgrade", mas o app mostra "Upgrade". Está errado?', 'Não. A tag é do dono do anúncio; o app mostra a trade do seu lado.', 'aj-tags', 'Ver a explicação'],
+    ['O anúncio diz "downgrade", mas o app mostra "seu upgrade". Está errado?', 'Não. A tag é do dono do anúncio; o app mostra a trade do seu lado.', 'aj-tags', 'Ver a explicação'],
     ['Por que o app ignora o RAP no veredito?', 'Porque o RAP chega atrasado e pode ser manipulado. Ele aparece como informação; quem decide é o value.', 'aj-cap1', 'Ver no capítulo 1'],
     ['Recebi 1.000 Robux, mas a conta mostra ' + num(Math.floor(1000 * (1 - cfg.TAXA_ROBUX))) + '. Por quê?', 'O Roblox fica com ' + taxa + '% dos Robux de quem recebe. O app já mostra o que sobra.', 'aj-robux', 'Ver no capítulo 1'],
     ['Por que não consigo colocar um item meu na trade?', 'Ele deve estar em hold (2 dias depois de uma trade, 7 dias depois de comprar no catálogo) ou é um UGC, que só pode ser revendido, não trocado.', 'aj-regras', 'Ver as regras'],
