@@ -600,13 +600,21 @@ function ficha(pilha, i, o) {
 function pequeno(w, r, k) {
   const c = r.comparacoes.dia;
   const foto = criarFotos(r, k);
+  const soUm = r.itens.length === 1;
 
   const topo = w.addStack();
   topo.layoutHorizontally();
   topo.centerAlignContent();
-  texto(topo, hora(r.agora), Font.semiboldSystemFont(11), k.sub);
-  topo.addSpacer();
-  seloAlerta(topo, r.riscos.length, k);
+  if (soUm) {
+    // v7.4.4: com 1 item, o nome do app no topo e a hora à direita.
+    texto(topo, 'TRADE HELPER', Font.heavySystemFont(9.5), k.sub, 0.8);
+    topo.addSpacer();
+    texto(topo, hora(r.agora), Font.semiboldSystemFont(10), k.sub);
+  } else {
+    texto(topo, hora(r.agora), Font.semiboldSystemFont(11), k.sub);
+    topo.addSpacer();
+    seloAlerta(topo, r.riscos.length, k);
+  }
 
   // v7.4.3: foto do item; sem foto (tema vidro) fica só a pílula.
   function fotoOuPilula(st, i, lado) {
@@ -635,15 +643,24 @@ function pequeno(w, r, k) {
   // O total não aparece: seria o mesmo número.
   if (itens.length === 1) {
     const i = itens[0];
+    // Tudo centralizado: uma linha com espaço dos dois lados.
+    const centro = (fn) => {
+      const l = w.addStack();
+      l.layoutHorizontally();
+      l.centerAlignContent();
+      l.addSpacer();
+      fn(l);
+      l.addSpacer();
+    };
     w.addSpacer();
-    const heroi = w.addStack();
-    heroi.layoutHorizontally();
-    heroi.centerAlignContent();
-    fotoOuPilula(heroi, i, 58);
-    heroi.addSpacer();
+    centro((l) => fotoOuPilula(l, i, 54));
+    w.addSpacer(6);
+    // v7.4.4: o tamanho do valor segue a quantidade de dígitos.
+    const v = String(a.abreviar(i.valorEfetivo));
+    const fonte = v.length <= 3 ? 40 : v.length <= 5 ? 34 : v.length <= 6 ? 30 : 26;
+    centro((l) => texto(l, v, Font.heavySystemFont(fonte), i.hold ? k.sub : k.fg, 0.5));
+    centro((l) => textoVar(l, i, 10.5));
     w.addSpacer();
-    texto(w, a.abreviar(i.valorEfetivo), Font.heavySystemFont(30), i.hold ? k.sub : k.fg, 0.6);
-    textoVar(w, i, 11);
     return;
   }
 
