@@ -608,40 +608,63 @@ function pequeno(w, r, k) {
   topo.addSpacer();
   seloAlerta(topo, r.riscos.length, k);
 
+  // v7.4.3: foto do item; sem foto (tema vidro) fica só a pílula.
+  function fotoOuPilula(st, i, lado) {
+    const img = foto(i);
+    if (img) {
+      const wi = st.addImage(img);
+      const t = tam(lado, lado);
+      if (t) wi.imageSize = t;
+      wi.cornerRadius = Math.round(lado * 0.24);
+      return;
+    }
+    const p = st.addStack();
+    p.backgroundColor = k.ficha;
+    p.cornerRadius = Math.round(lado * 0.3);
+    const t = tam(lado, lado);
+    if (t) p.size = t;
+  }
+  function textoVar(st, i, tamanho) {
+    const vi = varItem(i, c.base);
+    if (vi != null) texto(st, (vi > 0 ? '▲ ' : vi < 0 ? '▼ ' : '') + a.fmtPct(Math.abs(vi)) + ' em 24h', Font.semiboldSystemFont(tamanho), i.hold ? k.sub : corVarK(vi, k), 0.7);
+    else if (i.hold) texto(st, 'hold', Font.semiboldSystemFont(tamanho), k.sub, 0.8);
+  }
+  const itens = r.itens.slice(0, 3);
+
+  // v7.4.3: com 1 item só, ele é o destaque (foto grande, valor e variação).
+  // O total não aparece: seria o mesmo número.
+  if (itens.length === 1) {
+    const i = itens[0];
+    w.addSpacer();
+    const heroi = w.addStack();
+    heroi.layoutHorizontally();
+    heroi.centerAlignContent();
+    fotoOuPilula(heroi, i, 58);
+    heroi.addSpacer();
+    w.addSpacer();
+    texto(w, a.abreviar(i.valorEfetivo), Font.heavySystemFont(30), i.hold ? k.sub : k.fg, 0.6);
+    textoVar(w, i, 11);
+    return;
+  }
+
   w.addSpacer();
   texto(w, a.abreviar(r.totais.value), Font.heavySystemFont(34), k.fg, 0.6);
   w.addSpacer(3);
   linha24h(w, r, c, k, 11);
   w.addSpacer();
 
-  // v7.4.2: no máximo 3 itens. Com 1 ou 2, cada item vira uma linha (foto,
-  // nome, valor e a variação de 24h), para o widget não ficar vazio.
-  const itens = r.itens.slice(0, 3);
-  if (itens.length <= 2) {
+  // v7.4.3: com 2 itens, cada um vira uma linha (foto ou pílula, valor e
+  // variação de 24h). Com 3, a fila de fotos.
+  if (itens.length === 2) {
     itens.forEach((i, n) => {
       if (n) w.addSpacer(4);
       const ln = w.addStack();
       ln.layoutHorizontally();
       ln.centerAlignContent();
       ln.spacing = 6;
-      const img = foto(i);
-      if (img) {
-        const wi = ln.addImage(img);
-        const t = tam(30, 30);
-        if (t) wi.imageSize = t;
-        wi.cornerRadius = 7;
-      }
-      const col = ln.addStack();
-      col.layoutVertically();
-      texto(col, String(nomeCurto(i, 14)), Font.semiboldSystemFont(10), k.sub, 0.7);
-      const l1 = col.addStack();
-      l1.layoutHorizontally();
-      l1.centerAlignContent();
-      l1.spacing = 4;
-      texto(l1, a.abreviar(i.valorEfetivo), Font.boldSystemFont(13), i.hold ? k.sub : k.fg, 0.8);
-      const vi = varItem(i, c.base);
-      if (vi != null) texto(l1, (vi > 0 ? '▲' : vi < 0 ? '▼' : '') + a.fmtPct(Math.abs(vi)), Font.semiboldSystemFont(10), i.hold ? k.sub : corVarK(vi, k), 0.8);
-      else if (i.hold) texto(l1, 'hold', Font.semiboldSystemFont(10), k.sub, 0.8);
+      fotoOuPilula(ln, i, 24);
+      texto(ln, a.abreviar(i.valorEfetivo), Font.boldSystemFont(12), i.hold ? k.sub : k.fg, 0.8);
+      textoVar(ln, i, 9.5);
     });
     return;
   }
@@ -653,8 +676,8 @@ function pequeno(w, r, k) {
     s.layoutVertically();
     s.centerAlignContent();
     const box = s.addStack();
-    // v7.4.2: no vidro, sem fundo (o iOS pintava a caixa de branco e a sigla sumia).
-    if (!SEM_FOTOS) box.backgroundColor = k.ficha;
+    // v7.4.3: no vidro fica só a pílula (sem nome).
+    box.backgroundColor = k.ficha;
     box.cornerRadius = 8;
     box.setPadding(2, 2, 2, 2);
     const img = foto(i);
@@ -663,9 +686,6 @@ function pequeno(w, r, k) {
       const t = tam(24, 24);
       if (t) wi.imageSize = t;
       wi.cornerRadius = 6;
-    } else if (SEM_FOTOS) {
-      // v7.4.1 (vidro): o nome curto no lugar da foto.
-      texto(box, String(nomeCurto(i, 5)).slice(0, 6), Font.boldSystemFont(8.5), i.hold ? k.sub : k.fg, 0.6);
     } else {
       const t = tam(24, 24);
       if (t) box.size = t;
