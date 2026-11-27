@@ -1,0 +1,32 @@
+# Trade Helper na nuvem · configuração do Cloudflare Worker
+# Publicado sozinho pelo GitHub Actions (.github/workflows/nuvem.yml)
+# a cada push que mexe em nuvem/**. NÃO edite o código pelo painel da
+# Cloudflare: o próximo push apaga a edição.
+#
+# Segredos (BOT_TOKEN, SENHA_SETUP, MEU_ID) NUNCA entram aqui: o repositório
+# é público. Eles ficam só no Worker (Settings > Variables and Secrets) e o
+# deploy não mexe neles.
+
+# O nome precisa ser EXATAMENTE o do Worker que já existe. Se mudar,
+# o deploy cria um Worker novo, sem os segredos.
+name = "trade-helper"
+main = "src/index.js"
+compatibility_date = "2025-09-01"
+workers_dev = true
+
+# Mantém as variáveis criadas no painel (os Secrets já são mantidos sempre).
+keep_vars = true
+
+[observability]
+enabled = true
+
+# Tarefa agendada (horário UTC): a cada 5 min busca o catálogo do Rolimon's
+# e guarda no KV; na primeira rodada de cada hora também tira o retrato da hora.
+[triggers]
+crons = ["*/5 * * * *"]
+
+# Armazenamento KV. O ID não é segredo (sem a chave da conta ele não serve
+# para nada). Criado à mão no painel: Storage & Databases > KV > "TH".
+[[kv_namespaces]]
+binding = "TH"
+id = "COLE_AQUI_O_ID_DO_KV"
