@@ -10,6 +10,8 @@
 # O nome precisa ser EXATAMENTE o do Worker que já existe. Se mudar,
 # o deploy cria um Worker novo, sem os segredos.
 name = "trade-helper"
+# Número da conta Cloudflare. Não é segredo: sem o token não dá acesso a nada.
+account_id = "8fdd4ee74ab0d5596af689841a9dea99"
 main = "src/index.js"
 compatibility_date = "2025-09-01"
 workers_dev = true
@@ -29,4 +31,4 @@ crons = ["*/5 * * * *"]
 # para nada). Criado à mão no painel: Storage & Databases > KV > "TH".
 [[kv_namespaces]]
 binding = "TH"
-id = "COLE_AQUI_O_ID_DO_KV"
+id = "e11b47b12761461090d8e2bbd190d303"

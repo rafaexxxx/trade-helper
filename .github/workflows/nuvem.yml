@@ -2,8 +2,8 @@
 # em nuvem/**. Também dá para rodar à mão: aba Actions > "Publicar nuvem" >
 # Run workflow.
 #
-# Precisa de dois Secrets do repositório (Settings > Secrets and variables >
-# Actions): CLOUDFLARE_API_TOKEN e CLOUDFLARE_ACCOUNT_ID.
+# Precisa de um Secret do repositório (Settings > Secrets and variables >
+# Actions): CLOUDFLARE_API_TOKEN. O número da conta está no wrangler.toml.
 
 name: Publicar nuvem
 
@@ -35,7 +35,6 @@ jobs:
         uses: cloudflare/wrangler-action@953926a2e2182532811c01a25e53647d93bf07c0 # v4.1.3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: nuvem
           wranglerVersion: '4.136.3'
           command: deploy

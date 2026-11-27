@@ -37,11 +37,11 @@ Também dá para rodar à mão: GitHub → **Actions** → **Publicar nuvem** �
 
 ### Preparar uma vez
 1. **Cloudflare → API Tokens**: criar um token com o modelo **Edit Cloudflare Workers**.
-2. **GitHub → repositório → Settings → Secrets and variables → Actions**, dois *Repository secrets*:
+2. **GitHub → repositório → Settings → Secrets and variables → Actions**, um *Repository secret*:
    - `CLOUDFLARE_API_TOKEN` = o token do passo 1
-   - `CLOUDFLARE_ACCOUNT_ID` = o Account ID (aparece na página inicial da conta na Cloudflare)
-3. **Cloudflare → Storage & Databases → KV → Create**, nome `TH`. Copie o **ID** para o
-   `wrangler.toml` (o ID não é segredo).
+3. **Cloudflare → Storage & databases → Workers KV → Create a KV namespace**, nome `TH`
+   (já feito em 2026-11-27). O **ID** dele e o `account_id` da conta ficam no `wrangler.toml`:
+   nenhum dos dois é segredo.
 4. Depois do primeiro deploy automático, abra uma vez
    `https://trade-helper.rafaelpmsiii.workers.dev/setup?k=SUA_SENHA_SETUP`
    para registrar o comando `/app`.
