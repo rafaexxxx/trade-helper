@@ -70,8 +70,17 @@ function temaWidget() {
   }
   if (p === 'claro' || p === 'angel' || p === 'light') return 'claro';
   if (p === 'oled' || p === 'preto' || p === 'black') return 'oled';
+  // v7.4.1: modo transparente/vidro do iPhone. O iOS tira as cores e as fotos
+  // viram quadrados brancos; aqui as fotos saem e entra o nome curto do item.
+  // As cores seguem o "iphone" (o iOS repinta por cima de qualquer jeito).
+  if (p === 'vidro' || p === 'transparente' || p === 'clear') {
+    SEM_FOTOS = true;
+    return 'iphone';
+  }
   return 'iphone';
 }
+// v7.4.1: true no tema "vidro" (fotos trocadas pelo nome curto).
+let SEM_FOTOS = false;
 
 // Cores (objetos Color) do tema. O véu e o cadeado das fotos em hold são
 // desenhados numa imagem, por isso não podem ser dinâmicos.
@@ -426,6 +435,7 @@ function fotoApagada(img, k) {
 function criarFotos(r, k) {
   const cache = {};
   return function (i) {
+    if (SEM_FOTOS) return null;
     const id = String(i.assetId);
     if (!(id in cache)) {
       const img = r.imagens[id] || null;
@@ -621,6 +631,9 @@ function pequeno(w, r, k) {
       const t = tam(24, 24);
       if (t) wi.imageSize = t;
       wi.cornerRadius = 6;
+    } else if (SEM_FOTOS) {
+      // v7.4.1 (vidro): o nome curto no lugar da foto.
+      texto(box, String(nomeCurto(i, 5)).slice(0, 6), Font.boldSystemFont(8.5), i.hold ? k.sub : k.fg, 0.6);
     } else {
       const t = tam(24, 24);
       if (t) box.size = t;
