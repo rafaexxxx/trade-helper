@@ -1,19 +1,26 @@
-// Tarefa agendada (cron do wrangler.toml, a cada 5 min, horário UTC).
-// É a ÚNICA parte que busca o catálogo do Rolimon's no dia a dia:
-// 1 consulta a cada 5 min, não importa quantas vezes o app for aberto.
-// Na primeira rodada de cada hora também guarda o retrato da hora (24h).
+// Tarefas agendadas (crons do wrangler.toml, horário UTC).
 //
-// Plano grátis: 10 ms de CPU por rodada. Por isso aqui só se busca, confere e
-// grava; nada de cálculo pesado (isso fica para quando o app abre).
+// 1) A cada 5 min (minutos 0, 5, 10...): busca o catálogo do Rolimon's.
+//    É a ÚNICA parte que busca o catálogo no dia a dia: 1 consulta a cada
+//    5 min, não importa quantas vezes o app for aberto. Na primeira rodada de
+//    cada hora também guarda o retrato da hora (24h).
+// 2) Fase 1 (minutos 2, 7, 12...): CRON_LINHAS lê a página de UM item no
+//    Rolimon's para as vendas/dia e o Best da Vitrine (linhas.js).
+//
+// Plano grátis: 10 ms de CPU por rodada. Por isso cada rodada faz uma coisa só:
+// buscar, conferir e gravar. Nada de cálculo pesado.
 
 import { URL_CATALOGO, buscarTexto, lerCatalogoTexto } from './rolimons.js';
 import { gravarCatalogo } from './armazem.js';
+import { CRON_LINHAS, tarefaLinhas } from './linhas.js';
 
 export async function tarefaAgendada(controller, env) {
   if (!env.TH) {
     console.log('cron: KV "TH" não está ligado (confira o wrangler.toml)');
     return;
   }
+  if (controller && controller.cron === CRON_LINHAS) return tarefaLinhas(env);
+
   const quando = controller && controller.scheduledTime ? controller.scheduledTime : Date.now();
   const retrato = new Date(quando).getUTCMinutes() < 5;
 

@@ -6,14 +6,22 @@
 //   ret:AAAA-MM-DDTHH  retrato do catálogo daquela hora (UTC), para o
 //                      "% em 24h". Some sozinho depois de 49h (expirationTtl),
 //                      então apagar não gasta gravação.
+//   mini               { assetId: { u: url da foto 250x250, em } } (miniaturas.js)
+//   linhas             { assetId: { em, ok, v: vendas/dia, b: Best, st, erro } } (linhas.js)
+//   inv:ids            [assetId, ...] do inventário, do maior value para o menor:
+//                      a fila do cron das linhas. Gravado pelo app só quando muda.
 //
 // Orçamento do plano grátis (1.000 gravações/dia): catálogo a cada 5 min = 288
-// + retratos 24 = ~312/dia. Sobram ~690 para as próximas fases.
+// + retratos 24 = ~312/dia. Fase 1: linhas ~1 por item por dia (+ novas
+// tentativas a cada 3h se der erro), fotos ~1/dia, inv:ids só quando muda.
 
-import { URL_CATALOGO, buscarTexto, lerCatalogoTexto } from './rolimons.js';
+import { URL_CATALOGO, buscarTexto, lerCatalogoTexto, linhaDoTexto } from './rolimons.js';
 
 export const CHAVE_CAT = 'cat:atual';
 export const PREFIXO_RET = 'ret:';
+export const CHAVE_MINI = 'mini';
+export const CHAVE_LINHAS = 'linhas';
+export const CHAVE_INV_IDS = 'inv:ids';
 const RETRATO_TTL_S = 49 * 3600;
 const GUARDA_MS = 5 * 60 * 1000; // no máximo 1 busca direta a cada 5 min
 const KV_VELHO_MS = 30 * 60 * 1000; // KV mais velho que isso = cron parado
@@ -90,6 +98,57 @@ export async function lerRetrato(env, ms) {
     if (r && r.value) return { itens: lerCatalogoTexto(r.value).itens, em: r.metadata ? r.metadata.em : 0 };
   }
   return null;
+}
+
+// Fase 1 (Vitrine): igual ao lerRetrato, mas tira do texto SÓ os itens pedidos
+// (regra dos 10 ms de CPU: não faz JSON.parse do retrato inteiro). O texto da
+// última hora lida fica na memória do Worker. Devolve { em, itens: { id: linha } } ou null.
+const memRet = { chave: '', texto: null, em: 0 };
+export async function lerRetratoItens(env, ms, ids) {
+  if (!env.TH) return null;
+  for (let h = 0; h <= 2; h++) {
+    const chave = chaveRetrato(ms - h * 3600000);
+    let texto = null;
+    let em = 0;
+    if (memRet.chave === chave && memRet.texto) {
+      texto = memRet.texto;
+      em = memRet.em;
+    } else {
+      const r = await env.TH.getWithMetadata(chave, 'text');
+      if (r && r.value) {
+        texto = r.value;
+        em = r.metadata ? r.metadata.em : 0;
+        memRet.chave = chave;
+        memRet.texto = texto;
+        memRet.em = em;
+      }
+    }
+    if (texto) {
+      const itens = {};
+      for (const id of ids) {
+        const l = linhaDoTexto(texto, id);
+        if (l) itens[id] = l;
+      }
+      return { em, itens };
+    }
+  }
+  return null;
+}
+
+// JSON pequeno no KV (mini, linhas, inv:ids). Falha de leitura = null.
+export async function lerJSON(env, chave) {
+  if (!env.TH) return null;
+  try {
+    return await env.TH.get(chave, 'json');
+  } catch (e) {
+    return null;
+  }
+}
+
+// Cada chamada é 1 gravação (1.000/dia no grátis): só chame quando mudou algo.
+export async function gravarJSON(env, chave, obj) {
+  if (!env.TH) return;
+  await env.TH.put(chave, JSON.stringify(obj));
 }
 
 // Para o /diag e o /app: estado do KV sem ler os textos grandes.

@@ -32,11 +32,16 @@ export async function configurar(url, env) {
       { command: 'start', description: 'Mostrar meu id do Telegram' },
     ],
   });
-  const ok = gancho.ok && cmds.ok;
+  // Fase 1: botão "Painel" fixo ao lado da caixa de mensagem (abre o Mini App).
+  const menu = await telegram(env, 'setChatMenuButton', {
+    menu_button: { type: 'web_app', text: 'Painel', web_app: { url: url.origin + '/app' } },
+  });
+  const ok = gancho.ok && cmds.ok && menu.ok;
   return texto(
-    (ok ? 'Pronto! O bot está ligado a este Worker. Volte ao Telegram e mande /app.' : 'Algo falhou.') +
+    (ok ? 'Pronto! O bot está ligado a este Worker. Volte ao Telegram: o botão "Painel" abre o app.' : 'Algo falhou.') +
       '\n\nwebhook: ' + (gancho.ok ? 'ok' : gancho.description) +
-      '\ncomandos: ' + (cmds.ok ? 'ok' : cmds.description),
+      '\ncomandos: ' + (cmds.ok ? 'ok' : cmds.description) +
+      '\nbotão Painel: ' + (menu.ok ? 'ok' : menu.description),
     ok ? 200 : 500
   );
 }

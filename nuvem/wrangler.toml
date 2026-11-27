@@ -22,10 +22,13 @@ keep_vars = true
 [observability]
 enabled = true
 
-# Tarefa agendada (horário UTC): a cada 5 min busca o catálogo do Rolimon's
-# e guarda no KV; na primeira rodada de cada hora também tira o retrato da hora.
+# Tarefas agendadas (horário UTC; o plano grátis permite 5 por conta):
+# 1) a cada 5 min busca o catálogo do Rolimon's e guarda no KV; na primeira
+#    rodada de cada hora também tira o retrato da hora;
+# 2) Fase 1: nos minutos 2, 7, 12... lê a página de 1 item (vendas/dia e Best).
+#    O texto tem que ser IGUAL ao CRON_LINHAS de src/linhas.js.
 [triggers]
-crons = ["*/5 * * * *"]
+crons = ["*/5 * * * *", "2,7,12,17,22,27,32,37,42,47,52,57 * * * *"]
 
 # Armazenamento KV. O ID não é segredo (sem a chave da conta ele não serve
 # para nada). Criado à mão no painel: Storage & Databases > KV > "TH".

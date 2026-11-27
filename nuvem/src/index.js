@@ -4,7 +4,7 @@
 // Rotas:
 //   /setup?k=SENHA  liga o bot a este Worker (webhook + comandos)
 //   /tg             webhook do Telegram (só com o cabeçalho secreto)
-//   /app            Mini App (esqueleto: confirma a trava)
+//   /app            Mini App (Fase 1: Vitrine do Inventário)
 //   /api/*          dados do Mini App, sempre pela trava (trava.js)
 // Tarefa agendada: agendado.js (cron do wrangler.toml).
 //
