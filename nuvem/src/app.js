@@ -385,7 +385,7 @@ h1{margin:0;min-width:0;max-width:100%;font-family:var(--f-titulo);font-style:va
     var i = dados.itens[Number(c.getAttribute('data-k'))]; if (!i) return;
     var linha = (i.v != null ? 'Value ' + num(i.v) + ' · ' : 'Sem value · ') + 'RAP ' + num(i.r) + (i.h ? ' · em hold' : '');
     abrir('<p><b>' + esc(i.n) + '</b>' + linha + '</p>' +
-      '<button type="button" data-acao="link" data-v="https://www.rolimons.com/item/' + esc(i.id) + '">Abrir no Rolimon's<small>↗</small></button>' +
+      '<button type="button" data-acao="link" data-v="https://www.rolimons.com/item/' + esc(i.id) + '">Abrir no Rolimon&#39;s<small>↗</small></button>' +
       '<button type="button" data-acao="link" data-v="https://www.roblox.com/catalog/' + esc(i.id) + '">Abrir no Roblox<small>↗</small></button>' +
       '<button type="button" class="fechar">Fechar</button>');
   });

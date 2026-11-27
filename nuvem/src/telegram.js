@@ -33,9 +33,15 @@ export async function configurar(url, env) {
     ],
   });
   // Fase 1: botão "Painel" fixo ao lado da caixa de mensagem (abre o Mini App).
-  const menu = await telegram(env, 'setChatMenuButton', {
-    menu_button: { type: 'web_app', text: 'Painel', web_app: { url: url.origin + '/app' } },
-  });
+  // Vale como padrão do bot e também direto na conversa do dono (MEU_ID = id do
+  // chat privado), porque o Telegram pode guardar o botão antigo ("Menu") por conversa.
+  const botao = { type: 'web_app', text: 'Painel', web_app: { url: url.origin + '/app' } };
+  const menu = await telegram(env, 'setChatMenuButton', { menu_button: botao });
+  if (menu.ok && env.MEU_ID) {
+    const doDono = await telegram(env, 'setChatMenuButton', { chat_id: Number(env.MEU_ID), menu_button: botao });
+    if (!doDono.ok) menu.description = 'padrão ok, na sua conversa: ' + doDono.description;
+    menu.ok = doDono.ok;
+  }
   const ok = gancho.ok && cmds.ok && menu.ok;
   return texto(
     (ok ? 'Pronto! O bot está ligado a este Worker. Volte ao Telegram: o botão "Painel" abre o app.' : 'Algo falhou.') +
