@@ -82,6 +82,8 @@ h1{margin:0;min-width:0;max-width:100%;font-family:var(--f-titulo);font-style:va
 .f-num{font-size:30px;font-weight:800;line-height:1.1;letter-spacing:-.02em}
 .f-var{font-size:13px;font-weight:600;opacity:.92}
 .f-var.vazio{font-weight:500;opacity:.7}
+/* O "—" da faixa usa a classe .vazio, que também é a caixa de "Nenhum item": aqui sem caixa. */
+.faixa .f-var.vazio{margin:0;padding:0;border-radius:0;background:none;color:inherit;font-size:13px}
 
 .inv-barra{display:flex;align-items:center;gap:10px}
 .inv-n{margin-left:auto;font-size:13px;color:var(--sub);text-align:right}
