@@ -614,15 +614,47 @@ function pequeno(w, r, k) {
   linha24h(w, r, c, k, 11);
   w.addSpacer();
 
+  // v7.4.2: no máximo 3 itens. Com 1 ou 2, cada item vira uma linha (foto,
+  // nome, valor e a variação de 24h), para o widget não ficar vazio.
+  const itens = r.itens.slice(0, 3);
+  if (itens.length <= 2) {
+    itens.forEach((i, n) => {
+      if (n) w.addSpacer(4);
+      const ln = w.addStack();
+      ln.layoutHorizontally();
+      ln.centerAlignContent();
+      ln.spacing = 6;
+      const img = foto(i);
+      if (img) {
+        const wi = ln.addImage(img);
+        const t = tam(30, 30);
+        if (t) wi.imageSize = t;
+        wi.cornerRadius = 7;
+      }
+      const col = ln.addStack();
+      col.layoutVertically();
+      texto(col, String(nomeCurto(i, 14)), Font.semiboldSystemFont(10), k.sub, 0.7);
+      const l1 = col.addStack();
+      l1.layoutHorizontally();
+      l1.centerAlignContent();
+      l1.spacing = 4;
+      texto(l1, a.abreviar(i.valorEfetivo), Font.boldSystemFont(13), i.hold ? k.sub : k.fg, 0.8);
+      const vi = varItem(i, c.base);
+      if (vi != null) texto(l1, (vi > 0 ? '▲' : vi < 0 ? '▼' : '') + a.fmtPct(Math.abs(vi)), Font.semiboldSystemFont(10), i.hold ? k.sub : corVarK(vi, k), 0.8);
+      else if (i.hold) texto(l1, 'hold', Font.semiboldSystemFont(10), k.sub, 0.8);
+    });
+    return;
+  }
   const fila = w.addStack();
   fila.layoutHorizontally();
-  r.itens.slice(0, MAX_ITENS_NOVOS).forEach((i, n) => {
+  itens.forEach((i, n) => {
     if (n) fila.addSpacer();
     const s = fila.addStack();
     s.layoutVertically();
     s.centerAlignContent();
     const box = s.addStack();
-    box.backgroundColor = k.ficha;
+    // v7.4.2: no vidro, sem fundo (o iOS pintava a caixa de branco e a sigla sumia).
+    if (!SEM_FOTOS) box.backgroundColor = k.ficha;
     box.cornerRadius = 8;
     box.setPadding(2, 2, 2, 2);
     const img = foto(i);
