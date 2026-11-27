@@ -626,6 +626,8 @@ function pequeno(w, r, k) {
       wi.cornerRadius = Math.round(lado * 0.24);
       return;
     }
+    // v7.4.5: no vidro não aparece nada no lugar da foto (nem pílula).
+    if (SEM_FOTOS) return;
     const p = st.addStack();
     p.backgroundColor = k.ficha;
     p.cornerRadius = Math.round(lado * 0.3);
@@ -653,11 +655,15 @@ function pequeno(w, r, k) {
       l.addSpacer();
     };
     w.addSpacer();
-    centro((l) => fotoOuPilula(l, i, 54));
-    w.addSpacer(6);
+    // v7.4.5: no vidro, sem foto: só o value grande e a variação.
+    if (!SEM_FOTOS) {
+      centro((l) => fotoOuPilula(l, i, 54));
+      w.addSpacer(6);
+    }
     // v7.4.4: o tamanho do valor segue a quantidade de dígitos.
     const v = String(a.abreviar(i.valorEfetivo));
-    const fonte = v.length <= 3 ? 40 : v.length <= 5 ? 34 : v.length <= 6 ? 30 : 26;
+    const g = SEM_FOTOS ? 8 : 0;
+    const fonte = (v.length <= 3 ? 40 : v.length <= 5 ? 34 : v.length <= 6 ? 30 : 26) + g;
     centro((l) => texto(l, v, Font.heavySystemFont(fonte), i.hold ? k.sub : k.fg, 0.5));
     centro((l) => textoVar(l, i, 10.5));
     w.addSpacer();
@@ -692,8 +698,12 @@ function pequeno(w, r, k) {
     const s = fila.addStack();
     s.layoutVertically();
     s.centerAlignContent();
+    if (SEM_FOTOS) {
+      // v7.4.5: no vidro, só o valor de cada item (sem pílula).
+      texto(s, a.abreviar(i.valorEfetivo), Font.boldSystemFont(12), i.hold ? k.sub : k.fg, 0.8);
+      return;
+    }
     const box = s.addStack();
-    // v7.4.3: no vidro fica só a pílula (sem nome).
     box.backgroundColor = k.ficha;
     box.cornerRadius = 8;
     box.setPadding(2, 2, 2, 2);
